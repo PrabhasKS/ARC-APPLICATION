@@ -4,7 +4,7 @@ import BookingList from './BookingList';
 import EditBookingModal from './EditBookingModal';
 import ReceiptModal from './ReceiptModal';
 
-const Ledger = () => {
+const Ledger = ({ user }) => {
     const [bookings, setBookings] = useState([]);
     const [filters, setFilters] = useState({ date: '', sport: '', customer: '' });
     const [sortOrder, setSortOrder] = useState('desc'); // 'desc' for newest first
@@ -111,6 +111,7 @@ const Ledger = () => {
             </div>
             <BookingList 
                 bookings={sortedBookings} 
+                user={user}
                 onEdit={handleEditClick} 
                 onCancel={handleCancelClick} 
                 onReceipt={handleReceiptClick}

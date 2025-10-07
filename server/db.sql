@@ -100,3 +100,7 @@ select * from courts;
 
 ALTER TABLE bookings
 ADD COLUMN is_rescheduled BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE bookings
+ADD COLUMN discount_amount DECIMAL(10, 2) DEFAULT 0.00,
+ADD COLUMN discount_reason VARCHAR(255);

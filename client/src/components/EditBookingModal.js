@@ -66,6 +66,9 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 ...booking,
                 startTime: formatTime24(startDate),
                 endTime: formatTime24(endDate),
+                discount_amount: booking.discount_amount || 0,
+                discount_reason: booking.discount_reason || '',
+                discount_percentage: booking.total_price > 0 ? (booking.discount_amount / booking.total_price) * 100 : 0
             });
         }
     }, [booking]);
@@ -112,6 +115,31 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleDiscountPercentageChange = (e) => {
+        const percentage = parseFloat(e.target.value) || 0;
+        const newDiscountAmount = (percentage / 100) * formData.total_price;
+        setFormData(prev => ({
+            ...prev,
+            discount_percentage: percentage,
+            discount_amount: newDiscountAmount,
+            balance_amount: prev.total_price - newDiscountAmount - prev.amount_paid
+        }));
+    };
+
+    const handleDiscountAmountChange = (e) => {
+        const amount = parseFloat(e.target.value) || 0;
+        let newDiscountPercentage = 0;
+        if (formData.total_price > 0) {
+            newDiscountPercentage = (amount / formData.total_price) * 100;
+        }
+        setFormData(prev => ({
+            ...prev,
+            discount_amount: amount,
+            discount_percentage: newDiscountPercentage,
+            balance_amount: prev.total_price - amount - prev.amount_paid
+        }));
     };
 
     const handleSave = () => {
@@ -186,6 +214,24 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                     <option value="Received">Received</option>
                     <option value="Completed">Completed</option>
                 </select>
+
+                <hr style={{ margin: '20px 0' }}/>
+
+                <h4>Discount</h4>
+                <div>
+                    <label>Discount (%)</label>
+                    <input type="number" name="discount_percentage" value={formData.discount_percentage || 0} onChange={handleDiscountPercentageChange} />
+                </div>
+
+                <div>
+                    <label>Discount (Price)</label>
+                    <input type="number" name="discount_amount" value={formData.discount_amount || 0} onChange={handleDiscountAmountChange} />
+                </div>
+
+                <div>
+                    <label>Reason for Discount</label>
+                    <input type="text" name="discount_reason" value={formData.discount_reason || ''} onChange={handleInputChange} />
+                </div>
 
                 {error && <div style={{ color: 'red', marginTop: '10px' }}>{error}</div>}
 

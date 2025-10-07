@@ -19,6 +19,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [slotsBooked, setSlotsBooked] = useState(1);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [lastBooking, setLastBooking] = useState(null);
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [discountPercentage, setDiscountPercentage] = useState(0);
+    const [discountReason, setDiscountReason] = useState('');
 
     useEffect(() => {
         // When available courts change, reset the form
@@ -67,6 +70,27 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
         setBalance(totalPrice - newAmountPaid);
     };
 
+    const handleDiscountPercentageChange = (e) => {
+        const percentage = parseFloat(e.target.value) || 0;
+        setDiscountPercentage(percentage);
+        const newDiscountAmount = (percentage / 100) * totalPrice;
+        setDiscountAmount(newDiscountAmount);
+    };
+
+    const handleDiscountAmountChange = (e) => {
+        const amount = parseFloat(e.target.value) || 0;
+        setDiscountAmount(amount);
+        if (totalPrice > 0) {
+            const newDiscountPercentage = (amount / totalPrice) * 100;
+            setDiscountPercentage(newDiscountPercentage);
+        }
+    };
+
+    useEffect(() => {
+        const newBalance = totalPrice - discountAmount - amountPaid;
+        setBalance(newBalance);
+    }, [totalPrice, discountAmount, amountPaid]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!courtId) {
@@ -96,7 +120,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 payment_id: finalPaymentId,
                 // ---
                 amount_paid: amountPaid,
-                slots_booked: slotsBooked
+                slots_booked: slotsBooked,
+                discount_amount: discountAmount,
+                discount_reason: discountReason
             });
             setLastBooking(res.data);
             setIsConfirmationModalOpen(true);
@@ -155,6 +181,21 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 <div>
                     <label>Total Price</label>
                     <input type="number" value={totalPrice} readOnly style={{ backgroundColor: '#f0f0f0' }} />
+                </div>
+
+                <div>
+                    <label>Discount (%)</label>
+                    <input type="number" value={discountPercentage} onChange={handleDiscountPercentageChange} />
+                </div>
+
+                <div>
+                    <label>Discount (Price)</label>
+                    <input type="number" value={discountAmount} onChange={handleDiscountAmountChange} />
+                </div>
+
+                <div>
+                    <label>Reason for Discount</label>
+                    <input type="text" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
                 </div>
 
                 {/* New Payment Section */}
