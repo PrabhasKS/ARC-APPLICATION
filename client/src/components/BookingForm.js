@@ -3,6 +3,14 @@ import api from '../api';
 import ConfirmationModal from './ConfirmationModal';
 
 const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSuccess, user }) => {
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
     const [courtId, setCourtId] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerContact, setCustomerContact] = useState('');
@@ -151,7 +159,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             <div style={{ maxHeight: '80vh', overflowY: 'auto', padding: '20px' }}>
             <form onSubmit={handleSubmit}>
                 {message && <p>{message}</p>}
-                <p>Booking for: <strong>{selectedDate}</strong> from <strong>{startTime}</strong> to <strong>{endTime}</strong></p>
+                <p>Booking for: <strong>{formatDate(selectedDate)}</strong> from <strong>{startTime}</strong> to <strong>{endTime}</strong></p>
                 <div>
                     <label>Court</label>
                     <select value={courtId} onChange={(e) => setCourtId(e.target.value)} required>

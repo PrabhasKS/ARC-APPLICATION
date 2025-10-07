@@ -52,6 +52,14 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         return `${hours}:${minutes}`;
     };
 
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     useEffect(() => {
         if (booking) {
             const [startTimeStr, endTimeStr] = booking.time_slot.split(' - ');
@@ -147,7 +155,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 <div style={{ maxHeight: '80vh', overflowY: 'auto', paddingRight: '15px' }}>
                 <h3>Edit Booking #{booking.id}</h3>
                 
-                <p><strong>Date:</strong> {new Date(formData.date).toLocaleDateString()}</p>
+                <p><strong>Date:</strong> {formatDate(formData.date)}</p>
                 <p><strong>Time Slot:</strong> {formData.time_slot}</p>
 
                 <div style={{ margin: '10px 0' }}>

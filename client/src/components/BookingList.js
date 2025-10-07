@@ -3,6 +3,14 @@ import React, { useState } from 'react';
 const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdVisible, isBookedByVisible, isDiscountReasonVisible }) => {
     const [activeDropdown, setActiveDropdown] = useState(null);
 
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     const rowStyle = (booking) => {
         const now = new Date();
         
@@ -133,6 +141,7 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
                             <th>Customer</th>
                             {isBookedByVisible && <th>Booked-By</th>}
                             <th>Contact</th>
+                            <th>Date</th>
                             <th>Time Slot</th>
                             <th>Original Price</th>
                             <th>Amount Paid</th>
@@ -156,6 +165,7 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
                                     <td>{booking.customer_name}</td>
                                     {isBookedByVisible && <td>{booking.created_by_user || 'N/A'}</td>}
                                     <td>{booking.customer_contact}</td>
+                                    <td>{formatDate(booking.date)}</td>
                                     <td>{booking.time_slot}</td>
                                     <td>{booking.original_price}</td>
                                     <td>{booking.amount_paid}</td>

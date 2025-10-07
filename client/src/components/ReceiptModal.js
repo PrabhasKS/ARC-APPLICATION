@@ -3,6 +3,13 @@ import QRCode from 'react-qr-code';
 import './ReceiptModal.css';
 
 const ReceiptModal = ({ booking, onClose }) => {
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
     if (!booking) {
         return null;
     }
@@ -48,7 +55,7 @@ const ReceiptModal = ({ booking, onClose }) => {
                             <h3>Booking Details</h3>
                             <p><strong>Sport:</strong> {booking.sport_name}</p>
                             <p><strong>Court:</strong> {booking.court_name}</p>
-                            <p><strong>Date:</strong> {new Date(booking.date).toLocaleDateString()}</p>
+                            <p><strong>Date:</strong> {formatDate(booking.date)}</p>
                             <p><strong>Time:</strong> {booking.time_slot}</p>
                         </div>
                         <div className="receipt-section">
