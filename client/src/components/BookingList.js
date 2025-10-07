@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdVisible }) => {
+const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdVisible, isBookedByVisible, isDiscountReasonVisible }) => {
     const [activeDropdown, setActiveDropdown] = useState(null);
 
     const rowStyle = (booking) => {
@@ -131,14 +131,14 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
                             <th>Sport</th>
                             <th>Court</th>
                             <th>Customer</th>
-                            <th>Booked-By</th>
+                            {isBookedByVisible && <th>Booked-By</th>}
                             <th>Contact</th>
                             <th>Time Slot</th>
                             <th>Original Price</th>
                             <th>Amount Paid</th>
                             <th>Balance</th>
                             <th>Discount</th>
-                            <th>Discount Reason</th>
+                            {isDiscountReasonVisible && <th>Discount Reason</th>}
                             <th>Payment Status</th>
                             {isPaymentIdVisible && <th>Payment ID</th>}
                             <th>Booking Status</th>
@@ -154,14 +154,14 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
                                     <td>{booking.sport_name}</td>
                                     <td>{booking.court_name}</td>
                                     <td>{booking.customer_name}</td>
-                                    <td>{booking.created_by_user || 'N/A'}</td>
+                                    {isBookedByVisible && <td>{booking.created_by_user || 'N/A'}</td>}
                                     <td>{booking.customer_contact}</td>
                                     <td>{booking.time_slot}</td>
                                     <td>{booking.original_price}</td>
                                     <td>{booking.amount_paid}</td>
                                     <td>{booking.balance_amount}</td>
                                     <td>{booking.discount_amount || 0}</td>
-                                    <td>{booking.discount_reason || 'N/A'}</td>
+                                    {isDiscountReasonVisible && <td>{booking.discount_reason || 'N/A'}</td>}
                                     <td>{booking.payment_status}</td>
                                     {isPaymentIdVisible && <td>{booking.payment_id || 'N/A'}</td>}
                                     <td>{booking.status}</td>

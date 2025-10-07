@@ -22,6 +22,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [discountAmount, setDiscountAmount] = useState(0);
     const [discountPercentage, setDiscountPercentage] = useState(0);
     const [discountReason, setDiscountReason] = useState('');
+    const [showDiscount, setShowDiscount] = useState(false);
 
     useEffect(() => {
         // When available courts change, reset the form
@@ -147,6 +148,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
     return (
         <>
+            <div style={{ maxHeight: '80vh', overflowY: 'auto', padding: '20px' }}>
             <form onSubmit={handleSubmit}>
                 {message && <p>{message}</p>}
                 <p>Booking for: <strong>{selectedDate}</strong> from <strong>{startTime}</strong> to <strong>{endTime}</strong></p>
@@ -184,19 +186,31 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 </div>
 
                 <div>
-                    <label>Discount (%)</label>
-                    <input type="number" value={discountPercentage} onChange={handleDiscountPercentageChange} />
+                    <label>
+                        <input type="checkbox" checked={showDiscount} onChange={(e) => setShowDiscount(e.target.checked)} />
+                        Add Discount
+                    </label>
                 </div>
 
-                <div>
-                    <label>Discount (Price)</label>
-                    <input type="number" value={discountAmount} onChange={handleDiscountAmountChange} />
-                </div>
+                {showDiscount && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                            <label>Discount (%)</label>
+                            <input type="number" value={discountPercentage} onChange={handleDiscountPercentageChange} style={{ width: '100%' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label>Discount (Price)</label>
+                            <input type="number" value={discountAmount} onChange={handleDiscountAmountChange} style={{ width: '100%' }} />
+                        </div>
+                    </div>
+                )}
 
-                <div>
-                    <label>Reason for Discount</label>
-                    <input type="text" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
-                </div>
+                {showDiscount && (
+                    <div>
+                        <label>Reason for Discount</label>
+                        <input type="text" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
+                    </div>
+                )}
 
                 {/* New Payment Section */}
                 <div>
@@ -236,6 +250,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 </div>
                 <button type="submit">Create Booking</button>
             </form>
+            </div>
             {isConfirmationModalOpen && (
                 <ConfirmationModal 
                     booking={lastBooking}

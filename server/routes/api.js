@@ -668,7 +668,9 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
 
         const newTimeSlot = `${formatTo12Hour(startTime)} - ${formatTo12Hour(endTime)}`;
 
-        if (newTimeSlot !== existingBooking.time_slot || dateForConflictCheck !== existingBooking.date) {
+        const is_rescheduled = newTimeSlot !== existingBooking.time_slot || dateForConflictCheck !== existingBooking.date;
+
+        if (is_rescheduled) {
             const [conflictingBookings] = await db.query(
                 'SELECT * FROM bookings WHERE court_id = ? AND date = ? AND id != ? AND status != ?',
                 [court_id, dateForConflictCheck, id, 'Cancelled']
@@ -725,8 +727,6 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         const balance_amount = total_price - amount_paid;
 
         // 4. Update the booking
-        const is_rescheduled = newTimeSlot !== existingBooking.time_slot || dateForConflictCheck !== existingBooking.date;
-
         const sql = `
             UPDATE bookings 
             SET customer_name = ?, customer_contact = ?, customer_email = ?, date = ?, time_slot = ?, total_price = ?, amount_paid = ?, balance_amount = ?, payment_mode = ?, payment_status = ?, status = ?, is_rescheduled = ?, discount_amount = ?, discount_reason = ?

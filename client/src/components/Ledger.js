@@ -12,6 +12,8 @@ const Ledger = ({ user }) => {
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [isPaymentIdVisible, setIsPaymentIdVisible] = useState(false); // State for collapsible column
+    const [isBookedByVisible, setIsBookedByVisible] = useState(false);
+    const [isDiscountReasonVisible, setIsDiscountReasonVisible] = useState(false);
 
     const fetchFilteredBookings = useCallback(async () => {
         const { date, sport, customer } = filters;
@@ -105,17 +107,59 @@ const Ledger = ({ user }) => {
                 <button onClick={toggleSortOrder}>
                     Sort: {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
                 </button>
-                <button onClick={() => setIsPaymentIdVisible(!isPaymentIdVisible)}>
-                    {isPaymentIdVisible ? 'Hide' : 'Show'} Payment ID
-                </button>
+                <div className="dropdown">
+                    <button className="dropbtn">Show/Hide Columns</button>
+                    <div className="dropdown-content">
+                        <label>
+                            <input type="checkbox" checked={isPaymentIdVisible} onChange={() => setIsPaymentIdVisible(!isPaymentIdVisible)} />
+                            Payment ID
+                        </label>
+                        <label>
+                            <input type="checkbox" checked={isBookedByVisible} onChange={() => setIsBookedByVisible(!isBookedByVisible)} />
+                            Booked By
+                        </label>
+                        <label>
+                            <input type="checkbox" checked={isDiscountReasonVisible} onChange={() => setIsDiscountReasonVisible(!isDiscountReasonVisible)} />
+                            Discount Reason
+                        </label>
+                    </div>
+                </div>
             </div>
+            <style>{`
+                .dropdown {
+                  position: relative;
+                  display: inline-block;
+                }
+
+                .dropdown-content {
+                  display: none;
+                  position: absolute;
+                  background-color: #f9f9f9;
+                  min-width: 160px;
+                  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+                  z-index: 1;
+                }
+
+                .dropdown-content label {
+                  color: black;
+                  padding: 12px 16px;
+                  text-decoration: none;
+                  display: block;
+                }
+
+                .dropdown:hover .dropdown-content {
+                  display: block;
+                }
+            `}</style>
             <BookingList 
                 bookings={sortedBookings} 
                 user={user}
                 onEdit={handleEditClick} 
                 onCancel={handleCancelClick} 
                 onReceipt={handleReceiptClick}
-                isPaymentIdVisible={isPaymentIdVisible} // Pass visibility state
+                isPaymentIdVisible={isPaymentIdVisible}
+                isBookedByVisible={isBookedByVisible}
+                isDiscountReasonVisible={isDiscountReasonVisible}
             />
             {isEditModalOpen && (
                 <EditBookingModal 

@@ -6,6 +6,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [extensionMinutes, setExtensionMinutes] = useState(0);
     const [availabilityMessage, setAvailabilityMessage] = useState('');
 
+    const [showReschedule, setShowReschedule] = useState(false);
+
     const checkClash = async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
             try {
@@ -65,10 +67,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             setFormData({
                 ...booking,
                 startTime: formatTime24(startDate),
-                endTime: formatTime24(endDate),
-                discount_amount: booking.discount_amount || 0,
-                discount_reason: booking.discount_reason || '',
-                discount_percentage: booking.total_price > 0 ? (booking.discount_amount / booking.total_price) * 100 : 0
+                endTime: formatTime24(endDate)
             });
         }
     }, [booking]);
@@ -91,7 +90,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         const endDate = new Date(formData.date);
         endDate.setHours(hours, mins);
 
-        const newEndDate = new Date(endDate.getTime() + minutes * 60000);
+        const newEndDate = new Date(endDate.getTime() + extensionMinutes * 60000);
         const newEndTime = formatTime24(newEndDate);
 
         // Recalculate price
@@ -117,39 +116,21 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleDiscountPercentageChange = (e) => {
-        const percentage = parseFloat(e.target.value) || 0;
-        const newDiscountAmount = (percentage / 100) * formData.total_price;
-        setFormData(prev => ({
-            ...prev,
-            discount_percentage: percentage,
-            discount_amount: newDiscountAmount,
-            balance_amount: prev.total_price - newDiscountAmount - prev.amount_paid
-        }));
-    };
 
-    const handleDiscountAmountChange = (e) => {
-        const amount = parseFloat(e.target.value) || 0;
-        let newDiscountPercentage = 0;
-        if (formData.total_price > 0) {
-            newDiscountPercentage = (amount / formData.total_price) * 100;
-        }
-        setFormData(prev => ({
-            ...prev,
-            discount_amount: amount,
-            discount_percentage: newDiscountPercentage,
-            balance_amount: prev.total_price - amount - prev.amount_paid
-        }));
-    };
 
     const handleSave = () => {
-        onSave(formData.id, formData);
+        let payment_status = 'Pending';
+        if (formData.amount_paid > 0) {
+            payment_status = formData.balance_amount <= 0 ? 'Completed' : 'Received';
+        }
+        onSave(formData.id, { ...formData, payment_status });
     };
 
     const handleSaveAsPaid = () => {
         const updatedFormData = {
             ...formData,
             amount_paid: formData.total_price,
+            balance_amount: 0,
             payment_status: 'Completed'
         };
         onSave(formData.id, updatedFormData);
@@ -163,6 +144,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         <>
             <div style={overlayStyle} onClick={onClose} />
             <div style={modalStyle}>
+                <div style={{ maxHeight: '80vh', overflowY: 'auto', paddingRight: '15px' }}>
                 <h3>Edit Booking #{booking.id}</h3>
                 
                 <p><strong>Date:</strong> {new Date(formData.date).toLocaleDateString()}</p>
@@ -191,18 +173,30 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 <hr style={{ margin: '20px 0' }}/>
 
                 <h4>Reschedule</h4>
-                <div style={{ margin: '10px 0' }}>
-                    <label>New Date: </label>
-                    <input type="date" name="date" value={formData.date ? new Date(formData.date).toISOString().slice(0, 10) : ''} onChange={handleInputChange} />
+                <div>
+                    <label>
+                        <input type="checkbox" checked={showReschedule} onChange={(e) => setShowReschedule(e.target.checked)} />
+                        Reschedule Booking
+                    </label>
                 </div>
-                <div style={{ margin: '10px 0' }}>
-                    <label>New Start Time: </label>
-                    <input type="time" name="startTime" value={formData.startTime || ''} onChange={handleInputChange} />
-                </div>
-                <div style={{ margin: '10px 0' }}>
-                    <label>New End Time: </label>
-                    <input type="time" name="endTime" value={formData.endTime || ''} onChange={handleInputChange} />
-                </div>
+
+                {showReschedule && (
+                    <>
+
+                        <div style={{ margin: '10px 0' }}>
+                            <label>New Date: </label>
+                            <input type="date" name="date" value={formData.date ? new Date(formData.date).toISOString().slice(0, 10) : ''} onChange={handleInputChange} />
+                        </div>
+                        <div style={{ margin: '10px 0' }}>
+                            <label>New Start Time: </label>
+                            <input type="time" name="startTime" value={formData.startTime || ''} onChange={handleInputChange} />
+                        </div>
+                        <div style={{ margin: '10px 0' }}>
+                            <label>New End Time: </label>
+                            <input type="time" name="endTime" value={formData.endTime || ''} onChange={handleInputChange} />
+                        </div>
+                    </>
+                )}
                 {availabilityMessage && <p style={{ color: availabilityMessage.includes('not') ? 'red' : 'green' }}>{availabilityMessage}</p>}
 
                 <hr style={{ margin: '20px 0' }}/>
@@ -217,23 +211,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                 <hr style={{ margin: '20px 0' }}/>
 
-                <h4>Discount</h4>
-                <div>
-                    <label>Discount (%)</label>
-                    <input type="number" name="discount_percentage" value={formData.discount_percentage || 0} onChange={handleDiscountPercentageChange} />
-                </div>
-
-                <div>
-                    <label>Discount (Price)</label>
-                    <input type="number" name="discount_amount" value={formData.discount_amount || 0} onChange={handleDiscountAmountChange} />
-                </div>
-
-                <div>
-                    <label>Reason for Discount</label>
-                    <input type="text" name="discount_reason" value={formData.discount_reason || ''} onChange={handleInputChange} />
-                </div>
-
                 {error && <div style={{ color: 'red', marginTop: '10px' }}>{error}</div>}
+                </div>
 
                 <div style={{ marginTop: '20px' }}>
                     <button onClick={handleSave}>Save Changes</button>
