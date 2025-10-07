@@ -7,6 +7,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [availabilityMessage, setAvailabilityMessage] = useState('');
 
     const [showReschedule, setShowReschedule] = useState(false);
+    const [isRescheduled, setIsRescheduled] = useState(false);
 
     const checkClash = async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
@@ -131,7 +132,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         if (formData.amount_paid > 0) {
             payment_status = formData.balance_amount <= 0 ? 'Completed' : 'Received';
         }
-        onSave(formData.id, { ...formData, payment_status });
+        onSave(formData.id, { ...formData, payment_status, is_rescheduled: isRescheduled });
     };
 
     const handleSaveAsPaid = () => {
@@ -139,7 +140,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             ...formData,
             amount_paid: formData.total_price,
             balance_amount: 0,
-            payment_status: 'Completed'
+            payment_status: 'Completed',
+            is_rescheduled: false
         };
         onSave(formData.id, updatedFormData);
     };
@@ -190,6 +192,12 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                 {showReschedule && (
                     <>
+                        <div>
+                            <label>
+                                <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
+                                Mark as Rescheduled
+                            </label>
+                        </div>
 
                         <div style={{ margin: '10px 0' }}>
                             <label>New Date: </label>

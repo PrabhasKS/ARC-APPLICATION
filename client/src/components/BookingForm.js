@@ -33,8 +33,10 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [showDiscount, setShowDiscount] = useState(false);
 
     useEffect(() => {
-        // When available courts change, reset the form
-        setCourtId('');
+        // When available courts change, only reset the form if the user hasn't started filling it out
+        if (!customerName && !customerContact && !customerEmail) {
+            setCourtId('');
+        }
     }, [courts]);
 
     // Debounced effect for calculating price
@@ -53,8 +55,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     });
                     const newTotalPrice = res.data.total_price || 0;
                     setTotalPrice(newTotalPrice);
-                    setAmountPaid(newTotalPrice); // Default to full amount paid
-                    setBalance(0);
+                    setAmountPaid(0);
+                    setBalance(newTotalPrice);
                 } catch (error) {
                     console.error("Error calculating price:", error);
                     setTotalPrice(0);
@@ -148,6 +150,10 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             setTotalPrice(0);
             setBalance(0);
             setCourtId('');
+            setDiscountAmount(0);
+            setDiscountPercentage(0);
+            setDiscountReason('');
+            setShowDiscount(false);
             onBookingSuccess();
         } catch (err) {
             setMessage(err.response?.data?.message || 'Error creating booking');
@@ -173,6 +179,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     <div>
                         <label>Number of People</label>
                         <input type="number" value={slotsBooked} onChange={(e) => setSlotsBooked(e.target.value)} min="1" required />
+                        {courts.find(c => c.id === parseInt(courtId))?.available_slots < slotsBooked && (
+                            <p style={{ color: 'red' }}>Not Available: Exceeds capacity</p>
+                        )}
                     </div>
                 )}
                 <div>

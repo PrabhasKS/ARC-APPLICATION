@@ -37,6 +37,29 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
+const toMinutes = (timeStr) => {
+    const [time, modifier] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (modifier === 'PM' && hours < 12) {
+        hours += 12;
+    }
+    if (modifier === 'AM' && hours === 12) { // Handle midnight case
+        hours = 0;
+    }
+    // If there's no modifier, it's already 24-hour format
+    return hours * 60 + minutes;
+};
+
+const checkOverlap = (startA, endA, startB, endB) => {
+    const startAMin = toMinutes(startA);
+    const endAMin = toMinutes(endA);
+    const startBMin = toMinutes(startB);
+    const endBMin = toMinutes(endB);
+
+    return startAMin < endBMin && endAMin > startBMin;
+};
+
 
 // Login
 router.post('/login', async (req, res) => {
@@ -121,28 +144,7 @@ router.get('/courts/availability', authenticateToken, async (req, res) => {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id');
         const [bookings] = await db.query('SELECT court_id, time_slot, slots_booked FROM bookings WHERE date = ?', [date]);
 
-        const toMinutes = (timeStr) => {
-            const [time, modifier] = timeStr.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
 
-            if (modifier === 'PM' && hours < 12) {
-                hours += 12;
-            }
-            if (modifier === 'AM' && hours === 12) { // Handle midnight case
-                hours = 0;
-            }
-            // If there's no modifier, it's already 24-hour format
-            return hours * 60 + minutes;
-        };
-
-        const checkOverlap = (startA, endA, startB, endB) => {
-            const startAMin = toMinutes(startA);
-            const endAMin = toMinutes(endA);
-            const startBMin = toMinutes(startB);
-            const endBMin = toMinutes(endB);
-
-            return startAMin < endBMin && endAMin > startBMin;
-        };
 
         const availability = courts.map(court => {
             if (court.status === 'Under Maintenance') {
@@ -304,17 +306,19 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                             booking_details = overlappingBookings.map(b => ({ id: b.id, customer_name: b.customer_name, time_slot: b.time_slot, slots_booked: b.slots_booked }));
                             if (court.capacity > 1) {
                                 const slots_booked = overlappingBookings.reduce((acc, curr) => acc + curr.slots_booked, 0);
+                                const available_slots = court.capacity - slots_booked;
                                 if (slots_booked >= court.capacity) {
                                     availability = 'full';
                                 } else {
                                     availability = 'partial';
                                 }
+                                booking_details.available_slots = available_slots;
                             } else {
                                 availability = 'booked';
                             }
                         }
                     }
-                    return { availability, booking: booking_details };
+                    return { availability, booking: booking_details, available_slots: booking_details ? booking_details.available_slots : court.capacity };
                 });
 
                 return { time: slot, subSlots };
@@ -589,17 +593,17 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             return startAMin < endBMin && endAMin > startBMin;
         };
 
-        const isOverlapping = existingBookings.some(booking => {
+        const overlappingBookings = existingBookings.filter(booking => {
             const [existingStart, existingEnd] = booking.time_slot.split(' - ');
             return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
         });
 
-        if (isOverlapping) {
+        if (overlappingBookings.length > 0) {
             if (capacity > 1) {
-                const slotsBooked = existingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
-                const availableSlots = capacity - slotsBooked;
-                if (slots_booked > availableSlots) {
-                    return res.status(409).json({ message: 'Not enough slots available for the selected time.' });
+                const totalSlotsBooked = overlappingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
+                const availableSlots = capacity - totalSlotsBooked;
+                if (parseInt(slots_booked) > availableSlots) {
+                    return res.status(409).json({ message: `Not enough slots available. Only ${availableSlots} slots left.` });
                 }
             } else {
                 return res.status(409).json({ message: 'The selected time slot is unavailable.' });
@@ -642,7 +646,8 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         payment_status,
         status,
         discount_amount,
-        discount_reason
+        discount_reason,
+        is_rescheduled
     } = req.body;
 
     try {
@@ -668,37 +673,30 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
 
         const newTimeSlot = `${formatTo12Hour(startTime)} - ${formatTo12Hour(endTime)}`;
 
-        const is_rescheduled = newTimeSlot !== existingBooking.time_slot || dateForConflictCheck !== existingBooking.date;
-
         if (is_rescheduled) {
             const [conflictingBookings] = await db.query(
                 'SELECT * FROM bookings WHERE court_id = ? AND date = ? AND id != ? AND status != ?',
                 [court_id, dateForConflictCheck, id, 'Cancelled']
             );
 
-            const toMinutes = (timeStr) => {
-                const [time, modifier] = timeStr.split(' ');
-                let [hours, minutes] = time.split(':').map(Number);
-                if (modifier === 'PM' && hours < 12) hours += 12;
-                if (modifier === 'AM' && hours === 12) hours = 0;
-                return hours * 60 + minutes;
-            };
-
-            const checkOverlap = (startA, endA, startB, endB) => {
-                const startAMin = toMinutes(startA);
-                const endAMin = toMinutes(endA);
-                const startBMin = toMinutes(startB);
-                const endBMin = toMinutes(endB);
-                return startAMin < endBMin && endAMin > startBMin;
-            };
-
-            const isOverlapping = conflictingBookings.some(booking => {
+            const overlappingBookings = conflictingBookings.filter(booking => {
                 const [existingStart, existingEnd] = booking.time_slot.split(' - ');
                 return checkOverlap(formatTo12Hour(startTime), formatTo12Hour(endTime), existingStart.trim(), existingEnd.trim());
             });
 
-            if (isOverlapping) {
-                return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
+            if (overlappingBookings.length > 0) {
+                const [sports] = await db.query('SELECT capacity FROM sports WHERE id = ?', [sport_id]);
+                const capacity = sports[0].capacity;
+
+                if (capacity > 1) {
+                    const totalSlotsBooked = overlappingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
+                    const availableSlots = capacity - totalSlotsBooked;
+                    if (parseInt(req.body.slots_booked) > availableSlots) {
+                        return res.status(409).json({ message: `Not enough slots available. Only ${availableSlots} slots left.` });
+                    }
+                } else {
+                    return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
+                }
             }
         }
 
@@ -720,6 +718,10 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             if (remaining_minutes >= 30) {
                 total_price += hourly_price / 2;
             }
+        }
+
+        if (existingBooking.slots_booked > 1) {
+            total_price *= existingBooking.slots_booked;
         }
 
         total_price -= discount_amount || 0;
@@ -913,7 +915,7 @@ router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (r
 router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT s.name, SUM(CASE WHEN b.total_price > 0 THEN b.total_price ELSE s.price END) as revenue
+            SELECT s.name, SUM(b.amount_paid) as revenue
             FROM bookings b
             JOIN sports s ON b.sport_id = s.id
             WHERE b.status != ?
