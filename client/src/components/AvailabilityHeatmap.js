@@ -24,7 +24,7 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
             case 'maintenance':
                 return '#e2e3e5'; // Grey
             default:
-                return 'white';
+                return '#FFFFE0'; // lightyellow
         }
     };
 

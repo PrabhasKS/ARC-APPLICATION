@@ -143,11 +143,9 @@ router.get('/courts/availability', authenticateToken, async (req, res) => {
     try {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id');
         const [bookings] = await db.query('SELECT court_id, time_slot, slots_booked FROM bookings WHERE date = ?', [date]);
-
-
-
+                const unavailableStatuses = ['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'];
         const availability = courts.map(court => {
-            if (court.status === 'Under Maintenance') {
+            if (unavailableStatuses.includes(court.status)) {
                 return { ...court, is_available: false };
             }
 
@@ -284,8 +282,9 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                     let availability = 'available';
                     let booking_details = null;
 
-                    if (court.status === 'Under Maintenance') {
-                        availability = 'maintenance';
+                    const unavailableStatuses = ['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'];
+                    if (unavailableStatuses.includes(court.status)) {
+                        availability = court.status.toLowerCase();
                     } else {
                         const overlappingBookings = courtBookings.filter(b => {
                             const [startStr, endStr] = b.time_slot.split(' - ');

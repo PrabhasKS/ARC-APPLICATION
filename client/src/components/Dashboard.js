@@ -53,6 +53,7 @@ const Dashboard = ({ user }) => {
                         endTime: endTime 
                     } 
                 });
+                console.log('Availability response:', res.data);
                 setAvailability(Array.isArray(res.data) ? res.data : []);
             } catch (error) {
                 console.error("Error fetching availability:", error);
@@ -224,7 +225,13 @@ const Dashboard = ({ user }) => {
                                     <td>{court.name}</td>
                                     <td>{court.sport_name}</td>
                                     <td style={{ color: court.is_available ? 'green' : 'red' }}>
-                                        {court.status === 'Under Maintenance' ? 'Maintenance' : court.is_available ? (court.available_slots ? `${court.available_slots} slots available` : 'Available') : 'Engaged'}
+                                        {court.is_available
+                                            ? court.available_slots
+                                                ? `${court.available_slots} slots available`
+                                                : 'Available'
+                                            : ['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'].includes(court.status)
+                                                ? court.status
+                                                : 'Engaged'}
                                     </td>
                                 </tr>
                             ))}
