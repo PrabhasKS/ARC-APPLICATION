@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api'; // Import the api instance
 import { useNavigate } from 'react-router-dom';
+import CourtStatusControl from './CourtStatusControl';
 
 const Admin = () => {
     const [sports, setSports] = useState([]);
@@ -113,6 +114,14 @@ const Admin = () => {
         }
     };
 
+    const handleCourtStatusChange = (courtId, newStatus) => {
+        const updatedCourts = courts.map(court =>
+            court.id === courtId ? { ...court, status: newStatus } : court
+        );
+        setCourts(updatedCourts);
+        setMessage(`Court status updated to ${newStatus}`)
+    };
+
     return (
         <div>
             <h2>Admin Panel</h2>
@@ -214,6 +223,7 @@ const Admin = () => {
                             <tr>
                                 <th>Court</th>
                                 <th>Sport</th>
+                                <th>Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -222,6 +232,9 @@ const Admin = () => {
                                 <tr key={court.id}>
                                     <td>{court.name}</td>
                                     <td>{court.sport_name}</td>
+                                    <td>
+                                        <CourtStatusControl court={court} onStatusChange={handleCourtStatusChange} />
+                                    </td>
                                     <td>
                                         <button onClick={() => handleDeleteCourt(court.id)}>Delete</button>
                                     </td>

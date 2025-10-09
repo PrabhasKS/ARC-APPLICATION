@@ -95,29 +95,32 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         const minutes = parseInt(e.target.value, 10);
         setExtensionMinutes(minutes);
 
-        const [hours, mins] = formData.endTime.split(':').map(Number);
-        const endDate = new Date(formData.date);
-        endDate.setHours(hours, mins);
+        if (booking) {
+            const [startTimeStr, endTimeStr] = booking.time_slot.split(' - ');
+            const parsedEndTime = parseTime(endTimeStr);
+            const originalEndDate = new Date(booking.date);
+            originalEndDate.setHours(parsedEndTime.hours, parsedEndTime.minutes);
 
-        const newEndDate = new Date(endDate.getTime() + extensionMinutes * 60000);
-        const newEndTime = formatTime24(newEndDate);
+            const newEndDate = new Date(originalEndDate.getTime() + minutes * 60000);
+            const newEndTime = formatTime24(newEndDate);
 
-        // Recalculate price
-        api.post('/bookings/calculate-price', {
-            sport_id: formData.sport_id,
-            startTime: formData.startTime,
-            endTime: newEndTime,
-            slots_booked: formData.slots_booked
-        }).then(response => {
-            setFormData(prev => ({
-                ...prev,
+            // Recalculate price
+            api.post('/bookings/calculate-price', {
+                sport_id: formData.sport_id,
+                startTime: formData.startTime,
                 endTime: newEndTime,
-                total_price: response.data.total_price,
-                balance_amount: response.data.total_price - prev.amount_paid
-            }));
-        }).catch(error => {
-            console.error("Error calculating price:", error);
-        });
+                slots_booked: formData.slots_booked
+            }).then(response => {
+                setFormData(prev => ({
+                    ...prev,
+                    endTime: newEndTime,
+                    total_price: response.data.total_price,
+                    balance_amount: response.data.total_price - prev.amount_paid
+                }));
+            }).catch(error => {
+                console.error("Error calculating price:", error);
+            });
+        }
     };
 
     const handleInputChange = (e) => {

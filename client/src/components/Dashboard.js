@@ -7,6 +7,7 @@ import EditBookingModal from './EditBookingModal';
 import ReceiptModal from './ReceiptModal';
 import { useActiveBookings } from '../hooks/useActiveBookings';
 import AvailabilityHeatmap from './AvailabilityHeatmap';
+import CourtActions from './CourtActions';
 
 const Dashboard = ({ user }) => {
     const [bookings, setBookings] = useState([]);
@@ -53,6 +54,7 @@ const Dashboard = ({ user }) => {
                         endTime: endTime 
                     } 
                 });
+                console.log('Availability response:', res.data);
                 setAvailability(Array.isArray(res.data) ? res.data : []);
             } catch (error) {
                 console.error("Error fetching availability:", error);
@@ -164,6 +166,13 @@ const Dashboard = ({ user }) => {
         }
     };
 
+    const handleCourtStatusChange = (courtId, newStatus) => {
+        const updatedAvailability = availability.map(court =>
+            court.id === courtId ? { ...court, status: newStatus, is_available: newStatus === 'Available' } : court
+        );
+        setAvailability(updatedAvailability);
+    };
+
     const timeSlots = Array.from({ length: 16 }, (_, i) => {
         const startHour = 6 + i;
         const endHour = startHour + 1;
@@ -216,6 +225,7 @@ const Dashboard = ({ user }) => {
                                 <th>Court</th>
                                 <th>Sport</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,7 +234,16 @@ const Dashboard = ({ user }) => {
                                     <td>{court.name}</td>
                                     <td>{court.sport_name}</td>
                                     <td style={{ color: court.is_available ? 'green' : 'red' }}>
-                                        {court.status === 'Under Maintenance' ? 'Maintenance' : court.is_available ? (court.available_slots ? `${court.available_slots} slots available` : 'Available') : 'Engaged'}
+                                        {['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'].includes(court.status)
+                                            ? court.status
+                                            : court.is_available
+                                                ? court.capacity > 1
+                                                    ? `${court.available_slots} / ${court.capacity} slots available`
+                                                    : 'Available'
+                                                : 'Engaged'}
+                                    </td>
+                                    <td>
+                                        <CourtActions court={court} onStatusChange={handleCourtStatusChange} />
                                     </td>
                                 </tr>
                             ))}
