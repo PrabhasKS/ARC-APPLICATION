@@ -36,6 +36,11 @@ const Analytics = () => {
     const [courtPopularityData, setCourtPopularityData] = useState({});
     const [staffPerformanceData, setStaffPerformanceData] = useState({});
     const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
+    const [activeFilter, setActiveFilter] = useState('today');
+
+    useEffect(() => {
+        setDatePreset('today');
+    }, []);
 
     useEffect(() => {
         fetchAnalyticsData(dateRange);
@@ -174,12 +179,14 @@ const Analytics = () => {
     };
 
     const handleDateRangeChange = (e) => {
+        setActiveFilter('custom');
         setDateRange({ ...dateRange, [e.target.name]: e.target.value });
     };
 
     const setDatePreset = (preset) => {
         const today = new Date();
         let startDate, endDate;
+        setActiveFilter(preset);
 
         switch (preset) {
             case 'today':
@@ -222,12 +229,13 @@ const Analytics = () => {
         <div className="analytics-container">
             <h2>Analytics Dashboard</h2>
 
-            <div className="filters">
-                <button onClick={() => setDatePreset('today')}>Today</button>
-                <button onClick={() => setDatePreset('month')}>This Month</button>
-                <button onClick={() => setDatePreset('year')}>This Year</button>
+            <div className="filters" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
+                <button className={activeFilter === 'today' ? 'active' : ''} onClick={() => setDatePreset('today')}>Today</button>
+                <button className={activeFilter === 'month' ? 'active' : ''} onClick={() => setDatePreset('month')}>This Month</button>
+                <button className={activeFilter === 'year' ? 'active' : ''} onClick={() => setDatePreset('year')}>This Year</button>
                 <input type="date" name="startDate" value={dateRange.startDate} onChange={handleDateRangeChange} />
                 <input type="date" name="endDate" value={dateRange.endDate} onChange={handleDateRangeChange} />
+                <button onClick={() => setDatePreset('clear')}>Clear</button>
             </div>
             
             <div className="summary-cards">
