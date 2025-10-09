@@ -50,26 +50,30 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
     };
 
     const areActionsDisabled = (booking) => {
-        if (booking.payment_status !== 'Completed') {
-            return false;
+        if (booking.status === 'Cancelled') {
+            return true;
         }
 
-        const now = new Date();
-        const [, endTimeStr] = booking.time_slot.split(' - ');
-        const [time, modifier] = endTimeStr.trim().split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
+        if (booking.payment_status === 'Completed') {
+            const now = new Date();
+            const [, endTimeStr] = booking.time_slot.split(' - ');
+            const [time, modifier] = endTimeStr.trim().split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
 
-        if (modifier === 'PM' && hours < 12) {
-            hours += 12;
+            if (modifier === 'PM' && hours < 12) {
+                hours += 12;
+            }
+            if (modifier === 'AM' && hours === 12) { // Handle midnight case
+                hours = 0;
+            }
+
+            const bookingEndDateTime = new Date(booking.date);
+            bookingEndDateTime.setHours(hours, minutes, 0, 0);
+
+            return now > bookingEndDateTime;
         }
-        if (modifier === 'AM' && hours === 12) { // Handle midnight case
-            hours = 0;
-        }
 
-        const bookingEndDateTime = new Date(booking.date);
-        bookingEndDateTime.setHours(hours, minutes, 0, 0);
-
-        return now > bookingEndDateTime;
+        return false;
     };
 
     return (

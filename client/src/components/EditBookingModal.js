@@ -125,17 +125,25 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const newFormData = { ...prev, [name]: value };
+            if (name === 'amount_paid') {
+                const amountPaid = parseFloat(value) || 0;
+                newFormData.balance_amount = newFormData.total_price - amountPaid;
+                if (amountPaid === 0) {
+                    newFormData.payment_status = 'Pending';
+                } else if (amountPaid < newFormData.total_price) {
+                    newFormData.payment_status = 'Received';
+                } else {
+                    newFormData.payment_status = 'Completed';
+                }
+            }
+            return newFormData;
+        });
     };
 
-
-
     const handleSave = () => {
-        let payment_status = 'Pending';
-        if (formData.amount_paid > 0) {
-            payment_status = formData.balance_amount <= 0 ? 'Completed' : 'Received';
-        }
-        onSave(formData.id, { ...formData, payment_status, is_rescheduled: isRescheduled });
+        onSave(formData.id, { ...formData, is_rescheduled: isRescheduled });
     };
 
     const handleSaveAsPaid = () => {
@@ -222,11 +230,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                 <h4>Payment</h4>
                 <input type="number" name="amount_paid" value={formData.amount_paid || 0} onChange={handleInputChange} placeholder="Amount Paid" />
-                <select name="payment_status" value={formData.payment_status || 'Pending'} onChange={handleInputChange}>
-                    <option value="Pending">Pending</option>
-                    <option value="Received">Received</option>
-                    <option value="Completed">Completed</option>
-                </select>
+                <p><strong>Payment Status:</strong> {formData.payment_status}</p>
 
                 <hr style={{ margin: '20px 0' }}/>
 
