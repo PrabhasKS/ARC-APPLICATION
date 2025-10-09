@@ -140,6 +140,19 @@ router.get('/courts/availability', authenticateToken, async (req, res) => {
         });
     }
 
+    // If end time is not after start time, return all courts as available
+    const start = new Date(`1970-01-01T${startTime}`);
+    const end = new Date(`1970-01-01T${endTime}`);
+    if (end <= start) {
+        try {
+            const [courts] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id');
+            const availability = courts.map(court => ({ ...court, is_available: true, available_slots: court.capacity }));
+            return res.json(availability);
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+    }
+
     try {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id');
         const [bookings] = await db.query('SELECT court_id, time_slot, slots_booked FROM bookings WHERE date = ?', [date]);

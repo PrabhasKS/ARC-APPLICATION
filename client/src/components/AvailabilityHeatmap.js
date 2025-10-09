@@ -15,16 +15,16 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
     const getCellColor = (availability) => {
         switch (availability) {
             case 'available':
-                return '#d4edda'; // Green
+                return '#a3d9a5'; // Darker Green
             case 'partial':
-                return '#fff3cd'; // Yellow
+                return '#ffe082'; // Darker Yellow
             case 'booked':
             case 'full':
-                return '#f8d7da'; // Red
+                return '#f0a1a8'; // Darker Red
             case 'maintenance':
-                return '#e2e3e5'; // Grey
+                return '#c0c1c2'; // Darker Grey
             default:
-                return '#FFFFE0'; // lightyellow
+                return '#f7f7a8'; // Darker lightyellow
         }
     };
 
@@ -83,7 +83,7 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                                                         backgroundColor: getCellColor(subSlot.availability),
                                                         width: '50%',
                                                         height: '40px',
-                                                        borderRight: index === 0 ? '1px solid #ddd' : 'none',
+                                                        border: '1px solid black',
                                                         cursor: subSlot.availability === 'available' || subSlot.availability === 'partial' ? 'pointer' : 'not-allowed'
                                                     }}
                                                     onClick={() => (subSlot.availability === 'available' || subSlot.availability === 'partial') && onSlotSelect(court, slot.time, index * 30)}

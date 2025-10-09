@@ -46,6 +46,16 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 const selectedCourt = courts.find(c => c.id === parseInt(courtId));
                 if (!selectedCourt) return;
 
+                // Parse time and check duration
+                const start = new Date(`1970-01-01T${startTime}`);
+                const end = new Date(`1970-01-01T${endTime}`);
+                if (end <= start) {
+                    setTotalPrice(0);
+                    setAmountPaid(0);
+                    setBalance(0);
+                    return; // Don't calculate price if duration is zero or negative
+                }
+
                 try {
                     const res = await api.post('/bookings/calculate-price', {
                         sport_id: selectedCourt.sport_id,
