@@ -220,7 +220,7 @@ router.get('/bookings', authenticateToken, async (req, res) => {
 // Get all bookings (ledger)
 router.get('/bookings/all', authenticateToken, async (req, res) => {
     try {
-        let { date, sport, customer } = req.query;
+        let { date, sport, customer, startTime, endTime } = req.query;
         let queryParams = [];
         let query = `
             SELECT 
@@ -252,6 +252,14 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
         if (customer) {
             whereClauses.push('b.customer_name LIKE ?');
             queryParams.push(`%${customer}%`);
+        }
+        if (startTime) {
+            whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', 1), '%h:%i %p') >= STR_TO_DATE(?, '%h:%i %p')");
+            queryParams.push(startTime);
+        }
+        if (endTime) {
+            whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', -1), '%h:%i %p') <= STR_TO_DATE(?, '%h:%i %p')");
+            queryParams.push(endTime);
         }
 
         if (whereClauses.length > 0) {
@@ -890,18 +898,29 @@ router.delete('/sports/:id', authenticateToken, isAdmin, async (req, res) => {
 // Analytics: Summary
 router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const [[{ total_bookings }]] = await db.query('SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?', ['Cancelled']);
-        const [[{ total_revenue }]] = await db.query('SELECT SUM(amount_paid) as total_revenue FROM bookings WHERE status != ?', ['Cancelled']);
-        const [[{ total_cancellations }]] = await db.query('SELECT COUNT(*) as total_cancellations FROM bookings WHERE status = ?', ['Cancelled']);
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount_paid) as total_revenue FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ total_cancellations }]] = await db.query(`SELECT COUNT(*) as total_cancellations FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
         const [[{ total_sports }]] = await db.query('SELECT COUNT(*) as total_sports FROM sports');
         const [[{ total_courts }]] = await db.query('SELECT COUNT(*) as total_courts FROM courts');
+        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
 
         res.json({
             total_bookings,
             total_revenue,
             total_cancellations,
             total_sports,
-            total_courts
+            total_courts,
+            total_discount
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -911,12 +930,22 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
 // Analytics: Bookings over time
 router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' WHERE date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT DATE(date) as date, COUNT(*) as count 
             FROM bookings 
+            ${dateFilter}
             GROUP BY DATE(date) 
             ORDER BY DATE(date) ASC
-        `);
+        `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -926,14 +955,24 @@ router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (r
 // Analytics: Revenue by sport
 router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = ['Cancelled'];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND b.date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT s.name, SUM(b.amount_paid) as revenue
             FROM bookings b
             JOIN sports s ON b.sport_id = s.id
             WHERE b.status != ?
+            ${dateFilter}
             GROUP BY s.name
             ORDER BY revenue DESC
-        `, ['Cancelled']);
+        `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -943,6 +982,15 @@ router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req
 // Analytics: Court Utilization Heatmap
 router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = ['Cancelled'];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT 
                 DAYNAME(date) as day_of_week,
@@ -951,13 +999,14 @@ router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (
             FROM 
                 bookings
             WHERE
-                status != 'Cancelled'
+                status != ?
+                ${dateFilter}
             GROUP BY 
                 day_of_week, hour_of_day
             ORDER BY
                 FIELD(day_of_week, 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'),
                 hour_of_day;
-        `);
+        `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -967,11 +1016,21 @@ router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (
 // Analytics: Booking Status Distribution
 router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' WHERE date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT status, COUNT(*) as count 
             FROM bookings 
+            ${dateFilter}
             GROUP BY status
-        `);
+        `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -981,14 +1040,24 @@ router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin,
 // Analytics: Court Popularity
 router.get('/analytics/court-popularity', authenticateToken, isAdmin, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = ['Cancelled'];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND b.date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT c.name, COUNT(b.id) as booking_count 
             FROM bookings b
             JOIN courts c ON b.court_id = c.id
-            WHERE b.status != 'Cancelled'
+            WHERE b.status != ?
+            ${dateFilter}
             GROUP BY c.name 
             ORDER BY booking_count DESC
-        `);
+        `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -998,14 +1067,24 @@ router.get('/analytics/court-popularity', authenticateToken, isAdmin, async (req
 // Analytics: Staff Performance
 router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = ['Cancelled'];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND b.date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
         const [rows] = await db.query(`
             SELECT u.username, COUNT(b.id) as booking_count
             FROM bookings b
             JOIN users u ON b.created_by_user_id = u.id
-            WHERE b.status != 'Cancelled'
+            WHERE b.status != ?
+            ${dateFilter}
             GROUP BY u.username
             ORDER BY booking_count DESC
-        `);
+        `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });

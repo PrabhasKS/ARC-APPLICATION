@@ -6,7 +6,7 @@ import ReceiptModal from './ReceiptModal';
 
 const Ledger = ({ user }) => {
     const [bookings, setBookings] = useState([]);
-    const [filters, setFilters] = useState({ date: '', sport: '', customer: '' });
+    const [filters, setFilters] = useState({ date: '', sport: '', customer: '', startTime: '', endTime: '' });
     const [sortOrder, setSortOrder] = useState('desc'); // 'desc' for newest first
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -16,10 +16,9 @@ const Ledger = ({ user }) => {
     const [isDiscountReasonVisible, setIsDiscountReasonVisible] = useState(false);
 
     const fetchFilteredBookings = useCallback(async () => {
-        const { date, sport, customer } = filters;
         try {
             const res = await api.get('/bookings/all', {
-                params: { date, sport, customer }
+                params: filters
             });
             setBookings(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
@@ -104,6 +103,8 @@ const Ledger = ({ user }) => {
                 <input type="date" name="date" value={filters.date} onChange={handleFilterChange} />
                 <input type="text" name="sport" placeholder="Filter by sport" value={filters.sport} onChange={handleFilterChange} />
                 <input type="text" name="customer" placeholder="Filter by customer" value={filters.customer} onChange={handleFilterChange} />
+                <input type="time" name="startTime" value={filters.startTime} onChange={handleFilterChange} />
+                <input type="time" name="endTime" value={filters.endTime} onChange={handleFilterChange} />
                 <button onClick={toggleSortOrder}>
                     Sort: {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
                 </button>

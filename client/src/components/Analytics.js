@@ -35,140 +35,171 @@ const Analytics = () => {
     const [bookingStatusData, setBookingStatusData] = useState({});
     const [courtPopularityData, setCourtPopularityData] = useState({});
     const [staffPerformanceData, setStaffPerformanceData] = useState({});
+    const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
 
     useEffect(() => {
-        const fetchAnalyticsData = async () => {
-            try {
-                // Summary Cards
-                const summaryRes = await api.get('/analytics/summary');
-                setSummary(summaryRes.data);
+        fetchAnalyticsData(dateRange);
+    }, [dateRange]);
 
-                // Bookings Over Time
-                const bookingsOverTimeRes = await api.get('/analytics/bookings-over-time');
-                setBookingsOverTime({
-                    labels: bookingsOverTimeRes.data.map(d => new Date(d.date).toLocaleDateString()),
-                    datasets: [{
-                        label: 'Bookings',
-                        data: bookingsOverTimeRes.data.map(d => d.count),
-                        fill: false,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }]
-                });
+    const fetchAnalyticsData = async (dates) => {
+        try {
+            const params = { ...dates };
 
-                // Revenue by Sport
-                const revenueBySportRes = await api.get('/analytics/revenue-by-sport');
-                setRevenueBySport({
-                    labels: revenueBySportRes.data.map(d => d.name),
-                    datasets: [{
-                        label: 'Revenue',
-                        data: revenueBySportRes.data.map(d => d.revenue),
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.3)',
-                            'rgba(54, 162, 235, 0.3)',
-                            'rgba(255, 206, 86, 0.3)',
-                            'rgba(75, 192, 192, 0.3)',
-                            'rgba(153, 102, 255, 0.3)',
-                            'rgba(255, 159, 64, 0.3)'
-                        ],
-                        borderColor: [
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 206, 86, 1)',
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(153, 102, 255, 1)',
-                            'rgba(255, 159, 64, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                });
+            // Summary Cards
+            const summaryRes = await api.get('/analytics/summary', { params });
+            setSummary(summaryRes.data);
 
-                // NEW: Daily Court Utilization Percentage
-                const utilizationRes = await api.get('/analytics/utilization-heatmap');
-                const courtsRes = await api.get('/courts');
-                const totalCourts = courtsRes.data.length;
-                const operatingHours = 16; // Assuming 6 AM to 10 PM
-                const totalPossibleSlots = totalCourts * operatingHours;
+            // Bookings Over Time
+            const bookingsOverTimeRes = await api.get('/analytics/bookings-over-time', { params });
+            setBookingsOverTime({
+                labels: bookingsOverTimeRes.data.map(d => new Date(d.date).toLocaleDateString()),
+                datasets: [{
+                    label: 'Bookings',
+                    data: bookingsOverTimeRes.data.map(d => d.count),
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            });
 
-                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                const bookingsByDay = days.map(day => {
-                    const dayData = utilizationRes.data.filter(d => d.day_of_week === day);
-                    const totalBookings = dayData.reduce((sum, current) => sum + current.booking_count, 0);
-                    return totalBookings;
-                });
+            // Revenue by Sport
+            const revenueBySportRes = await api.get('/analytics/revenue-by-sport', { params });
+            setRevenueBySport({
+                labels: revenueBySportRes.data.map(d => d.name),
+                datasets: [{
+                    label: 'Revenue',
+                    data: revenueBySportRes.data.map(d => d.revenue),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.3)',
+                        'rgba(54, 162, 235, 0.3)',
+                        'rgba(255, 206, 86, 0.3)',
+                        'rgba(75, 192, 192, 0.3)',
+                        'rgba(153, 102, 255, 0.3)',
+                        'rgba(255, 159, 64, 0.3)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            });
 
-                const utilizationPercentage = bookingsByDay.map(totalBookings => {
-                    if (totalPossibleSlots === 0) return 0;
-                    return (totalBookings / totalPossibleSlots) * 100;
-                });
+            // NEW: Daily Court Utilization Percentage
+            const utilizationRes = await api.get('/analytics/utilization-heatmap', { params });
+            const courtsRes = await api.get('/courts');
+            const totalCourts = courtsRes.data.length;
+            const operatingHours = 16; // Assuming 6 AM to 10 PM
+            const totalPossibleSlots = totalCourts * operatingHours;
 
-                setDailyUtilization({
-                    labels: days,
-                    datasets: [{
-                        label: 'Court Utilization (%)',
-                        data: utilizationPercentage,
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                });
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const bookingsByDay = days.map(day => {
+                const dayData = utilizationRes.data.filter(d => d.day_of_week === day);
+                const totalBookings = dayData.reduce((sum, current) => sum + current.booking_count, 0);
+                return totalBookings;
+            });
 
-                // Booking Status Distribution
-                const statusRes = await api.get('/analytics/booking-status-distribution');
-                setBookingStatusData({
-                    labels: statusRes.data.map(d => d.status),
-                    datasets: [{
-                        label: 'Booking Status',
-                        data: statusRes.data.map(d => d.count),
-                        backgroundColor: [
-                            'rgba(75, 192, 192, 0.5)', // Confirmed
-                            'rgba(54, 162, 235, 0.5)', // Completed
-                            'rgba(255, 99, 132, 0.5)', // Cancelled
-                            'rgba(255, 206, 86, 0.5)', // Pending
-                        ],
-                        borderColor: [
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(255, 206, 86, 1)',
-                        ],
-                        borderWidth: 1
-                    }]
-                });
+            const utilizationPercentage = bookingsByDay.map(totalBookings => {
+                if (totalPossibleSlots === 0) return 0;
+                return (totalBookings / totalPossibleSlots) * 100;
+            });
 
-                // Court Popularity
-                const courtPopRes = await api.get('/analytics/court-popularity');
-                setCourtPopularityData({
-                    labels: courtPopRes.data.map(d => d.name),
-                    datasets: [{
-                        label: 'Number of Bookings',
-                        data: courtPopRes.data.map(d => d.booking_count),
-                        backgroundColor: 'rgba(153, 102, 255, 0.5)',
-                        borderColor: 'rgba(153, 102, 255, 1)',
-                        borderWidth: 1
-                    }]
-                });
+            setDailyUtilization({
+                labels: days,
+                datasets: [{
+                    label: 'Court Utilization (%)',
+                    data: utilizationPercentage,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            });
 
-                // Staff Performance
-                const staffPerfRes = await api.get('/analytics/staff-performance');
-                setStaffPerformanceData({
-                    labels: staffPerfRes.data.map(d => d.username),
-                    datasets: [{
-                        label: 'Bookings Created',
-                        data: staffPerfRes.data.map(d => d.booking_count),
-                        backgroundColor: 'rgba(255, 159, 64, 0.5)',
-                        borderColor: 'rgba(255, 159, 64, 1)',
-                        borderWidth: 1
-                    }]
-                });
+            // Booking Status Distribution
+            const statusRes = await api.get('/analytics/booking-status-distribution', { params });
+            setBookingStatusData({
+                labels: statusRes.data.map(d => d.status),
+                datasets: [{
+                    label: 'Booking Status',
+                    data: statusRes.data.map(d => d.count),
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.5)', // Confirmed
+                        'rgba(54, 162, 235, 0.5)', // Completed
+                        'rgba(255, 99, 132, 0.5)', // Cancelled
+                        'rgba(255, 206, 86, 0.5)', // Pending
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 206, 86, 1)',
+                    ],
+                    borderWidth: 1
+                }]
+            });
 
-            } catch (error) {
-                console.error("Error fetching analytics data:", error);
-            }
-        };
+            // Court Popularity
+            const courtPopRes = await api.get('/analytics/court-popularity', { params });
+            setCourtPopularityData({
+                labels: courtPopRes.data.map(d => d.name),
+                datasets: [{
+                    label: 'Number of Bookings',
+                    data: courtPopRes.data.map(d => d.booking_count),
+                    backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            });
 
-        fetchAnalyticsData();
-    }, []);
+            // Staff Performance
+            const staffPerfRes = await api.get('/analytics/staff-performance', { params });
+            setStaffPerformanceData({
+                labels: staffPerfRes.data.map(d => d.username),
+                datasets: [{
+                    label: 'Bookings Created',
+                    data: staffPerfRes.data.map(d => d.booking_count),
+                    backgroundColor: 'rgba(255, 159, 64, 0.5)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1
+                }]
+            });
+
+        } catch (error) {
+            console.error("Error fetching analytics data:", error);
+        }
+    };
+
+    const handleDateRangeChange = (e) => {
+        setDateRange({ ...dateRange, [e.target.name]: e.target.value });
+    };
+
+    const setDatePreset = (preset) => {
+        const today = new Date();
+        let startDate, endDate;
+
+        switch (preset) {
+            case 'today':
+                startDate = today.toISOString().slice(0, 10);
+                endDate = startDate;
+                break;
+            case 'month':
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+                endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+                break;
+            case 'year':
+                startDate = new Date(today.getFullYear(), 0, 1).toISOString().slice(0, 10);
+                endDate = new Date(today.getFullYear(), 11, 31).toISOString().slice(0, 10);
+                break;
+            default:
+                startDate = '';
+                endDate = '';
+        }
+        setDateRange({ startDate, endDate });
+    };
 
     const handleDownloadLedger = async () => {
         try {
@@ -190,6 +221,14 @@ const Analytics = () => {
     return (
         <div className="analytics-container">
             <h2>Analytics Dashboard</h2>
+
+            <div className="filters">
+                <button onClick={() => setDatePreset('today')}>Today</button>
+                <button onClick={() => setDatePreset('month')}>This Month</button>
+                <button onClick={() => setDatePreset('year')}>This Year</button>
+                <input type="date" name="startDate" value={dateRange.startDate} onChange={handleDateRangeChange} />
+                <input type="date" name="endDate" value={dateRange.endDate} onChange={handleDateRangeChange} />
+            </div>
             
             <div className="summary-cards">
                 <div className="card">
@@ -211,6 +250,10 @@ const Analytics = () => {
                 <div className="card">
                     <h4>Total Courts</h4>
                     <p>{summary.total_courts}</p>
+                </div>
+                <div className="card">
+                    <h4>Total Discount</h4>
+                    <p>₹{summary.total_discount}</p>
                 </div>
             </div>
 
