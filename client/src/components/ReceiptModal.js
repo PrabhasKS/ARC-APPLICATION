@@ -58,6 +58,14 @@ const ReceiptModal = ({ booking, onClose }) => {
                             <p><strong>Date:</strong> {formatDate(booking.date)}</p>
                             <p><strong>Time:</strong> {booking.time_slot}</p>
                         </div>
+                        {booking.accessories && booking.accessories.length > 0 && (
+                            <div className="receipt-section">
+                                <h3>Accessories</h3>
+                                {booking.accessories.map((acc, index) => (
+                                    <p key={index}><strong>{acc.name} (x{acc.quantity}):</strong> ₹{acc.price * acc.quantity}</p>
+                                ))}
+                            </div>
+                        )}
                         <div className="receipt-section">
                             <h3>Payment Details</h3>
                             <p><strong>Total Amount:</strong> ₹{booking.total_price}</p>

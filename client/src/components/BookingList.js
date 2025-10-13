@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdVisible, isBookedByVisible, isDiscountReasonVisible }) => {
+const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdVisible, isBookedByVisible, isDiscountReasonVisible, isAccessoriesVisible }) => {
     const [activeDropdown, setActiveDropdown] = useState(null);
 
     const formatDate = (dateString) => {
@@ -152,6 +152,7 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
                             <th>Balance</th>
                             <th>Discount</th>
                             {isDiscountReasonVisible && <th>Discount Reason</th>}
+                            {isAccessoriesVisible && <th>Accessories</th>}
                             <th>Payment Status</th>
                             {isPaymentIdVisible && <th>Payment ID</th>}
                             <th>Booking Status</th>
@@ -176,6 +177,17 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, isPaymentIdV
                                     <td>{booking.balance_amount}</td>
                                     <td>{booking.discount_amount || 0}</td>
                                     {isDiscountReasonVisible && <td>{booking.discount_reason || 'N/A'}</td>}
+                                    {isAccessoriesVisible && 
+                                        <td>
+                                            {booking.accessories && booking.accessories.length > 0 ? (
+                                                <ul>
+                                                    {booking.accessories.map((acc, index) => (
+                                                        <li key={index}>{acc.name} (x{acc.quantity})</li>
+                                                    ))}
+                                                </ul>
+                                            ) : 'N/A'}
+                                        </td>
+                                    }
                                     <td>{booking.payment_status}</td>
                                     {isPaymentIdVisible && <td>{booking.payment_id || 'N/A'}</td>}
                                     <td>{booking.status}</td>

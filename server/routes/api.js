@@ -233,8 +233,11 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
                 DATE_FORMAT(b.date, '%Y-%m-%d') as date,
                 b.is_rescheduled,
                 b.discount_amount,
-                b.discount_reason
+                b.discount_reason,
+                GROUP_CONCAT(JSON_OBJECT('name', a.name, 'quantity', ba.quantity, 'price', ba.price_at_booking)) as accessories
             FROM bookings b 
+            LEFT JOIN booking_accessories ba ON b.id = ba.booking_id
+            LEFT JOIN accessories a ON ba.accessory_id = a.id
             JOIN courts c ON b.court_id = c.id
             JOIN sports s ON b.sport_id = s.id
             LEFT JOIN users u ON b.created_by_user_id = u.id
@@ -266,10 +269,26 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             query += ' WHERE ' + whereClauses.join(' AND ');
         }
 
-        query += ' ORDER BY b.date DESC';
+        query += ' GROUP BY b.id ORDER BY b.date DESC';
 
         const [rows] = await db.query(query, queryParams);
-        res.json(rows);
+        
+        const bookings = rows.map(row => {
+            if (row.accessories) {
+                try {
+                    // The GROUP_CONCAT with JSON_OBJECT returns a string that needs to be wrapped in an array and parsed.
+                    row.accessories = JSON.parse(`[${row.accessories}]`);
+                } catch (e) {
+                    console.error("Error parsing accessories JSON:", e);
+                    row.accessories = []; // Set to empty array on parsing error
+                }
+            } else {
+                row.accessories = []; // Set to empty array if no accessories
+            }
+            return row;
+        });
+
+        res.json(bookings);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -438,6 +457,8 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
         }
         const booking = rows[0];
 
+        const [accessories] = await db.query('SELECT a.name, ba.quantity, ba.price_at_booking FROM booking_accessories ba JOIN accessories a ON ba.accessory_id = a.id WHERE ba.booking_id = ?', [id]);
+
         const doc = new PDFDocument({ size: 'A4', margin: 50 });
         const buffers = [];
         doc.on('data', buffers.push.bind(buffers));
@@ -472,6 +493,15 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
         doc.fontSize(12).text(`Sport: ${booking.sport_name}`);
         doc.text(`Court: ${booking.court_name}`);
         doc.moveDown();
+
+        // Accessories
+        if (accessories.length > 0) {
+            doc.fontSize(14).text('Accessories', { underline: true });
+            accessories.forEach(acc => {
+                doc.fontSize(12).text(`${acc.name} (x${acc.quantity}) - Rs. ${acc.price_at_booking * acc.quantity}`)
+            });
+            doc.moveDown();
+        }
 
         // Payment Details
         doc.fontSize(14).text('Payment Details', { underline: true });
@@ -545,7 +575,8 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             amount_paid,
             slots_booked,
             discount_amount,
-            discount_reason } = req.body;
+            discount_reason,
+            accessories } = req.body;
     const created_by_user_id = req.user.id; // Get user ID from JWT
 
     try {
@@ -584,6 +615,19 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         if (slots_booked > 1) {
             total_price *= slots_booked;
         }
+
+        // Add accessory prices to total
+        let accessories_total_price = 0;
+        if (accessories && accessories.length > 0) {
+            for (const acc of accessories) {
+                const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
+                if (accessoryData) {
+                    accessories_total_price += accessoryData.price * acc.quantity;
+                }
+            }
+        }
+        total_price += accessories_total_price;
+
         // End of new pricing logic
 
         total_price -= discount_amount || 0;
@@ -644,7 +688,18 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             'INSERT INTO bookings (court_id, sport_id, created_by_user_id, customer_name, customer_contact, customer_email, date, time_slot, total_price, amount_paid, balance_amount, payment_status, payment_mode, payment_id, slots_booked, status, discount_amount, discount_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [court_id, sport_id, created_by_user_id, customer_name, customer_contact, customer_email, date, time_slot, total_price, amount_paid, balance_amount, payment_status, payment_mode, payment_id, slots_booked, 'Booked', discount_amount, discount_reason]
         );
-        res.json({ success: true, bookingId: result.insertId });
+        const bookingId = result.insertId;
+
+        if (accessories && accessories.length > 0) {
+            for (const acc of accessories) {
+                const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
+                if (accessoryData) {
+                    await db.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking) VALUES (?, ?, ?, ?)', [bookingId, acc.accessory_id, acc.quantity, accessoryData.price]);
+                }
+            }
+        }
+
+        res.json({ success: true, bookingId: bookingId });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -888,6 +943,53 @@ router.delete('/sports/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM sports WHERE id = ?', [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Accessories CRUD
+router.get('/accessories', authenticateToken, async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM accessories');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/accessories', authenticateToken, isAdmin, async (req, res) => {
+    const { name, price } = req.body;
+    if (!name || price === undefined) {
+        return res.status(400).json({ message: 'Accessory name and price are required' });
+    }
+    try {
+        const [result] = await db.query('INSERT INTO accessories (name, price) VALUES (?, ?)', [name, price]);
+        res.json({ success: true, accessoryId: result.insertId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/accessories/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { name, price } = req.body;
+    if (!name || price === undefined) {
+        return res.status(400).json({ message: 'Accessory name and price are required' });
+    }
+    try {
+        await db.query('UPDATE accessories SET name = ?, price = ? WHERE id = ?', [name, price, id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/accessories/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM accessories WHERE id = ?', [id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

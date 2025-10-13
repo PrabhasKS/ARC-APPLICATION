@@ -14,6 +14,7 @@ const Ledger = ({ user }) => {
     const [isPaymentIdVisible, setIsPaymentIdVisible] = useState(false); // State for collapsible column
     const [isBookedByVisible, setIsBookedByVisible] = useState(false);
     const [isDiscountReasonVisible, setIsDiscountReasonVisible] = useState(false);
+    const [isAccessoriesVisible, setIsAccessoriesVisible] = useState(false);
 
     const fetchFilteredBookings = useCallback(async () => {
         try {
@@ -123,6 +124,10 @@ const Ledger = ({ user }) => {
                             <input type="checkbox" checked={isDiscountReasonVisible} onChange={() => setIsDiscountReasonVisible(!isDiscountReasonVisible)} />
                             Discount Reason
                         </label>
+                        <label>
+                            <input type="checkbox" checked={isAccessoriesVisible} onChange={() => setIsAccessoriesVisible(!isAccessoriesVisible)} />
+                            Accessories
+                        </label>
                     </div>
                 </div>
             </div>
@@ -161,6 +166,7 @@ const Ledger = ({ user }) => {
                 isPaymentIdVisible={isPaymentIdVisible}
                 isBookedByVisible={isBookedByVisible}
                 isDiscountReasonVisible={isDiscountReasonVisible}
+                isAccessoriesVisible={isAccessoriesVisible}
             />
             {isEditModalOpen && (
                 <EditBookingModal 

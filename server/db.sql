@@ -107,3 +107,28 @@ ADD COLUMN discount_reason VARCHAR(255);
 
 
 ALTER TABLE courts MODIFY COLUMN status ENUM('Available', 'Under Maintenance', 'Event', 'Tournament','Membership','Coaching') DEFAULT 'Available';
+
+-- Tables for Accessories
+CREATE TABLE IF NOT EXISTS `accessories` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `price` DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `booking_accessories` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `booking_id` INT NOT NULL,
+  `accessory_id` INT NOT NULL,
+  `quantity` INT NOT NULL DEFAULT 1,
+  `price_at_booking` DECIMAL(10, 2) NOT NULL,
+  FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`accessory_id`) REFERENCES `accessories`(`id`) ON DELETE CASCADE
+);
+
+-- Sample Accessories
+INSERT INTO `accessories` (name, price) VALUES 
+('Badminton Racquet', 50.00),
+('Shuttlecock (Pack of 3)', 100.00),
+('Swimming Cap', 150.00),
+('Swimming Goggles', 200.00),
+('Pickleball Paddle', 75.00);

@@ -32,6 +32,22 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [discountReason, setDiscountReason] = useState('');
     const [showDiscount, setShowDiscount] = useState(false);
 
+    const [accessories, setAccessories] = useState([]);
+    const [selectedAccessories, setSelectedAccessories] = useState([]);
+    const [showAccessories, setShowAccessories] = useState(false);
+
+    useEffect(() => {
+        const fetchAccessories = async () => {
+            try {
+                const res = await api.get('/accessories');
+                setAccessories(res.data);
+            } catch (error) {
+                console.error("Error fetching accessories:", error);
+            }
+        };
+        fetchAccessories();
+    }, []);
+
     useEffect(() => {
         // When available courts change, only reset the form if the user hasn't started filling it out
         if (!customerName && !customerContact && !customerEmail) {
@@ -63,7 +79,11 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         endTime,
                         slots_booked: slotsBooked
                     });
-                    const newTotalPrice = res.data.total_price || 0;
+                    let newTotalPrice = res.data.total_price || 0;
+
+                    const accessoriesTotal = selectedAccessories.reduce((total, acc) => total + (acc.price * acc.quantity), 0);
+                    newTotalPrice += accessoriesTotal;
+
                     setTotalPrice(newTotalPrice);
                     setAmountPaid(0);
                     setBalance(newTotalPrice);
@@ -83,7 +103,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
         return () => {
             clearTimeout(handler);
         };
-    }, [courtId, startTime, endTime, courts, slotsBooked]);
+    }, [courtId, startTime, endTime, courts, slotsBooked, selectedAccessories]);
 
     const handleAmountPaidChange = (e) => {
         const newAmountPaid = parseFloat(e.target.value) || 0;
@@ -108,9 +128,10 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     };
 
     useEffect(() => {
-        const newBalance = totalPrice - discountAmount - amountPaid;
+        const accessoriesTotal = selectedAccessories.reduce((total, acc) => total + (acc.price * acc.quantity), 0);
+        const newBalance = totalPrice - discountAmount - amountPaid + accessoriesTotal;
         setBalance(newBalance);
-    }, [totalPrice, discountAmount, amountPaid]);
+    }, [totalPrice, discountAmount, amountPaid, selectedAccessories]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -143,7 +164,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 amount_paid: amountPaid,
                 slots_booked: slotsBooked,
                 discount_amount: discountAmount,
-                discount_reason: discountReason
+                discount_reason: discountReason,
+                accessories: selectedAccessories.map(a => ({ accessory_id: a.id, quantity: a.quantity }))
             });
             setLastBooking(res.data);
             setIsConfirmationModalOpen(true);
@@ -164,6 +186,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             setDiscountPercentage(0);
             setDiscountReason('');
             setShowDiscount(false);
+            setSelectedAccessories([]);
+            setShowAccessories(false);
             onBookingSuccess();
         } catch (err) {
             setMessage(err.response?.data?.message || 'Error creating booking');
@@ -238,6 +262,50 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         <input type="text" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
                     </div>
                 )}
+
+                <div>
+                    <label>
+                        <input type="checkbox" checked={showAccessories} onChange={(e) => setShowAccessories(e.target.checked)} />
+                        Add Accessories
+                    </label>
+                </div>
+
+                {showAccessories && (
+                    <div>
+                        <h4>Accessories</h4>
+                        <div>
+                            <select id="accessory-select">
+                                <option value="">Select an accessory</option>
+                                {accessories.map(acc => (
+                                    <option key={acc.id} value={acc.id}>{acc.name} - Rs. {acc.price}</option>
+                                ))}
+                            </select>
+                            <input type="number" id="accessory-quantity" defaultValue="1" min="1" />
+                            <button type="button" onClick={() => {
+                                const select = document.getElementById('accessory-select');
+                                const quantityInput = document.getElementById('accessory-quantity');
+                                const accessoryId = parseInt(select.value);
+                                const quantity = parseInt(quantityInput.value);
+                                if (accessoryId && quantity > 0) {
+                                    const accessory = accessories.find(a => a.id === accessoryId);
+                                    setSelectedAccessories([...selectedAccessories, { ...accessory, quantity }]);
+                                }
+                            }}>Add</button>
+                        </div>
+                        <ul>
+                            {selectedAccessories.map((acc, index) => (
+                                <li key={index}>{acc.name} (x{acc.quantity}) - Rs. {acc.price * acc.quantity}
+                                    <button type="button" onClick={() => {
+                                        const newSelected = [...selectedAccessories];
+                                        newSelected.splice(index, 1);
+                                        setSelectedAccessories(newSelected);
+                                    }}>Remove</button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
 
                 {/* New Payment Section */}
                 <div>
