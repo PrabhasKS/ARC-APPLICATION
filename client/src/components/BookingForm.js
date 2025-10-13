@@ -128,10 +128,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     };
 
     useEffect(() => {
-        const accessoriesTotal = selectedAccessories.reduce((total, acc) => total + (acc.price * acc.quantity), 0);
-        const newBalance = totalPrice - discountAmount - amountPaid + accessoriesTotal;
+        const newBalance = totalPrice - discountAmount - amountPaid;
         setBalance(newBalance);
-    }, [totalPrice, discountAmount, amountPaid, selectedAccessories]);
+    }, [totalPrice, discountAmount, amountPaid]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
