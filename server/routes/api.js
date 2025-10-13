@@ -1037,32 +1037,32 @@ router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin,
     }
 });
 
-// Analytics: Court Popularity
-router.get('/analytics/court-popularity', authenticateToken, isAdmin, async (req, res) => {
+// Analytics: Revenue by Payment Mode
+router.get('/analytics/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         let dateFilter = '';
         let queryParams = ['Cancelled'];
 
         if (startDate && endDate) {
-            dateFilter = ' AND b.date BETWEEN ? AND ?';
+            dateFilter = ' AND date BETWEEN ? AND ?';
             queryParams.push(startDate, endDate);
         }
 
         const [rows] = await db.query(`
-            SELECT c.name, COUNT(b.id) as booking_count 
-            FROM bookings b
-            JOIN courts c ON b.court_id = c.id
-            WHERE b.status != ?
+            SELECT payment_mode, SUM(amount_paid) as revenue
+            FROM bookings
+            WHERE status != ?
             ${dateFilter}
-            GROUP BY c.name 
-            ORDER BY booking_count DESC
+            GROUP BY payment_mode
+            ORDER BY revenue DESC
         `, queryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 // Analytics: Staff Performance
 router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (req, res) => {

@@ -33,7 +33,7 @@ const Analytics = () => {
     const [revenueBySport, setRevenueBySport] = useState({});
     const [dailyUtilization, setDailyUtilization] = useState({});
     const [bookingStatusData, setBookingStatusData] = useState({});
-    const [courtPopularityData, setCourtPopularityData] = useState({});
+    const [revenueByPaymentModeData, setRevenueByPaymentModeData] = useState({});
     const [staffPerformanceData, setStaffPerformanceData] = useState({});
     const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
     const [activeFilter, setActiveFilter] = useState('today');
@@ -147,15 +147,29 @@ const Analytics = () => {
                 }]
             });
 
-            // Court Popularity
-            const courtPopRes = await api.get('/analytics/court-popularity', { params });
-            setCourtPopularityData({
-                labels: courtPopRes.data.map(d => d.name),
+            // Revenue by Payment Mode
+            const revenueByPaymentModeRes = await api.get('/analytics/revenue-by-payment-mode', { params });
+            setRevenueByPaymentModeData({
+                labels: revenueByPaymentModeRes.data.map(d => d.payment_mode),
                 datasets: [{
-                    label: 'Number of Bookings',
-                    data: courtPopRes.data.map(d => d.booking_count),
-                    backgroundColor: 'rgba(153, 102, 255, 0.5)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
+                    label: 'Revenue',
+                    data: revenueByPaymentModeRes.data.map(d => d.revenue),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.3)',
+                        'rgba(54, 162, 235, 0.3)',
+                        'rgba(255, 206, 86, 0.3)',
+                        'rgba(75, 192, 192, 0.3)',
+                        'rgba(153, 102, 255, 0.3)',
+                        'rgba(255, 159, 64, 0.3)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
                     borderWidth: 1
                 }]
             });
@@ -284,15 +298,8 @@ const Analytics = () => {
                     {bookingStatusData.labels && <Pie data={bookingStatusData} options={{ plugins: { legend: { position: 'top' } } }} />}
                 </div>
                 <div className="chart-card">
-                    <h3>Court Popularity</h3>
-                    {courtPopularityData.labels && <Bar data={courtPopularityData} options={{ 
-                        indexAxis: 'y', 
-                        responsive: true, 
-                        plugins: { 
-                            legend: { display: false }, 
-                            title: { display: true, text: 'Bookings per Court' } 
-                        }
-                    }} />}
+                    <h3>Revenue by Payment Mode</h3>
+                    {revenueByPaymentModeData.labels && <Pie data={revenueByPaymentModeData} />}
                 </div>
 
                 <div className="chart-card">
