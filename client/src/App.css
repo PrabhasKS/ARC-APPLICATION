@@ -12,7 +12,7 @@ body {
 }
 
 header {
-    background: #333;
+    background: #1d077f;
     color: #fff;
     padding: 1rem;
     display: flex;
@@ -74,13 +74,40 @@ form button {
 
 table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: collapse; /* Removes double borders */
+    border-spacing: 0;
 }
 
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
+th {
+    background-color: #f8f9fa; /* Lighter header background */
+    padding: 16px; /* INCREASED PADDING for more space */
     text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #f4f4fc;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 1px solid #dee2e6;
+    /* Use a thicker bottom border to separate header from content */
+    border-bottom: 2px solid #dee2e6; 
+    white-space: nowrap; /* Prevents titles from wrapping */
+}
+td {
+    padding: 16px; /* INCREASED PADDING to match headers */
+    vertical-align: middle; /* Aligns content nicely in the middle */
+    font-size: 14px;
+    color: #101011;
+    /* Use only a bottom border to separate rows cleanly */
+    border: none;
+    border-bottom: 1px solid #dee2e6; 
+}
+tbody tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* Removes the bottom border from the very last row */
+tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .table-container {
@@ -91,7 +118,8 @@ th, td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #4e24d9;
+    padding: 10px;
 }
 
 /* Responsive Design */
@@ -131,4 +159,376 @@ th {
         margin-top: 5px;
         text-align: center;
     }
+}
+
+/* --- UPDATED Payment Status Styles --- */
+
+/* Base style for the status text span */
+.payment-status-text {
+    font-weight: 600;
+    text-transform: capitalize;
+    padding: 5px; /* Adds a little space around the text */
+}
+
+/* Green for 'Completed' and 'Received' */
+.payment-status-completed {
+    color: #02690c; /* Dark green text */
+}
+
+
+
+.payment-status-received {
+    color: #d5b40d; /* Dark green text */
+}
+
+.payment-status-completed::before,
+.payment-status-received::before {
+    content: '✔ '; /* Adds a checkmark before the text */
+    font-weight: bold;
+}
+
+/* Red for 'Pending' */
+.payment-status-pending {
+    color: #58151c; /* Dark red text */
+}
+
+/* Blue for 'Reschedule' */
+.payment-status-reschedule {
+    color: #055160; /* Dark blue text */
+}
+
+/* Clock icon for 'Pending' and 'Reschedule' */
+.payment-status-pending::before,
+.payment-status-reschedule::before {
+    content: '🕒 '; /* Adds a clock icon before the text */
+    font-weight: normal;
+}
+
+/* --- Payment Status Styles --- */
+
+/* Base style for the status text span */
+.payment-status-text {
+    font-weight: 600;
+    text-transform: capitalize;
+    padding: 5px; /* Adds a little space around the text */
+}
+
+/* Green for 'Completed' and 'Received' */
+.payment-status-completed{
+    color: #0a5905; /* Dark green text */
+}
+
+.payment-status-received {
+    color: #9aad06; /* Dark green text */
+}
+
+.payment-status-completed::before,
+.payment-status-received::before {
+    content: '✔ '; /* Adds a checkmark before the text */
+    font-weight: bold;
+}
+
+/* Red for 'Pending' */
+.payment-status-pending {
+    color: #58151c; /* Dark red text */
+}
+
+/* Blue for 'Reschedule' */
+.payment-status-reschedule {
+    color: #055160; /* Dark blue text */
+}
+
+/* Clock icon for 'Pending' and 'Reschedule' */
+.payment-status-pending::before,
+.payment-status-reschedule::before {
+    content: '🕒 '; /* Adds a clock icon before the text */
+    font-weight: normal;
+}
+body {
+    /* A gradient from light red to white to light blue */
+    background: linear-gradient(to bottom, #f0b0b7 0%, #ffffff 50%, #acc7ed 100%);
+    background-attachment: fixed; /* Keeps the gradient stationary on scroll */
+    margin: 0;
+    font-family: sans-serif; /* Ensures a base font is set */
+}
+
+/* --- Column Toggle Dropdown Styles --- */
+.column-toggle {
+    position: relative;
+    display: inline-block;
+}
+
+.column-toggle-button {
+    padding: 10px 16px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #212529;
+}
+
+.column-toggle-dropdown {
+    display: none; /* Hidden by default */
+    position: absolute;
+    right: 0;
+    top: calc(100% + 5px); /* Position below the button */
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    z-index: 20;
+    min-width: 200px;
+    padding: 8px 0;
+}
+
+/* Show dropdown on hover/focus */
+.column-toggle:hover .column-toggle-dropdown,
+.column-toggle:focus-within .column-toggle-dropdown {
+    display: block;
+}
+
+.column-toggle-dropdown label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #212529;
+}
+
+.column-toggle-dropdown label:hover {
+    background-color: #f8f9fa;
+}
+
+.column-toggle-dropdown input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+/* --- Modern Table Actions Menu --- */
+.actions-cell {
+    position: relative; /* This is crucial for positioning the dropdown */
+    text-align: center;
+}
+
+/* This styles the button that opens the dropdown */
+.actions-cell > button {
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease-in-out;
+}
+.actions-cell > button:hover {
+    background-color: #ee9988;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+}
+
+
+/* This is the dropdown menu container */
+.actions-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 5px); /* Position it slightly below the button */
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    min-width: 160px;
+    overflow: hidden; /* Ensures the border-radius is applied to children */
+    padding: 5px 0;
+}
+
+/* These are the individual buttons inside the dropdown */
+.actions-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #212529;
+    transition: background-color 0.2s;
+}
+
+.actions-dropdown button:hover {
+    background-color: #f8f9fa; /* Highlight on hover */
+}
+
+.actions-dropdown button:disabled {
+    cursor: not-allowed;
+    color: #adb5bd;
+    background-color: transparent;
+}
+.action-close-btn {
+    border-top: 1px solid #e9ecef; /* Light gray separator line */
+    color: #6c757d; /* Muted text color */
+}
+
+.action-close-btn:hover {
+    background-color: #f8f9fa !important;
+}
+
+/* --- Modern Collapsible Filter Panel --- */
+
+/* Main container for the entire filter section */
+.filter-panel {
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+    overflow: hidden; /* Ensures border-radius is respected */
+}
+
+/* Header for the panel (contains the "Filters" toggle and search bar) */
+.filter-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* The "Filters" button to show/hide detailed options */
+.filter-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-toggle-btn:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+.controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px; /* Increased gap for better spacing */
+    padding: 12px;
+    margin-bottom: 24px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.button-group {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0; /* Prevents this group from shrinking and causing overlaps */
+}
+/* The main search bar */
+.primary-search-bar {
+    flex-grow: 1;
+    margin-left: 16px;
+    position: relative;
+    min-width: 100px;
+}
+.primary-search-bar .filter-input {
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 15px;
+    padding: 12px 16px 12px 40px; /* Space for the icon */
+    transition: all 0.2s;
+}
+
+.primary-search-bar input {
+    width: 100%;
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 15px;
+    padding: 10px 16px 10px 40px; /* Space for icon */
+    transition: all 0.2s;
+}
+
+.primary-search-bar input:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+    background-color: #fff;
+}
+
+/* Magnifying glass icon */
+.primary-search-bar::before {
+    content: '🔍';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #adb5bd;
+}
+
+/* The collapsible container for the detailed filters */
+.collapsible-filters {
+    padding: 16px;
+    background-color: #f8f9fa;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Responsive grid */
+    gap: 12px;
+}
+.controls-bar .filter-button,
+.controls-bar .column-toggle-button {
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    white-space: nowrap; /* Prevents text from wrapping */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease-in-out;
+    flex-shrink: 0; /* Prevents buttons from shrinking */
+}
+.controls-bar .filter-button:hover,
+.controls-bar .column-toggle-button:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+}
+/* --- Centered Watermark Logo --- */
+
+/* This container will hold the logo and center it on the page */
+.watermark-container {
+    position: fixed; /* Keeps it in place even when scrolling */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -1; /* This is the key to placing it BEHIND other content */
+     opacity: 0.2; /* Makes the logo faint like a watermark */
+    pointer-events: none; /* Prevents the image from being clickable */
+}
+
+/* This styles the logo image itself */
+.watermark-logo {
+     width: 60vw;
+     max-width: 550px; /* Adjust the size of the logo as needed */
+    height: auto;
 }
