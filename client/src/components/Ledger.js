@@ -266,39 +266,48 @@ const Ledger = ({ user }) => {
                 <h1>Bookings History</h1>
             </header>
 
-            <div className="controls-bar">
-                <div className="primary-search-bar" style={{ flexGrow: 1 }}>
-                    <input
-                        type="text"
-                        placeholder="Search by name, sport, or ID..."
-                        className="filter-input"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            
+
+<div className="controls-bar">
+
+    {/* 👇 Wrap your buttons in this new div 👇 */}
+    <div className="button-group">
+        <button className="filter-button" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
+            Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+        </button>
+        <div className="column-toggle">
+            <button className="column-toggle-button" onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}>
+                Hide Columns
+            </button>
+            {isColumnDropdownOpen && (
+                <div className="column-toggle-dropdown">
+                    {Object.entries(toggleableColumns).map(([key, label]) => (
+                        <label key={key}>
+                            <input
+                                type="checkbox"
+                                checked={columnVisibility[key]}
+                                onChange={() => handleColumnToggle(key)}
+                            />
+                            {label}
+                        </label>
+                    ))}
                 </div>
-                <button className="filter-button" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
-                    Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
-                </button>
-                <div className="column-toggle">
-                    <button className="column-toggle-button" onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}>
-                        Hide Columns
-                    </button>
-                    {isColumnDropdownOpen && (
-                        <div className="column-toggle-dropdown">
-                            {Object.entries(toggleableColumns).map(([key, label]) => (
-                                <label key={key}>
-                                    <input
-                                        type="checkbox"
-                                        checked={columnVisibility[key]}
-                                        onChange={() => handleColumnToggle(key)}
-                                    />
-                                    {label}
-                                </label>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+            )}
+        </div>
+    </div>
+
+    {/* The search bar is now outside the button group */}
+    <div className="primary-search-bar">
+        <input
+            type="text"
+            placeholder="Search by name, sport, or ID..."
+            className="filter-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+        />
+    </div>
+    
+</div>
             
             <div className="tabs-container">
                 <button className={`tab-button ${activeTab === 'active' ? 'active' : ''}`} onClick={() => setActiveTab('active')}>Active Bookings</button>
