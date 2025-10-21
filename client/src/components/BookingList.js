@@ -171,7 +171,48 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
     const areActionsDisabled = (booking) => {
         if (!booking || !booking.status) return true;
-        return booking.status.toLowerCase() === 'cancelled' || booking.status.toLowerCase() === 'completed';
+
+        const isPastBooking = () => {
+            if (!booking.date || !booking.time_slot) return false;
+
+            const now = new Date();
+            const bookingDate = new Date(booking.date);
+            
+            // Assuming time_slot is in a format like "10:00 AM - 11:00 AM"
+            const timeParts = booking.time_slot.split(' - ');
+            if (timeParts.length < 2) return false;
+
+            const endTimeStr = timeParts[1];
+            const [time, modifier] = endTimeStr.split(' ');
+            let [hours, minutes] = time.split(':');
+
+            if (hours === '12') {
+                hours = '00';
+            }
+            if (modifier === 'PM') {
+                hours = parseInt(hours, 10) + 12;
+            }
+
+            bookingDate.setHours(hours);
+            bookingDate.setMinutes(minutes);
+
+            return now > bookingDate;
+        };
+
+        if (booking.status.toLowerCase() === 'cancelled') {
+            return true;
+        }
+
+        if (booking.payment_status && booking.payment_status.toLowerCase() === 'completed' && isPastBooking()) {
+            return true;
+        }
+        
+        if (booking.payment_status && (booking.payment_status.toLowerCase() === 'pending' || booking.payment_status.toLowerCase() === 'received')) {
+            return false;
+        }
+
+        // For any other status, the button should be disabled.
+        return true;
     };
 
     const visibility = columnVisibility || {}; // Safety fallback

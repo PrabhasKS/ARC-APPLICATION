@@ -257,8 +257,31 @@ const Ledger = ({ user }) => {
     const handleEditClick = (booking) => { setSelectedBooking(booking); setIsEditModalOpen(true); setError(null); };
     const handleReceiptClick = (booking) => { setSelectedBooking(booking); setIsReceiptModalOpen(true); };
     const handleCloseModal = () => { setIsEditModalOpen(false); setIsReceiptModalOpen(false); setSelectedBooking(null); setError(null); };
-    const handleSaveBooking = async (bookingId, bookingData) => { /* ... existing logic ... */ };
-    const handleCancelClick = async (bookingId) => { /* ... existing logic ... */ };
+    const handleSaveBooking = async (bookingId, bookingData) => {
+        try {
+            setError(null);
+            await api.put(`/bookings/${bookingId}`, bookingData);
+            handleCloseModal();
+            fetchBookings(); // Refresh data
+        } catch (error) {
+            if (error.response && error.response.status === 409) {
+                setError(error.response.data.message);
+            } else {
+                console.error("Error updating booking:", error);
+            }
+        }
+    };
+
+    const handleCancelClick = async (bookingId) => {
+        if (window.confirm('Are you sure you want to cancel this booking?')) {
+            try {
+                await api.put(`/bookings/${bookingId}/cancel`);
+                fetchBookings(); // Refresh data
+            } catch (error) {
+                console.error("Error cancelling booking:", error);
+            }
+        }
+    };
 
     return (
         <div className="ledger-container">
