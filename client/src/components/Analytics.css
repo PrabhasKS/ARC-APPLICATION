@@ -3,10 +3,12 @@
 }
 
 .summary-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 20px;
     margin-bottom: 30px;
+    padding-bottom: 15px; /* Add space for the scrollbar */
 }
 
 .card {
@@ -15,6 +17,7 @@
     border-radius: 8px;
     padding: 20px;
     text-align: center;
+    min-width: 220px; /* Give cards a fixed width so they don't shrink */
 }
 
 .card h4 {
