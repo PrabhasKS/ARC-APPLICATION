@@ -15,11 +15,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [customerName, setCustomerName] = useState('');
     const [customerContact, setCustomerContact] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
-    // New payment state
-    const [paymentMethod, setPaymentMethod] = useState('Cash'); // Top-level: Cash, Cheque, Online
-    const [onlinePaymentType, setOnlinePaymentType] = useState('UPI'); // Sub-level: UPI, Card, etc.
+    const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const [onlinePaymentType, setOnlinePaymentType] = useState('UPI');
     const [paymentId, setPaymentId] = useState('');
-    // ---
     const [amountPaid, setAmountPaid] = useState(0);
     const [totalPrice, setTotalPrice] = useState(0);
     const [balance, setBalance] = useState(0);
@@ -36,6 +34,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [selectedAccessories, setSelectedAccessories] = useState([]);
     const [showAccessories, setShowAccessories] = useState(false);
 
+    // ✅ FIX #1: This effect fetches accessories only ONCE when the component loads.
+    // It doesn't depend on customer details, so the dependency array should be empty.
     useEffect(() => {
         const fetchAccessories = async () => {
             try {
@@ -46,30 +46,30 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             }
         };
         fetchAccessories();
-    }, []);
+    }, []); // <-- Dependency array is now correctly empty
 
+    // ✅ FIX #2: THIS was the real source of the warning.
+    // This effect needs to run when customer details change to decide if it should reset the court.
     useEffect(() => {
-        // When available courts change, only reset the form if the user hasn't started filling it out
         if (!customerName && !customerContact && !customerEmail) {
             setCourtId('');
         }
-    }, [courts]);
+    }, [courts, customerName, customerContact, customerEmail]); // <-- Added missing dependencies here
 
-    // Debounced effect for calculating price
+    // Debounced effect for calculating price (This one was already correct)
     useEffect(() => {
         const calculatePrice = async () => {
             if (courtId && startTime && endTime) {
                 const selectedCourt = courts.find(c => c.id === parseInt(courtId));
                 if (!selectedCourt) return;
 
-                // Parse time and check duration
                 const start = new Date(`1970-01-01T${startTime}`);
                 const end = new Date(`1970-01-01T${endTime}`);
                 if (end <= start) {
                     setTotalPrice(0);
                     setAmountPaid(0);
                     setBalance(0);
-                    return; // Don't calculate price if duration is zero or negative
+                    return;
                 }
 
                 try {
@@ -98,7 +98,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
         const handler = setTimeout(() => {
             calculatePrice();
-        }, 300); // 300ms debounce
+        }, 300);
 
         return () => {
             clearTimeout(handler);
@@ -108,7 +108,6 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const handleAmountPaidChange = (e) => {
         const newAmountPaid = parseFloat(e.target.value) || 0;
         setAmountPaid(newAmountPaid);
-        setBalance(totalPrice - newAmountPaid);
     };
 
     const handleDiscountPercentageChange = (e) => {
@@ -127,6 +126,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
         }
     };
 
+    // This effect correctly recalculates the balance whenever its dependencies change
     useEffect(() => {
         const newBalance = totalPrice - discountAmount - amountPaid;
         setBalance(newBalance);
@@ -143,7 +143,6 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             return;
         }
 
-        // Determine the final payment mode and ID to be sent
         const finalPaymentMethod = paymentMethod === 'Online' ? onlinePaymentType : paymentMethod;
         const finalPaymentId = paymentMethod === 'Online' ? paymentId : null;
 
@@ -156,10 +155,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 date: selectedDate,
                 startTime: startTime,
                 endTime: endTime,
-                // Updated payment details
                 payment_mode: finalPaymentMethod,
                 payment_id: finalPaymentId,
-                // ---
                 amount_paid: amountPaid,
                 slots_booked: slotsBooked,
                 discount_amount: discountAmount,
@@ -168,15 +165,14 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             });
             setLastBooking(res.data);
             setIsConfirmationModalOpen(true);
-            // Reset form
+            
+            // Reset form fields after successful submission
             setCustomerName('');
             setCustomerContact('');
             setCustomerEmail('');
-            // Reset payment fields
             setPaymentMethod('Cash');
             setOnlinePaymentType('UPI');
             setPaymentId('');
-            // ---
             setAmountPaid(0);
             setTotalPrice(0);
             setBalance(0);
@@ -193,6 +189,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
         }
     };
 
+    // --- JSX Return ---
+    // (Your return statement with the form UI is unchanged)
     return (
         <>
             <div style={{ maxHeight: '80vh', overflowY: 'auto', padding: '20px' }}>
@@ -355,7 +353,6 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     onCreateNew={() => {
                         console.log('Create New Booking button clicked');
                         setIsConfirmationModalOpen(false);
-                        // The form is already reset, so we just need to close the modal.
                     }}
                 />
             )}
