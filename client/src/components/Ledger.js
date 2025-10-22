@@ -194,12 +194,12 @@ const Ledger = ({ user }) => {
     const [activeTab, setActiveTab] = useState('active');
     const [searchTerm, setSearchTerm] = useState('');
     const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
-
+    
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [error, setError] = useState(null);
-    
+
     const [columnVisibility, setColumnVisibility] = useState({
         court: true,
         discount: true,
@@ -218,7 +218,7 @@ const Ledger = ({ user }) => {
 
     const fetchBookings = useCallback(async () => {
         try {
-            const res = await api.get('/bookings/all');
+            const res = await api.get('/bookings/all'); 
             setBookings(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error("Error fetching bookings:", error);
@@ -234,12 +234,57 @@ const Ledger = ({ user }) => {
         setColumnVisibility(prev => ({ ...prev, [columnName]: !prev[columnName] }));
     };
 
+    // ✅ NEW: Helper function to check if a booking's time has passed
+    const isBookingExpired = (booking) => {
+        try {
+            if (!booking.date || !booking.time_slot) return false; 
+    
+            const now = new Date();
+            const timeSlotParts = booking.time_slot.split(' - ');
+            if (timeSlotParts.length < 2) return false;
+    
+            const endTimeStr = timeSlotParts[1].trim();
+            const timeParts = endTimeStr.split(' ');
+            if (timeParts.length < 2) return false;
+    
+            const [time, modifier] = timeParts;
+            const [hoursStr, minutesStr] = time.split(':');
+            let hours = parseInt(hoursStr, 10);
+            const minutes = parseInt(minutesStr, 10);
+    
+            if (isNaN(hours) || isNaN(minutes)) return false;
+    
+            if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+            if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    
+            const bookingEndDateTime = new Date(booking.date);
+            bookingEndDateTime.setHours(hours, minutes, 0, 0);
+            
+            return now > bookingEndDateTime;
+        } catch (error) {
+            console.error("Error parsing booking time:", error);
+            return false;
+        }
+    };
+
     const filteredAndSortedBookings = useMemo(() => {
         return bookings
             .filter(booking => {
-                if (!booking) return false;
-                if (activeTab === 'active' && ((booking.status || '').toLowerCase() === 'completed' || (booking.status || '').toLowerCase() === 'cancelled')) return false;
-                if (activeTab === 'closed' && ((booking.status || '').toLowerCase() !== 'completed' && (booking.status || '').toLowerCase() !== 'cancelled')) return false;
+                if (!booking || !booking.status) return false;
+                const status = booking.status.toLowerCase();
+                
+                // ✅ UPDATED: Filtering logic now checks if the booking time has expired
+                const isExpired = isBookingExpired(booking);
+
+                if (activeTab === 'active') {
+                    return !isExpired && status !== 'cancelled'; // Show future, non-cancelled bookings
+                }
+                if (activeTab === 'closed') {
+                    return isExpired && status !== 'cancelled'; // Show past, non-cancelled bookings
+                }
+                if (activeTab === 'cancelled') {
+                    return status === 'cancelled';
+                }
                 return true;
             })
             .filter(booking => {
@@ -258,7 +303,17 @@ const Ledger = ({ user }) => {
     const handleReceiptClick = (booking) => { setSelectedBooking(booking); setIsReceiptModalOpen(true); };
     const handleCloseModal = () => { setIsEditModalOpen(false); setIsReceiptModalOpen(false); setSelectedBooking(null); setError(null); };
     const handleSaveBooking = async (bookingId, bookingData) => { /* ... existing logic ... */ };
-    const handleCancelClick = async (bookingId) => { /* ... existing logic ... */ };
+    
+    const handleCancelClick = async (bookingId) => {
+        if (window.confirm('Are you sure you want to cancel this booking?')) {
+            try {
+                await api.put(`/bookings/${bookingId}/cancel`);
+                fetchBookings(); 
+            } catch (error) {
+                console.error("Error cancelling booking:", error);
+            }
+        }
+    };
 
     return (
         <div className="ledger-container">
@@ -266,52 +321,46 @@ const Ledger = ({ user }) => {
                 <h1>Bookings History</h1>
             </header>
 
-            
-
-<div className="controls-bar">
-
-    {/* 👇 Wrap your buttons in this new div 👇 */}
-    <div className="button-group">
-        <button className="filter-button" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
-            Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
-        </button>
-        <div className="column-toggle">
-            <button className="column-toggle-button" onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}>
-                Hide Columns
-            </button>
-            {isColumnDropdownOpen && (
-                <div className="column-toggle-dropdown">
-                    {Object.entries(toggleableColumns).map(([key, label]) => (
-                        <label key={key}>
-                            <input
-                                type="checkbox"
-                                checked={columnVisibility[key]}
-                                onChange={() => handleColumnToggle(key)}
-                            />
-                            {label}
-                        </label>
-                    ))}
+            <div className="controls-bar">
+                <div className="button-group">
+                    <button className="filter-button" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
+                        Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+                    </button>
+                    <div className="column-toggle">
+                        <button className="column-toggle-button" onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}>
+                            Hide Columns
+                        </button>
+                        {isColumnDropdownOpen && (
+                            <div className="column-toggle-dropdown">
+                                {Object.entries(toggleableColumns).map(([key, label]) => (
+                                    <label key={key}>
+                                        <input
+                                            type="checkbox"
+                                            checked={columnVisibility[key]}
+                                            onChange={() => handleColumnToggle(key)}
+                                        />
+                                        {label}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            )}
-        </div>
-    </div>
-
-    {/* The search bar is now outside the button group */}
-    <div className="primary-search-bar">
-        <input
-            type="text"
-            placeholder="Search by name, sport, or ID..."
-            className="filter-input"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-        />
-    </div>
-    
-</div>
+                <div className="primary-search-bar">
+                    <input
+                        type="text"
+                        placeholder="Search by name, sport, or ID..."
+                        className="filter-input"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
             
             <div className="tabs-container">
                 <button className={`tab-button ${activeTab === 'active' ? 'active' : ''}`} onClick={() => setActiveTab('active')}>Active Bookings</button>
                 <button className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`} onClick={() => setActiveTab('closed')}>Closed Bookings</button>
+                <button className={`tab-button ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')}>Cancelled Bookings</button>
             </div>
 
             <div className="table-wrapper">
@@ -332,5 +381,4 @@ const Ledger = ({ user }) => {
 };
 
 export default Ledger;
-
 

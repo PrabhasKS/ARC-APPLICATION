@@ -1,55 +1,162 @@
+/* --- MAIN PAGE CONTAINER --- */
 .analytics-container {
-    padding: 20px;
+  padding: 32px;
+    /* This is the main light gray background */
 }
 
+/* --- PAGE TITLE --- */
+.analytics-title {
+  font-size: 2.25rem; /* 36px */
+  font-weight: 700;
+  color: #111827; /* Gray-900 */
+  margin-bottom: 0; /* <-- MODIFIED (was 24px) */
+}
+
+/* --- NEW HEADER WRAPPER --- */
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px; /* This now controls the space below the header */
+}
+
+/* --- FILTER BAR --- */
+.filters {
+  display: flex;
+  flex-wrap: wrap; 
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #d1d5db; /* Gray-300 border */
+  border-radius: 8px; /* Curvy button */
+  background-color: #ffffff;
+  color: #374151; /* Gray-700 */
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  background-color: #f9fafb; /* Gray-50 */
+  border-color: #9ca3af; /* Gray-400 */
+}
+
+.filter-btn.active {
+  background-color: #1d4ed8; /* Blue-700 */
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.filter-btn.clear-btn {
+  background-color: #f3f4f6; /* Gray-100 */
+  border-color: #d1d5db;
+}
+
+.filter-input {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+/* --- STAT CARD GRID --- */
+/* THIS IS THE FIX:
+   Notice there is NO background-color property here. 
+   This removes the panel you wanted to delete.
+*/
 .summary-cards {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 20px;
-    margin-bottom: 30px;
-    padding-bottom: 15px; /* Add space for the scrollbar */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
 }
 
-.card {
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-    min-width: 220px; /* Give cards a fixed width so they don't shrink */
+/* --- BASE CARD STYLING (For ALL cards) --- */
+.card,
+.chart-card {
+  background-color: #ffffff; /* Cards are white */
+  border-radius: 12px; /* Curvy edges */
+  padding: 24px;
+  border: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.card h4 {
-    margin-top: 0;
-    font-size: 1.2em;
+/* --- CARD HOVER EFFECT (For ALL cards) --- */
+.card:hover,
+.chart-card:hover {
+  transform: translateY(-5px); /* Lifts the card */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
-.card p {
-    font-size: 2em;
-    font-weight: bold;
-    margin: 10px 0 0;
+/* --- STAT CARD CONTENT (Icon + Text) --- */
+.stat-card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
+.stat-icon-container {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.stat-icon-container span {
+  font-size: 24px; /* Emoji size */
+  display: block;
+}
+
+.stat-text h4 {
+  margin: 0;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500;
+  color: #6b7280; /* Gray-500 */
+}
+
+.stat-text p {
+  margin: 4px 0 0;
+  font-size: 1.875rem; /* 30px */
+  font-weight: 700;
+  color: #111827; /* Gray-900 */
+}
+
+/* --- DOWNLOAD BUTTON --- */
 .download-ledger {
-    margin-bottom: 30px;
+  margin-bottom: 0; /* <-- MODIFIED (was 32px) */
 }
 
 .download-ledger button {
-    padding: 10px 20px;
-    font-size: 1em;
-    cursor: pointer;
+  padding: 10px 20px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px; /* Curvy button */
+  background-color: #1d4ed8; /* Strong blue */
+  color: white;
+  transition: background-color 0.3s ease;
 }
 
+.download-ledger button:hover {
+  background-color: #1e40af; /* Darker blue on hover */
+}
+
+/* --- CHARTS GRID --- */
 .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
 }
 
-.chart-card {
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
+/* Title inside chart cards */
+.chart-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151; /* Gray-700 */
+  margin-bottom: 16px;
 }

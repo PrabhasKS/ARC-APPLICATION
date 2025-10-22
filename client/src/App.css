@@ -319,19 +319,19 @@ body {
 
 /* This styles the button that opens the dropdown */
 .actions-cell > button {
-    background-color: #ffffff;
+    background-color: #472dac;
     border: 1px solid #ced4da;
     border-radius: 6px;
     padding: 8px 16px;
     font-size: 14px;
     font-weight: 500;
-    color: #495057;
+    color: #f9fafb;
     cursor: pointer;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease-in-out;
 }
 .actions-cell > button:hover {
-    background-color: #ee9988;
+    background-color: #5f56c0;
     border-color: #adb5bd;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
@@ -352,6 +352,11 @@ body {
     overflow: hidden; /* Ensures the border-radius is applied to children */
     padding: 5px 0;
 }
+.actions-dropdown.up {
+    top: auto; /* Remove the default top positioning */
+    bottom: calc(100% + 5px); /* Position it above the parent button */
+}
+
 
 /* These are the individual buttons inside the dropdown */
 .actions-dropdown button {
@@ -451,7 +456,7 @@ body {
     min-width: 200px; /* Ensures the search bar is always usable */
 }
 .primary-search-bar .filter-input {
-    width: 88%;
+    width: 95%;
     background-color: #fff;
     border: 1px solid #ced4da;
     border-radius: 8px;

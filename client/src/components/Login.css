@@ -1,0 +1,100 @@
+/* --- Login Page Container --- */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* Centers the card vertically */
+    padding: 20px;
+}
+
+/* --- The Login Card --- */
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 40px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+/* --- Logo inside the card --- */
+.login-logo {
+    width: 100px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.login-card h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #343a40;
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+/* --- Form Group Styling --- */
+.login-form .form-group {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.login-form .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.login-form .form-group input {
+    width: 100%;
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 16px; /* Larger font for readability */
+    padding: 14px 16px; /* Larger input size */
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.login-form .form-group input:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+    background-color: #fff;
+}
+
+/* --- Attractive Login Button --- */
+.login-btn {
+    width: 100%;
+    background: linear-gradient(90deg, #1d077f, #4a38a0); /* Gradient blue */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(29, 7, 127, 0.2);
+}
+
+/* --- Error Message Styling --- */
+.login-error {
+    color: #721c24; /* Dark red */
+    background-color: #f8d7da; /* Light red */
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 20px;
+    font-size: 14px;
+    text-align: center;
+}
