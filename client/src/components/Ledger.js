@@ -309,6 +309,7 @@ const Ledger = ({ user }) => {
             try {
                 await api.put(`/bookings/${bookingId}/cancel`);
                 fetchBookings(); 
+                fetchBookings(); // Refresh data
             } catch (error) {
                 console.error("Error cancelling booking:", error);
             }
