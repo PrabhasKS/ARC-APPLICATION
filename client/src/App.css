@@ -6,9 +6,11 @@ body {
 }
 
 .App {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+    width: 100%;      /* Ensures the container tries to be full width */
+    max-width: none;  /* ✅ FIX: Removes the width limit */
+    margin: 0;        /* Removes the auto margin for centering */
+    padding: 0 24px;  /* Adds padding on the left and right so content doesn't touch the edges */
+    box-sizing: border-box; /* Ensures padding is included in the total width */
 }
 
 header {
@@ -135,6 +137,7 @@ th {
     header {
         flex-direction: column;
         align-items: flex-start;
+        
     }
 
     header nav {
@@ -316,19 +319,19 @@ body {
 
 /* This styles the button that opens the dropdown */
 .actions-cell > button {
-    background-color: #ffffff;
+    background-color: #472dac;
     border: 1px solid #ced4da;
     border-radius: 6px;
     padding: 8px 16px;
     font-size: 14px;
     font-weight: 500;
-    color: #495057;
+    color: #f9fafb;
     cursor: pointer;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease-in-out;
 }
 .actions-cell > button:hover {
-    background-color: #ee9988;
+    background-color: #5f56c0;
     border-color: #adb5bd;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
@@ -349,6 +352,11 @@ body {
     overflow: hidden; /* Ensures the border-radius is applied to children */
     padding: 5px 0;
 }
+.actions-dropdown.up {
+    top: auto; /* Remove the default top positioning */
+    bottom: calc(100% + 5px); /* Position it above the parent button */
+}
+
 
 /* These are the individual buttons inside the dropdown */
 .actions-dropdown button {
@@ -424,29 +432,31 @@ body {
     border-color: #adb5bd;
 }
 .controls-bar {
-    display: flex;
-    align-items: center;
-    gap: 16px; /* Increased gap for better spacing */
+    display: flex;          /* This is the key for alignment */
+    align-items: center;    /* Vertically aligns everything */
+    gap: 16px;              /* Adds space between the button group and search bar */
     padding: 12px;
     margin-bottom: 24px;
     background-color: rgba(255, 255, 255, 0.7);
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
+
+/* This new group holds your buttons together */
 .button-group {
     display: flex;
     gap: 12px;
-    flex-shrink: 0; /* Prevents this group from shrinking and causing overlaps */
+    flex-shrink: 0; /* IMPORTANT: Prevents the buttons from being squashed */
 }
-/* The main search bar */
+
+/* This makes the search bar fill ALL remaining space */
 .primary-search-bar {
     flex-grow: 1;
-    margin-left: 16px;
     position: relative;
-    min-width: 100px;
+    min-width: 200px; /* Ensures the search bar is always usable */
 }
 .primary-search-bar .filter-input {
-    width: 100%;
+    width: 95%;
     background-color: #fff;
     border: 1px solid #ced4da;
     border-radius: 8px;
@@ -522,7 +532,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: -1; /* This is the key to placing it BEHIND other content */
-     opacity: 0.2; /* Makes the logo faint like a watermark */
+     opacity: 0.05; /* Makes the logo faint like a watermark */
     pointer-events: none; /* Prevents the image from being clickable */
 }
 
@@ -532,3 +542,103 @@ body {
      max-width: 550px; /* Adjust the size of the logo as needed */
     height: auto;
 }
+/* --- Modern and Clean Tab Sections --- */
+
+/* This is the container for the tabs */
+.tabs-container {
+    border-bottom: 2px solid #e9ecef; /* A subtle line to separate tabs from content */
+    margin-bottom: 24px;
+}
+
+/* This styles the individual tab buttons */
+.tab-button {
+    padding: 14px 20px; /* More spacious padding */
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600; /* Bolder text */
+    color: #6c757d; /* Muted color for inactive tabs */
+    border-bottom: 3px solid transparent; /* Placeholder for the active indicator */
+    transition: all 0.2s ease-in-out;
+    margin-bottom: -2px; /* Lifts the button to sit on the container's border */
+}
+
+/* Adds a subtle background on hover for better feedback */
+.tab-button:hover {
+    color: #343a40;
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* This is the style for the currently active tab */
+.tab-button.active {
+    color: #0d6efd; /* A bright blue to indicate it's active */
+    border-bottom-color: #0d6efd; /* The blue line indicator */
+}
+.header-logo {
+    height: 60px;  /* ✅ FIX: Sets a specific, smaller height for the logo */
+    width:70px;   /* This maintains the correct aspect ratio */
+}
+.page-header {
+    /* Remove the old background and padding */
+    background: none;
+    padding: 12px 0; /* Add vertical space but no horizontal padding */
+    border-bottom: 1px solid #dee2e6; /* Adds a subtle separator line */
+    margin-bottom: 1px;
+    display: flex; /* Keep flex for alignment if you add things next to it */
+    align-items: center;
+}
+
+/* This styles the "Bookings History" text itself */
+.page-header h1 {
+    font-size: 36px; /* Larger font size */
+    font-weight: 700;
+    color: #023263; /* A strong, dark text color */
+    margin: 0;
+    line-height: 1.0;
+}
+.ledger-container {
+    max-width: none;
+    padding: 24px 0; /* Adjust padding to work with the new .App layout */
+}
+.notification-popup {
+    position: fixed; /* Stays on screen even when scrolling */
+    top: 80px; /* Position from the top, below the header */
+    right: 20px;
+    background-color: #28a745; /* A success green color */
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000; /* Ensures it's on top of everything */
+    font-size: 16px;
+    font-weight: 500;
+    animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 2.5s forwards;
+}
+
+/* For error messages, you could add this class dynamically */
+.notification-popup.error {
+    background-color: #dc3545; /* A danger red color */
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+

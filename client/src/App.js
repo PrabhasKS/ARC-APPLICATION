@@ -97,7 +97,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import Header from './components/Header';
 import Login from './components/Login';
@@ -120,20 +120,16 @@ const ProtectedRoute = ({ user, allowedRoles, children }) => {
     return children;
 };
 
-function App() {
+// A new component to handle showing the header on the correct pages
+const AppContent = () => {
     const [user, setUser] = useState(null);
-
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        setUser(null);
-    };
+    const location = useLocation(); // Hook to get the current URL path
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
             try {
                 const decodedUser = jwtDecode(token);
-                // Check if token is expired
                 const isExpired = decodedUser.exp * 1000 < Date.now();
                 if (isExpired) {
                     handleLogout();
@@ -156,42 +152,54 @@ function App() {
         }
     };
 
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        setUser(null);
+    };
+
+    return (
+        <div className="App">
+            {/* ✅ FIX: This line now conditionally renders the Header */}
+            {location.pathname !== '/login' && <Header user={user} onLogout={handleLogout} />}
+
+            <div className="watermark-container">
+                <img src={logo} alt="Watermark Logo" className="watermark-logo" />
+            </div>
+
+            <main>
+                <Routes>
+                    <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} />} />
+                    <Route path="/" element={
+                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk', 'staff']}>
+                            <Dashboard user={user} />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/ledger" element={
+                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk', 'staff']}>
+                            <Ledger user={user} />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/admin" element={
+                        <ProtectedRoute user={user} allowedRoles={['admin']}>
+                            <Admin user={user} />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/analytics" element={
+                        <ProtectedRoute user={user} allowedRoles={['admin']}>
+                            <Analytics />
+                        </ProtectedRoute>
+                    } />
+                </Routes>
+            </main>
+        </div>
+    );
+}
+
+// The main App component now just sets up the Router
+function App() {
     return (
         <Router>
-            <div className="App">
-                
-                {/* 👇 THIS IS THE NEW WATERMARK SECTION 👇 */}
-                <div className="watermark-container">
-                    <img src={logo} alt="Watermark Logo" className="watermark-logo" />
-                </div>
-
-                <Header user={user} onLogout={handleLogout} />
-                <main>
-                    <Routes>
-                        <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} />} />
-                        <Route path="/" element={
-                            <ProtectedRoute user={user} allowedRoles={['admin', 'desk', 'staff']}>
-                                <Dashboard user={user} />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/ledger" element={
-                            <ProtectedRoute user={user} allowedRoles={['admin', 'desk', 'staff']}>
-                                <Ledger user={user} />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/admin" element={
-                            <ProtectedRoute user={user} allowedRoles={['admin']}>
-                                <Admin user={user} />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/analytics" element={
-                            <ProtectedRoute user={user} allowedRoles={['admin']}>
-                                <Analytics />
-                            </ProtectedRoute>
-                        } />
-                    </Routes>
-                </main>
-            </div>
+            <AppContent />
         </Router>
     );
 }

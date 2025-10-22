@@ -1,16 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // ✅ Added useMemo here
 import api from '../api';
 import ConfirmationModal from './ConfirmationModal';
+// Assuming Dashboard.css is imported globally or in the parent component
 
 const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSuccess, user }) => {
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    };
+    // --- State Variables ---
     const [courtId, setCourtId] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerContact, setCustomerContact] = useState('');
@@ -18,59 +12,39 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [onlinePaymentType, setOnlinePaymentType] = useState('UPI');
     const [paymentId, setPaymentId] = useState('');
-    const [amountPaid, setAmountPaid] = useState(0);
+    const [amountPaid, setAmountPaid] = useState('');
     const [totalPrice, setTotalPrice] = useState(0);
     const [balance, setBalance] = useState(0);
     const [message, setMessage] = useState('');
     const [slotsBooked, setSlotsBooked] = useState(1);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [lastBooking, setLastBooking] = useState(null);
-    const [discountAmount, setDiscountAmount] = useState(0);
-    const [discountPercentage, setDiscountPercentage] = useState(0);
+    const [discountAmount, setDiscountAmount] = useState('');
     const [discountReason, setDiscountReason] = useState('');
     const [showDiscount, setShowDiscount] = useState(false);
-
     const [accessories, setAccessories] = useState([]);
     const [selectedAccessories, setSelectedAccessories] = useState([]);
     const [showAccessories, setShowAccessories] = useState(false);
 
-    // ✅ FIX #1: This effect fetches accessories only ONCE when the component loads.
-    // It doesn't depend on customer details, so the dependency array should be empty.
+    // --- Effects ---
     useEffect(() => {
         const fetchAccessories = async () => {
             try {
                 const res = await api.get('/accessories');
-                setAccessories(res.data);
+                setAccessories(res.data || []);
             } catch (error) {
                 console.error("Error fetching accessories:", error);
+                setAccessories([]);
             }
         };
         fetchAccessories();
-    }, []); // <-- Dependency array is now correctly empty
+    }, []);
 
-    // ✅ FIX #2: THIS was the real source of the warning.
-    // This effect needs to run when customer details change to decide if it should reset the court.
-    useEffect(() => {
-        if (!customerName && !customerContact && !customerEmail) {
-            setCourtId('');
-        }
-    }, [courts, customerName, customerContact, customerEmail]); // <-- Added missing dependencies here
-
-    // Debounced effect for calculating price (This one was already correct)
     useEffect(() => {
         const calculatePrice = async () => {
             if (courtId && startTime && endTime) {
                 const selectedCourt = courts.find(c => c.id === parseInt(courtId));
                 if (!selectedCourt) return;
-
-                const start = new Date(`1970-01-01T${startTime}`);
-                const end = new Date(`1970-01-01T${endTime}`);
-                if (end <= start) {
-                    setTotalPrice(0);
-                    setAmountPaid(0);
-                    setBalance(0);
-                    return;
-                }
 
                 try {
                     const res = await api.post('/bookings/calculate-price', {
@@ -81,74 +55,73 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     });
                     let newTotalPrice = res.data.total_price || 0;
 
-                    const accessoriesTotal = selectedAccessories.reduce((total, acc) => total + (acc.price * acc.quantity), 0);
+                    const accessoriesTotal = selectedAccessories.reduce((total, acc) => {
+                        const accessoryDetails = accessories.find(a => a.id === acc.id);
+                        return total + ((accessoryDetails?.price || 0) * acc.quantity);
+                    }, 0);
                     newTotalPrice += accessoriesTotal;
 
                     setTotalPrice(newTotalPrice);
-                    setAmountPaid(0);
-                    setBalance(newTotalPrice);
+
+                    const currentAmountPaid = parseFloat(amountPaid) || 0;
+                    const currentDiscount = parseFloat(discountAmount) || 0;
+                    setBalance(newTotalPrice - currentDiscount - currentAmountPaid);
+
                 } catch (error) {
                     console.error("Error calculating price:", error);
                     setTotalPrice(0);
-                    setAmountPaid(0);
                     setBalance(0);
                 }
+            } else {
+                setTotalPrice(0);
+                setBalance(0);
             }
         };
 
-        const handler = setTimeout(() => {
-            calculatePrice();
-        }, 300);
+        const handler = setTimeout(calculatePrice, 300);
+        return () => clearTimeout(handler);
 
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [courtId, startTime, endTime, courts, slotsBooked, selectedAccessories]);
+    }, [courtId, startTime, endTime, courts, slotsBooked, selectedAccessories, amountPaid, discountAmount, accessories]);
 
-    const handleAmountPaidChange = (e) => {
-        const newAmountPaid = parseFloat(e.target.value) || 0;
-        setAmountPaid(newAmountPaid);
-    };
+    useEffect(() => {
+        const currentAmountPaid = parseFloat(amountPaid) || 0;
+        const currentDiscount = parseFloat(discountAmount) || 0;
+        setBalance(totalPrice - currentDiscount - currentAmountPaid);
+    }, [amountPaid, discountAmount, totalPrice]);
 
-    const handleDiscountPercentageChange = (e) => {
-        const percentage = parseFloat(e.target.value) || 0;
-        setDiscountPercentage(percentage);
-        const newDiscountAmount = (percentage / 100) * totalPrice;
-        setDiscountAmount(newDiscountAmount);
-    };
+    // --- Handlers ---
+    const handleAmountChange = (setter) => (e) => setter(e.target.value);
 
-    const handleDiscountAmountChange = (e) => {
-        const amount = parseFloat(e.target.value) || 0;
-        setDiscountAmount(amount);
-        if (totalPrice > 0) {
-            const newDiscountPercentage = (amount / totalPrice) * 100;
-            setDiscountPercentage(newDiscountPercentage);
+    const handleAddSelectedAccessory = (accessoryId) => {
+        if (!accessoryId) return;
+        const existingAcc = selectedAccessories.find(a => a.id === accessoryId);
+        if (existingAcc) {
+            setSelectedAccessories(
+                selectedAccessories.map(a =>
+                    a.id === accessoryId ? { ...a, quantity: a.quantity + 1 } : a
+                )
+            );
+        } else {
+            setSelectedAccessories([...selectedAccessories, { id: accessoryId, quantity: 1 }]);
         }
     };
 
-    // This effect correctly recalculates the balance whenever its dependencies change
-    useEffect(() => {
-        const newBalance = totalPrice - discountAmount - amountPaid;
-        setBalance(newBalance);
-    }, [totalPrice, discountAmount, amountPaid]);
+    const handleRemoveAccessory = (accessoryId) => {
+        setSelectedAccessories(selectedAccessories.filter(a => a.id !== accessoryId));
+    };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!courtId) {
-            setMessage('Please select a court.');
-            return;
-        }
-        if (totalPrice <= 0) {
-            setMessage('Cannot create a booking with zero or negative price. Please check the times.');
-            return;
-        }
+        setMessage('');
+        if (!courtId) { setMessage('Please select a court.'); return; }
 
         const finalPaymentMethod = paymentMethod === 'Online' ? onlinePaymentType : paymentMethod;
         const finalPaymentId = paymentMethod === 'Online' ? paymentId : null;
 
         try {
             const res = await api.post('/bookings', {
-                court_id: courtId,
+                court_id: parseInt(courtId),
                 customer_name: customerName,
                 customer_contact: customerContact,
                 customer_email: customerEmail,
@@ -157,203 +130,193 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 endTime: endTime,
                 payment_mode: finalPaymentMethod,
                 payment_id: finalPaymentId,
-                amount_paid: amountPaid,
-                slots_booked: slotsBooked,
-                discount_amount: discountAmount,
+                amount_paid: parseFloat(amountPaid) || 0,
+                slots_booked: parseInt(slotsBooked) || 1,
+                discount_amount: parseFloat(discountAmount) || 0,
                 discount_reason: discountReason,
                 accessories: selectedAccessories.map(a => ({ accessory_id: a.id, quantity: a.quantity }))
             });
+
             setLastBooking(res.data);
             setIsConfirmationModalOpen(true);
-            
-            // Reset form fields after successful submission
-            setCustomerName('');
-            setCustomerContact('');
-            setCustomerEmail('');
-            setPaymentMethod('Cash');
-            setOnlinePaymentType('UPI');
-            setPaymentId('');
-            setAmountPaid(0);
-            setTotalPrice(0);
-            setBalance(0);
-            setCourtId('');
-            setDiscountAmount(0);
-            setDiscountPercentage(0);
-            setDiscountReason('');
-            setShowDiscount(false);
-            setSelectedAccessories([]);
-            setShowAccessories(false);
+            setMessage('Booking created successfully!');
+
+            setCourtId(''); setCustomerName(''); setCustomerContact(''); setCustomerEmail('');
+            setAmountPaid(''); setDiscountAmount(''); setDiscountReason('');
+            setShowDiscount(false); setShowAccessories(false); setSelectedAccessories([]);
+            setPaymentMethod('Cash'); setOnlinePaymentType('UPI'); setPaymentId('');
+            setSlotsBooked(1);
+
             onBookingSuccess();
         } catch (err) {
             setMessage(err.response?.data?.message || 'Error creating booking');
         }
     };
 
-    // --- JSX Return ---
-    // (Your return statement with the form UI is unchanged)
+    const selectedCourtDetails = useMemo(() => {
+        return courts.find(c => c.id === parseInt(courtId));
+    }, [courtId, courts]);
+
     return (
         <>
-            <div style={{ maxHeight: '80vh', overflowY: 'auto', padding: '20px' }}>
-            <form onSubmit={handleSubmit}>
-                {message && <p>{message}</p>}
-                <p>Booking for: <strong>{formatDate(selectedDate)}</strong> from <strong>{startTime}</strong> to <strong>{endTime}</strong></p>
-                <div>
+            <form onSubmit={handleSubmit} className="booking-form">
+                {message && <p className={`message ${message.includes('Error') ? 'error' : 'success'}`}>{message}</p>}
+
+                <div className="form-group">
                     <label>Court</label>
                     <select value={courtId} onChange={(e) => setCourtId(e.target.value)} required>
                         <option value="">Select an Available Court</option>
                         {courts.map(court => (
-                            <option key={court.id} value={court.id}>{court.name} ({court.sport_name}) {court.available_slots ? `(${court.available_slots} slots available)` : ''}</option>
+                            <option key={court.id} value={court.id}>{court.name} ({court.sport_name})</option>
                         ))}
                     </select>
                 </div>
-                {courts.find(c => c.id === parseInt(courtId) && c.sport_name === 'Swimming') && (
-                    <div>
-                        <label>Number of People</label>
-                        <input type="number" value={slotsBooked} onChange={(e) => setSlotsBooked(e.target.value)} min="1" required />
-                        {courts.find(c => c.id === parseInt(courtId))?.available_slots < slotsBooked && (
-                            <p style={{ color: 'red' }}>Not Available: Exceeds capacity</p>
+
+                {selectedCourtDetails?.sport_name?.toLowerCase() === 'swimming' && (
+                    <div className="form-group">
+                        <label>Number of People (Slots)</label>
+                        <input
+                            type="number"
+                            value={slotsBooked}
+                            onChange={(e) => setSlotsBooked(Math.max(1, parseInt(e.target.value) || 1))}
+                            min="1"
+                            required
+                        />
+                        {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
+                             <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>Exceeds capacity ({selectedCourtDetails.available_slots} available)</p>
                         )}
                     </div>
                 )}
-                <div>
+
+                <div className="form-group">
                     <label>Customer Name</label>
-                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+                    <input type="text" value={customerName} onChange={handleAmountChange(setCustomerName)} required />
                 </div>
-                <div>
+
+                <div className="form-group">
                     <label>Customer Contact</label>
-                    <input type="text" value={customerContact} onChange={(e) => setCustomerContact(e.target.value)} required />
+                    <input type="text" value={customerContact} onChange={handleAmountChange(setCustomerContact)} required />
                 </div>
-                <div>
+
+                <div className="form-group">
                     <label>Customer Email (Optional)</label>
-                    <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
-                </div>
-                
-                <div>
-                    <label>Total Price</label>
-                    <input type="number" value={totalPrice} readOnly style={{ backgroundColor: '#f0f0f0' }} />
+                    <input type="email" value={customerEmail} onChange={handleAmountChange(setCustomerEmail)} />
                 </div>
 
-                <div>
-                    <label>
-                        <input type="checkbox" checked={showDiscount} onChange={(e) => setShowDiscount(e.target.checked)} />
-                        Add Discount
-                    </label>
-                </div>
-
-                {showDiscount && (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1 }}>
-                            <label>Discount (%)</label>
-                            <input type="number" value={discountPercentage} onChange={handleDiscountPercentageChange} style={{ width: '100%' }} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <label>Discount (Price)</label>
-                            <input type="number" value={discountAmount} onChange={handleDiscountAmountChange} style={{ width: '100%' }} />
-                        </div>
-                    </div>
-                )}
-
-                {showDiscount && (
-                    <div>
-                        <label>Reason for Discount</label>
-                        <input type="text" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
-                    </div>
-                )}
-
-                <div>
-                    <label>
-                        <input type="checkbox" checked={showAccessories} onChange={(e) => setShowAccessories(e.target.checked)} />
+                 <div className="form-group">
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={showAccessories} onChange={() => setShowAccessories(!showAccessories)} />
                         Add Accessories
                     </label>
-                </div>
-
-                {showAccessories && (
-                    <div>
-                        <h4>Accessories</h4>
-                        <div>
-                            <select id="accessory-select">
-                                <option value="">Select an accessory</option>
-                                {accessories.map(acc => (
-                                    <option key={acc.id} value={acc.id}>{acc.name} - Rs. {acc.price}</option>
-                                ))}
+                 </div>
+                 {showAccessories && (
+                    <div className="form-group accessories-selector">
+                         <label>Select Accessories</label>
+                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                            <select id="accessory-select-input" defaultValue="">
+                                 <option value="" disabled>Choose...</option>
+                                 {accessories.map(acc => (
+                                     <option key={acc.id} value={acc.id} disabled={selectedAccessories.some(sa => sa.id === acc.id)}>
+                                         {acc.name} - ₹{acc.price}
+                                     </option>
+                                 ))}
                             </select>
-                            <input type="number" id="accessory-quantity" defaultValue="1" min="1" />
-                            <button type="button" onClick={() => {
-                                const select = document.getElementById('accessory-select');
-                                const quantityInput = document.getElementById('accessory-quantity');
-                                const accessoryId = parseInt(select.value);
-                                const quantity = parseInt(quantityInput.value);
-                                if (accessoryId && quantity > 0) {
-                                    const accessory = accessories.find(a => a.id === accessoryId);
-                                    setSelectedAccessories([...selectedAccessories, { ...accessory, quantity }]);
-                                }
-                            }}>Add</button>
-                        </div>
-                        <ul>
-                            {selectedAccessories.map((acc, index) => (
-                                <li key={index}>{acc.name} (x{acc.quantity}) - Rs. {acc.price * acc.quantity}
-                                    <button type="button" onClick={() => {
-                                        const newSelected = [...selectedAccessories];
-                                        newSelected.splice(index, 1);
-                                        setSelectedAccessories(newSelected);
-                                    }}>Remove</button>
-                                </li>
-                            ))}
-                        </ul>
+                            <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, padding: '8px 12px', marginTop: 0 }}
+                                onClick={() => {
+                                    const selectEl = document.getElementById('accessory-select-input');
+                                    if (selectEl.value) {
+                                        handleAddSelectedAccessory(parseInt(selectEl.value));
+                                        selectEl.value = "";
+                                    }
+                                }}>
+                                Add
+                            </button>
+                         </div>
+                         {selectedAccessories.length > 0 && (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '14px' }}>
+                                {selectedAccessories.map((acc, index) => {
+                                    const details = accessories.find(a => a.id === acc.id);
+                                    return (
+                                        <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                                            <span>{details?.name || 'Unknown'} (x{acc.quantity})</span>
+                                            <button type="button" onClick={() => handleRemoveAccessory(acc.id)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                         )}
                     </div>
                 )}
 
+                <div className="form-group">
+                    <label>Total Price</label>
+                    <input type="number" value={totalPrice.toFixed(2)} readOnly style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
+                </div>
 
-                {/* New Payment Section */}
-                <div>
+                 <div className="form-group">
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={showDiscount} onChange={() => setShowDiscount(!showDiscount)} />
+                         Add Discount
+                    </label>
+                 </div>
+                 {showDiscount && (
+                    <>
+                        <div className="form-group">
+                            <label>Discount Amount</label>
+                            <input type="number" value={discountAmount} onChange={handleAmountChange(setDiscountAmount)} placeholder="0.00" />
+                        </div>
+                        <div className="form-group">
+                            <label>Discount Reason</label>
+                            <input type="text" value={discountReason} onChange={handleAmountChange(setDiscountReason)} />
+                        </div>
+                    </>
+                )}
+
+                <div className="form-group">
+                    <label>Amount Paid</label>
+                    <input type="number" value={amountPaid} onChange={handleAmountChange(setAmountPaid)} placeholder="0.00" required />
+                </div>
+
+                <div className="form-group">
+                    <label>Balance</label>
+                    <input type="number" value={balance.toFixed(2)} readOnly style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
+                </div>
+
+                <div className="form-group">
                     <label>Payment Method</label>
-                    <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required>
+                    <select value={paymentMethod} onChange={handleAmountChange(setPaymentMethod)}>
                         <option value="Cash">Cash</option>
-                        <option value="Cheque">Cheque</option>
                         <option value="Online">Online</option>
+                        <option value="Cheque">Cheque</option>
                     </select>
                 </div>
 
                 {paymentMethod === 'Online' && (
                     <>
-                        <div>
+                        <div className="form-group">
                             <label>Online Payment Type</label>
-                            <select value={onlinePaymentType} onChange={(e) => setOnlinePaymentType(e.target.value)} required>
+                             <select value={onlinePaymentType} onChange={handleAmountChange(setOnlinePaymentType)}>
                                 <option value="UPI">UPI</option>
                                 <option value="Card">Card</option>
-                                <option value="Internet Banking">Internet Banking</option>
                             </select>
                         </div>
-                        <div>
+                         <div className="form-group">
                             <label>Payment ID</label>
-                            <input type="text" value={paymentId} onChange={(e) => setPaymentId(e.target.value)} required />
+                            <input type="text" value={paymentId} onChange={handleAmountChange(setPaymentId)} />
                         </div>
                     </>
                 )}
-                {/* End of New Payment Section */}
 
-                <div>
-                    <label>Amount Paid</label>
-                    <input type="number" value={amountPaid} onChange={handleAmountPaidChange} required />
-                </div>
-                <div>
-                    <label>Balance</label>
-                    <input type="number" value={balance} readOnly style={{ backgroundColor: '#f0f0f0' }} />
-                </div>
-                <button type="submit">Create Booking</button>
+                <button type="submit" className="btn btn-primary">
+                    Create Booking
+                </button>
             </form>
-            </div>
+
             {isConfirmationModalOpen && (
-                <ConfirmationModal 
+                <ConfirmationModal
                     booking={lastBooking}
-                    onClose={() => {
-                        console.log('Close button clicked');
-                        setIsConfirmationModalOpen(false);
-                    }}
-                    onCreateNew={() => {
-                        console.log('Create New Booking button clicked');
-                        setIsConfirmationModalOpen(false);
-                    }}
+                    onClose={() => setIsConfirmationModalOpen(false)}
+                    onCreateNew={() => setIsConfirmationModalOpen(false)}
                 />
             )}
         </>

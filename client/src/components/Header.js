@@ -1,10 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.jpg';
 
 const Header = ({ user, onLogout }) => {
     return (
         <header>
-            <h1>ARC SportZone Booking</h1>
+            <div className="header-title">
+                <img src={logo} alt="ARC SportZone Logo" className="header-logo" />
+                {/* <h1>ARC SportZone</h1> */}
+            </div>
             <nav>
                 {user && (
                     <>
