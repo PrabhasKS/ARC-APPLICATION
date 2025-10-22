@@ -172,13 +172,12 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
     const areActionsDisabled = (booking) => {
         if (!booking || !booking.status) return true;
 
-        const isPastBooking = () => {
+        const isBookingActiveOrFuture = () => {
             if (!booking.date || !booking.time_slot) return false;
 
             const now = new Date();
             const bookingDate = new Date(booking.date);
             
-            // Assuming time_slot is in a format like "10:00 AM - 11:00 AM"
             const timeParts = booking.time_slot.split(' - ');
             if (timeParts.length < 2) return false;
 
@@ -196,22 +195,21 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
             bookingDate.setHours(hours);
             bookingDate.setMinutes(minutes);
 
-            return now > bookingDate;
+            return now <= bookingDate;
         };
 
         if (booking.status.toLowerCase() === 'cancelled') {
             return true;
         }
 
-        if (booking.payment_status && booking.payment_status.toLowerCase() === 'completed' && isPastBooking()) {
-            return true;
-        }
-        
         if (booking.payment_status && (booking.payment_status.toLowerCase() === 'pending' || booking.payment_status.toLowerCase() === 'received')) {
             return false;
         }
 
-        // For any other status, the button should be disabled.
+        if (booking.payment_status && booking.payment_status.toLowerCase() === 'completed' && isBookingActiveOrFuture()) {
+            return false;
+        }
+
         return true;
     };
 
