@@ -569,31 +569,32 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
 
 // Add a new booking
 router.post('/bookings', authenticateToken, async (req, res) => {
-    const { court_id, customer_name, customer_contact, customer_email, date, startTime,             endTime,
-            payment_mode,
-            payment_id, // Added payment_id
-            amount_paid,
-            slots_booked,
-            discount_amount,
-            discount_reason,
-            accessories } = req.body;
-    const created_by_user_id = req.user.id; // Get user ID from JWT
+    const { court_id, customer_name, customer_contact, customer_email, date, startTime, endTime,
+            payment_mode, payment_id, amount_paid, slots_booked, discount_amount, discount_reason, accessories } = req.body;
+    const created_by_user_id = req.user.id;
 
+    let connection;
     try {
-        const [courts] = await db.query('SELECT sport_id FROM courts WHERE id = ?', [court_id]);
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        const [courts] = await connection.query('SELECT sport_id FROM courts WHERE id = ?', [court_id]);
         if (courts.length === 0) {
+            await connection.rollback();
+            connection.release();
             return res.status(404).json({ message: 'Court not found' });
         }
         const sport_id = courts[0].sport_id;
 
-        const [sports] = await db.query('SELECT price, capacity FROM sports WHERE id = ?', [sport_id]);
+        const [sports] = await connection.query('SELECT price, capacity FROM sports WHERE id = ?', [sport_id]);
         if (sports.length === 0) {
+            await connection.rollback();
+            connection.release();
             return res.status(404).json({ message: 'Sport not found' });
         }
         const hourly_price = sports[0].price;
         const capacity = sports[0].capacity;
 
-        // New duration-based pricing logic
         const parseTime = (timeStr) => {
             const [hours, minutes] = timeStr.split(':').map(Number);
             return hours * 60 + minutes;
@@ -601,65 +602,47 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         const durationInMinutes = parseTime(endTime) - parseTime(startTime);
 
         if (durationInMinutes <= 0) {
+            await connection.rollback();
+            connection.release();
             return res.status(400).json({ message: 'End time must be after start time.' });
         }
 
-        const num_of_hours = Math.floor(durationInMinutes / 60);
-        const remaining_minutes = durationInMinutes % 60;
-        
-        let total_price = num_of_hours * hourly_price;
-        if (remaining_minutes >= 30) {
-            total_price += hourly_price / 2;
-        }
-
+        let total_price = (durationInMinutes / 60) * hourly_price;
         if (slots_booked > 1) {
             total_price *= slots_booked;
         }
 
-        // Add accessory prices to total
         let accessories_total_price = 0;
         if (accessories && accessories.length > 0) {
             for (const acc of accessories) {
-                const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
+                const [[accessoryData]] = await connection.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
                 if (accessoryData) {
                     accessories_total_price += accessoryData.price * acc.quantity;
                 }
             }
         }
         total_price += accessories_total_price;
-
-        // End of new pricing logic
-
         total_price -= discount_amount || 0;
 
         const balance_amount = total_price - amount_paid;
+        let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
 
-        let payment_status = 'Pending';
-        if (amount_paid > 0) {
-            payment_status = balance_amount <= 0 ? 'Completed' : 'Received';
-        }
-
-        const [existingBookings] = await db.query('SELECT time_slot, slots_booked FROM bookings WHERE court_id = ? AND date = ? AND status != ?', [court_id, date, 'Cancelled']);
-        
-        const toMinutes = (timeStr) => {
-            const [time, modifier] = timeStr.split(' ');
+        const formatTo12Hour = (time) => {
             let [hours, minutes] = time.split(':').map(Number);
-            if (modifier === 'PM' && hours < 12) hours += 12;
-            if (modifier === 'AM' && hours === 12) hours = 0;
-            return hours * 60 + minutes;
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            return `${hours}:${minutes} ${ampm}`;
         };
+        const time_slot = `${formatTo12Hour(startTime)} - ${formatTo12Hour(endTime)}`;
 
-        const checkOverlap = (startA, endA, startB, endB) => {
-            const startAMin = toMinutes(startA);
-            const endAMin = toMinutes(endA);
-            const startBMin = toMinutes(startB);
-            const endBMin = toMinutes(endB);
-            return startAMin < endBMin && endAMin > startBMin;
-        };
-
+        // --- Concurrency Lock and Conflict Check ---
+        const [existingBookings] = await connection.query('SELECT * FROM bookings WHERE court_id = ? AND date = ? AND status != ? FOR UPDATE', [court_id, date, 'Cancelled']);
+        
         const overlappingBookings = existingBookings.filter(booking => {
             const [existingStart, existingEnd] = booking.time_slot.split(' - ');
-            return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
+            return checkOverlap(formatTo12Hour(startTime), formatTo12Hour(endTime), existingStart.trim(), existingEnd.trim());
         });
 
         if (overlappingBookings.length > 0) {
@@ -667,24 +650,18 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                 const totalSlotsBooked = overlappingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
                 const availableSlots = capacity - totalSlotsBooked;
                 if (parseInt(slots_booked) > availableSlots) {
+                    await connection.rollback();
+                    connection.release();
                     return res.status(409).json({ message: `Not enough slots available. Only ${availableSlots} slots left.` });
                 }
             } else {
+                await connection.rollback();
+                connection.release();
                 return res.status(409).json({ message: 'The selected time slot is unavailable.' });
             }
         }
 
-        const formatTo12Hour = (time) => {
-            let [hours, minutes] = time.split(':').map(Number);
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            return `${hours}:${minutes} ${ampm}`;
-        };
-
-        const time_slot = `${formatTo12Hour(startTime)} - ${formatTo12Hour(endTime)}`;
-        const [result] = await db.query(
+        const [result] = await connection.query(
             'INSERT INTO bookings (court_id, sport_id, created_by_user_id, customer_name, customer_contact, customer_email, date, time_slot, total_price, amount_paid, balance_amount, payment_status, payment_mode, payment_id, slots_booked, status, discount_amount, discount_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [court_id, sport_id, created_by_user_id, customer_name, customer_contact, customer_email, date, time_slot, total_price, amount_paid, balance_amount, payment_status, payment_mode, payment_id, slots_booked, 'Booked', discount_amount, discount_reason]
         );
@@ -692,16 +669,21 @@ router.post('/bookings', authenticateToken, async (req, res) => {
 
         if (accessories && accessories.length > 0) {
             for (const acc of accessories) {
-                const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
+                const [[accessoryData]] = await connection.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
                 if (accessoryData) {
-                    await db.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking) VALUES (?, ?, ?, ?)', [bookingId, acc.accessory_id, acc.quantity, accessoryData.price]);
+                    await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking) VALUES (?, ?, ?, ?)', [bookingId, acc.accessory_id, acc.quantity, accessoryData.price]);
                 }
             }
         }
 
+        await connection.commit();
         res.json({ success: true, bookingId: bookingId });
+
     } catch (err) {
+        if (connection) await connection.rollback();
         res.status(500).json({ error: err.message });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
