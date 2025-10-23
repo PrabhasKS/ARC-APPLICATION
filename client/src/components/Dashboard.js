@@ -593,6 +593,7 @@ import { useActiveBookings } from '../hooks/useActiveBookings';
 import AvailabilityHeatmap from './AvailabilityHeatmap';
 import CourtActions from './CourtActions';
 import './Dashboard.css'; // Import the dashboard CSS
+import socket from '../socket';
 
 const Dashboard = ({ user }) => {
     // --- State Variables ---
@@ -662,16 +663,21 @@ const Dashboard = ({ user }) => {
     };
 
     useEffect(() => {
-        const fetchData = () => {
-            fetchAvailability();
+        fetchAvailability();
+        fetchBookingsForDate();
+        fetchHeatmapData();
+
+        const handleBookingsUpdate = () => {
             fetchBookingsForDate();
             fetchHeatmapData();
         };
-        fetchData();
-        // Add listener for window focus to refresh data
-        window.addEventListener('focus', fetchData);
+
+        socket.on('courts_updated', fetchAvailability);
+        socket.on('bookings_updated', handleBookingsUpdate);
+
         return () => {
-            window.removeEventListener('focus', fetchData);
+            socket.off('courts_updated', fetchAvailability);
+            socket.off('bookings_updated', handleBookingsUpdate);
         };
     }, [fetchAvailability, fetchBookingsForDate, fetchHeatmapData]); // Correct dependencies
 

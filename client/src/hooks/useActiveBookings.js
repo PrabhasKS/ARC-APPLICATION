@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../api';
+import socket from '../socket';
 
 const getClearedIdsFromStorage = () => {
     try {
@@ -36,9 +37,12 @@ export const useActiveBookings = () => {
 
     useEffect(() => {
         fetchAllBookings();
-        const interval = setInterval(fetchAllBookings, 60000); // Fetch every minute
 
-        return () => clearInterval(interval);
+        socket.on('bookings_updated', fetchAllBookings);
+
+        return () => {
+            socket.off('bookings_updated', fetchAllBookings);
+        };
     }, [fetchAllBookings]);
 
     const removeBooking = useCallback((bookingId) => {

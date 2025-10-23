@@ -105,6 +105,7 @@ import Dashboard from './components/Dashboard';
 import Ledger from './components/Ledger';
 import Admin from './components/Admin';
 import Analytics from './components/Analytics';
+import socket from './socket';
 import './App.css';
 import logo from './assets/logo.jpg';
 
@@ -124,6 +125,7 @@ const ProtectedRoute = ({ user, allowedRoles, children }) => {
 const AppContent = () => {
     const [user, setUser] = useState(null);
     const location = useLocation(); // Hook to get the current URL path
+
 
     useEffect(() => {
         const token = localStorage.getItem('token');

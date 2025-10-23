@@ -677,6 +677,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         }
 
         await connection.commit();
+        req.io.emit('bookings_updated');
         res.json({ success: true, bookingId: bookingId });
 
     } catch (err) {
@@ -765,6 +766,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         // 5. Execute update
         const sql = `UPDATE bookings SET ${setClause} WHERE id = ?`;
         await db.query(sql, [...values, id]);
+        req.io.emit('bookings_updated');
         res.json({ success: true, message: 'Booking updated successfully' });
 
     } catch (err) {
@@ -792,6 +794,7 @@ router.put('/bookings/:id/payment', authenticateToken, async (req, res) => {
             'UPDATE bookings SET amount_paid = ?, balance_amount = ?, payment_status = ? WHERE id = ?',
             [amount_paid, new_balance, payment_status, id]
         );
+        req.io.emit('bookings_updated');
         res.json({ success: true, message: 'Payment updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -803,6 +806,7 @@ router.put('/bookings/:id/cancel', authenticateToken, isAdmin, async (req, res) 
     const { id } = req.params;
     try {
         await db.query("UPDATE bookings SET status = 'Cancelled' WHERE id = ?", [id]);
+        req.io.emit('bookings_updated');
         res.json({ success: true, message: 'Booking cancelled successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -815,6 +819,7 @@ router.put('/courts/:id/status', authenticateToken, isAdmin, async (req, res) =>
     const { status } = req.body;
     try {
         await db.query('UPDATE courts SET status = ? WHERE id = ?', [status, id]);
+        req.io.emit('courts_updated');
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
