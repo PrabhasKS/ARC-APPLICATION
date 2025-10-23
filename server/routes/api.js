@@ -709,129 +709,84 @@ router.post('/bookings', authenticateToken, async (req, res) => {
 // Update an existing booking
 router.put('/bookings/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const {
-        customer_name,
-        customer_contact,
-        customer_email,
-        date: newDate, // Renaming for clarity
-        startTime,
-        endTime,
-        amount_paid,
-        payment_mode,
-        payment_status,
-        status,
-        discount_amount,
-        discount_reason,
-        is_rescheduled
-    } = req.body;
+    const fields = req.body;
 
     try {
-        // 1. Get existing booking details
+        // 1. Get existing booking details to get court_id and to check if time/date changed
         const [existingBookings] = await db.query('SELECT * FROM bookings WHERE id = ?', [id]);
         if (existingBookings.length === 0) {
             return res.status(404).json({ message: 'Booking not found' });
         }
         const existingBooking = existingBookings[0];
-        const { court_id, sport_id } = existingBooking;
 
-        const dateForConflictCheck = newDate ? new Date(newDate).toISOString().slice(0, 10) : existingBooking.date;
-
-        // 2. Format new time slot and check for conflicts if time or date is changing
+        // 2. Format new time slot for comparison and potential update
         const formatTo12Hour = (time) => {
+            if(!time) return '';
             let [hours, minutes] = time.split(':').map(Number);
+            if(isNaN(hours) || isNaN(minutes)) return '';
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
             hours = hours ? hours : 12;
             minutes = minutes < 10 ? '0' + minutes : minutes;
             return `${hours}:${minutes} ${ampm}`;
         };
+        
+        const newTimeSlot = (fields.startTime && fields.endTime) ? `${formatTo12Hour(fields.startTime)} - ${formatTo12Hour(fields.endTime)}` : existingBooking.time_slot;
+        const newDate = fields.date ? new Date(fields.date).toISOString().slice(0, 10) : new Date(existingBooking.date).toISOString().slice(0, 10);
 
-        const newTimeSlot = `${formatTo12Hour(startTime)} - ${formatTo12Hour(endTime)}`;
+        const hasTimeChanged = newTimeSlot !== existingBooking.time_slot;
+        const hasDateChanged = newDate !== new Date(existingBooking.date).toISOString().slice(0, 10);
 
-        if (is_rescheduled) {
+        // 3. Conflict Checking
+        if (hasTimeChanged || hasDateChanged) {
             const [conflictingBookings] = await db.query(
                 'SELECT * FROM bookings WHERE court_id = ? AND date = ? AND id != ? AND status != ?',
-                [court_id, dateForConflictCheck, id, 'Cancelled']
+                [existingBooking.court_id, newDate, id, 'Cancelled']
             );
 
             const overlappingBookings = conflictingBookings.filter(booking => {
                 const [existingStart, existingEnd] = booking.time_slot.split(' - ');
-                return checkOverlap(formatTo12Hour(startTime), formatTo12Hour(endTime), existingStart.trim(), existingEnd.trim());
+                return checkOverlap(newTimeSlot.split(' - ')[0], newTimeSlot.split(' - ')[1], existingStart.trim(), existingEnd.trim());
             });
 
             if (overlappingBookings.length > 0) {
-                const [sports] = await db.query('SELECT capacity FROM sports WHERE id = ?', [sport_id]);
-                const capacity = sports[0].capacity;
-
-                if (capacity > 1) {
-                    const totalSlotsBooked = overlappingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
-                    const availableSlots = capacity - totalSlotsBooked;
-                    if (parseInt(req.body.slots_booked) > availableSlots) {
-                        return res.status(409).json({ message: `Not enough slots available. Only ${availableSlots} slots left.` });
-                    }
-                } else {
-                    return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
-                }
+                return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
             }
         }
 
-        // 3. Recalculate price
-        const [sports] = await db.query('SELECT price FROM sports WHERE id = ?', [sport_id]);
-        const hourly_price = sports[0].price;
-
-        const parseTime = (timeStr) => {
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes;
-        };
-        const durationInMinutes = parseTime(endTime) - parseTime(startTime);
+        // 4. Prepare fields for dynamic update
+        delete fields.id;
+        delete fields.court_id; // Should not be changed
+        delete fields.sport_id; // Should not be changed
+        delete fields.created_by_user_id; // Should not be changed
+        delete fields.accessories; 
+        delete fields.court_name;
+        delete fields.sport_name;
+        delete fields.original_price;
+        delete fields.total_amount;
+        delete fields.created_by_user;
         
-        let total_price = 0;
-        if (durationInMinutes > 0) {
-            const num_of_hours = Math.floor(durationInMinutes / 60);
-            const remaining_minutes = durationInMinutes % 60;
-            total_price = num_of_hours * hourly_price;
-            if (remaining_minutes >= 30) {
-                total_price += hourly_price / 2;
-            }
+        if (fields.startTime && fields.endTime) {
+            fields.time_slot = newTimeSlot;
+        }
+        delete fields.startTime;
+        delete fields.endTime;
+
+        const fieldEntries = Object.entries(fields).filter(([, value]) => value !== undefined);
+        if (fieldEntries.length === 0) {
+            return res.status(400).json({ message: 'No fields to update' });
         }
 
-        if (existingBooking.slots_booked > 1) {
-            total_price *= existingBooking.slots_booked;
-        }
+        const setClause = fieldEntries.map(([key]) => `${key} = ?`).join(', ');
+        const values = fieldEntries.map(([, value]) => value);
 
-        total_price -= discount_amount || 0;
-
-        const balance_amount = total_price - amount_paid;
-
-        // 4. Update the booking
-        const sql = `
-            UPDATE bookings 
-            SET customer_name = ?, customer_contact = ?, customer_email = ?, date = ?, time_slot = ?, total_price = ?, amount_paid = ?, balance_amount = ?, payment_mode = ?, payment_status = ?, status = ?, is_rescheduled = ?, discount_amount = ?, discount_reason = ?
-            WHERE id = ?
-        `;
-        const values = [
-            customer_name,
-            customer_contact,
-            customer_email,
-            dateForConflictCheck,
-            newTimeSlot,
-            total_price,
-            amount_paid,
-            balance_amount,
-            payment_mode,
-            payment_status,
-            status,
-            is_rescheduled,
-            discount_amount,
-            discount_reason,
-            id
-        ];
-
-        await db.query(sql, values);
-
+        // 5. Execute update
+        const sql = `UPDATE bookings SET ${setClause} WHERE id = ?`;
+        await db.query(sql, [...values, id]);
         res.json({ success: true, message: 'Booking updated successfully' });
 
     } catch (err) {
+        console.error("Error updating booking:", err);
         res.status(500).json({ error: err.message });
     }
 });

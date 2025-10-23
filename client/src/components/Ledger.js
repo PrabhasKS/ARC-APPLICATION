@@ -234,7 +234,6 @@ const Ledger = ({ user }) => {
         setColumnVisibility(prev => ({ ...prev, [columnName]: !prev[columnName] }));
     };
 
-    // ✅ NEW: Helper function to check if a booking's time has passed
     const isBookingExpired = (booking) => {
         try {
             if (!booking.date || !booking.time_slot) return false; 
@@ -270,24 +269,6 @@ const Ledger = ({ user }) => {
     const filteredAndSortedBookings = useMemo(() => {
         return bookings
             .filter(booking => {
-                if (!booking || !booking.status) return false;
-                const status = booking.status.toLowerCase();
-                
-                // ✅ UPDATED: Filtering logic now checks if the booking time has expired
-                const isExpired = isBookingExpired(booking);
-
-                if (activeTab === 'active') {
-                    return !isExpired && status !== 'cancelled'; // Show future, non-cancelled bookings
-                }
-                if (activeTab === 'closed') {
-                    return isExpired && status !== 'cancelled'; // Show past, non-cancelled bookings
-                }
-                if (activeTab === 'cancelled') {
-                    return status === 'cancelled';
-                }
-                return true;
-            })
-            .filter(booking => {
                 const search = searchTerm.toLowerCase();
                 if (!search) return true;
                 return (
@@ -296,13 +277,45 @@ const Ledger = ({ user }) => {
                     (booking.id || '').toString().includes(search)
                 );
             })
+            .filter(booking => {
+                if (!booking || !booking.status) return false;
+
+                const isExpired = isBookingExpired(booking);
+                const isCompleted = (booking.payment_status || '').toLowerCase() === 'completed';
+                const isCancelled = (booking.status || '').toLowerCase() === 'cancelled';
+
+                if (activeTab === 'active') {
+                    return !isCancelled && !(isExpired && isCompleted);
+                }
+                if (activeTab === 'closed') {
+                    return !isCancelled && isExpired && isCompleted;
+                }
+                if (activeTab === 'cancelled') {
+                    return isCancelled;
+                }
+                return true;
+            })
             .sort((a, b) => (sortOrder === 'desc' ? b.id - a.id : a.id - b.id));
     }, [bookings, searchTerm, sortOrder, activeTab]);
 
     const handleEditClick = (booking) => { setSelectedBooking(booking); setIsEditModalOpen(true); setError(null); };
     const handleReceiptClick = (booking) => { setSelectedBooking(booking); setIsReceiptModalOpen(true); };
     const handleCloseModal = () => { setIsEditModalOpen(false); setIsReceiptModalOpen(false); setSelectedBooking(null); setError(null); };
-    const handleSaveBooking = async (bookingId, bookingData) => { /* ... existing logic ... */ };
+    const handleSaveBooking = async (bookingId, bookingData) => {
+        try {
+            setError(null);
+            await api.put(`/bookings/${bookingId}`, bookingData);
+            handleCloseModal();
+            fetchBookings(); // Refresh data
+        } catch (saveError) {
+            if (saveError.response && saveError.response.status === 409) {
+                setError(saveError.response.data.message);
+            } else {
+                console.error("Error updating booking:", saveError);
+                setError("An unexpected error occurred while saving.");
+            }
+        }
+    };
     
     const handleCancelClick = async (bookingId) => {
         if (window.confirm('Are you sure you want to cancel this booking?')) {
