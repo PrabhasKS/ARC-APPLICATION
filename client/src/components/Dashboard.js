@@ -593,7 +593,6 @@ import { useActiveBookings } from '../hooks/useActiveBookings';
 import AvailabilityHeatmap from './AvailabilityHeatmap';
 import CourtActions from './CourtActions';
 import './Dashboard.css'; // Import the dashboard CSS
-import socket from '../socket';
 
 const Dashboard = ({ user }) => {
     // --- State Variables ---
@@ -663,23 +662,28 @@ const Dashboard = ({ user }) => {
     };
 
     useEffect(() => {
-        fetchAvailability();
-        fetchBookingsForDate();
-        fetchHeatmapData();
-
-        const handleBookingsUpdate = () => {
+        const fetchData = () => {
+            fetchAvailability();
             fetchBookingsForDate();
             fetchHeatmapData();
         };
+        fetchData();
 
-        socket.on('courts_updated', fetchAvailability);
-        socket.on('bookings_updated', handleBookingsUpdate);
-
-        return () => {
-            socket.off('courts_updated', fetchAvailability);
-            socket.off('bookings_updated', handleBookingsUpdate);
+        const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/events`);
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.message === 'bookings_updated') {
+                fetchBookingsForDate();
+                fetchHeatmapData();
+            }
         };
-    }, [fetchAvailability, fetchBookingsForDate, fetchHeatmapData]); // Correct dependencies
+
+        window.addEventListener('focus', fetchData);
+        return () => {
+            eventSource.close();
+            window.removeEventListener('focus', fetchData);
+        };
+  }, [fetchAvailability, fetchBookingsForDate, fetchHeatmapData]);  // Correct dependencies
 
     const handleBookingSuccess = () => {
         fetchAvailability();

@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../api';
-import socket from '../socket';
 
 const getClearedIdsFromStorage = () => {
     try {
@@ -38,10 +37,16 @@ export const useActiveBookings = () => {
     useEffect(() => {
         fetchAllBookings();
 
-        socket.on('bookings_updated', fetchAllBookings);
+        const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/events`);
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.message === 'bookings_updated') {
+                fetchAllBookings();
+            }
+        };
 
         return () => {
-            socket.off('bookings_updated', fetchAllBookings);
+            eventSource.close();
         };
     }, [fetchAllBookings]);
 
