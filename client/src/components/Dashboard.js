@@ -806,33 +806,39 @@ const Dashboard = ({ user }) => {
                         </div>
                     </div>
                     <h4 style={{ marginTop: '20px' }}>Court Status</h4>
-                    <table className="dashboard-table">
-                        <thead><tr><th>Court</th><th>Sport</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody>
-                            {availability.map(court => (
-                                <tr key={court.id}>
-                                    <td>{court.name}</td>
-                                    <td>{court.sport_name}</td>
-                                    <td style={{ color: court.is_available ? 'green' : 'red', fontWeight: '500' }}>
-                                        {['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'].includes(court.status) ? court.status : court.is_available ? (court.capacity > 1 ? `${court.available_slots} / ${court.capacity} available` : 'Available') : 'Engaged'}
-                                    </td>
-                                    <td><CourtActions court={court} onStatusChange={handleCourtStatusChange} /></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <div className="court-status-table-container">
+                        <table className="dashboard-table">
+                            <thead><tr><th>Court</th><th>Sport</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                {availability.map(court => (
+                                    <tr key={court.id}>
+                                        <td>{court.name}</td>
+                                        <td>{court.sport_name}</td>
+                                        <td style={{ color: court.is_available ? 'green' : 'red', fontWeight: '500' }}>
+                                            {['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'].includes(court.status) ? court.status : court.is_available ? (court.capacity > 1 ? `${court.available_slots} / ${court.capacity} available` : 'Available') : 'Engaged'}
+                                        </td>
+                                        <td><CourtActions court={court} onStatusChange={handleCourtStatusChange} /></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 {/* Booking Form Area */}
                 <div className="dashboard-card booking-form-card">
                     <h4>Book a Slot</h4>
-                    <BookingForm courts={availability.filter(c => c.is_available)} selectedDate={selectedDate} startTime={startTime} endTime={endTime} onBookingSuccess={handleBookingSuccess} user={user} />
+                    <div className="booking-form-container">
+                        <BookingForm courts={availability.filter(c => c.is_available)} selectedDate={selectedDate} startTime={startTime} endTime={endTime} onBookingSuccess={handleBookingSuccess} user={user} />
+                    </div>
                 </div>
 
                 {/* Active Bookings Area */}
                 <div className="dashboard-card active-bookings-card">
                     <h4>Active Bookings Now</h4>
-                    <ActiveBookings bookings={activeBookings} onRemoveBooking={handleRemoveEndedBooking} />
+                    <div className="active-bookings-wrapper">
+                        <ActiveBookings bookings={activeBookings} onRemoveBooking={handleRemoveEndedBooking} />
+                    </div>
                 </div>
 
                 {/* Daily Bookings Area */}

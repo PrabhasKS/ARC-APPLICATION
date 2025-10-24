@@ -24,6 +24,7 @@
     display: flex;
     flex-direction: column;
     margin-bottom: 24px; /* Add margin between stacked cards */
+    max-height: 500px;
 }
 
 .dashboard-card h3, .dashboard-card h4 {
@@ -41,7 +42,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* Three equal columns */
     gap: 24px;
-    align-items: flex-start; /* Aligns cards to the top */
+    align-items: stretch; /* Aligns cards to the top */
     margin-top: 24px; /* Space below heatmap */
 }
 
@@ -168,6 +169,23 @@
     }
 }
 
+/* ... (previous styles) ... */
+
+.court-status-table-container {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.booking-form-container {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.active-bookings-wrapper {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
 .dashboard-card h3, .dashboard-card h4 {
     font-size: 20px;
     font-weight: 600;
@@ -177,6 +195,7 @@
     border-bottom: 1px solid #e9ecef; /* Remove this */
     padding-bottom: 12px;           /* Remove this */
 }
+/* ... (remaining styles) ... */
 .dashboard-card h3, .dashboard-card h4 {
     font-size: 20px;
     font-weight: 600;
