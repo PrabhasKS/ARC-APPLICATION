@@ -50,6 +50,7 @@
 
 .heatmap-card {
     grid-column: 1 / -1; /* Heatmap spans all columns */
+    max-height: none;
 }
 
 .daily-bookings-card {
