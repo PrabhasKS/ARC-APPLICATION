@@ -531,7 +531,7 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
-                                {visibility.accessories && <td>{(Array.isArray(booking.accessories) && booking.accessories.length > 0) ? 'Yes' : 'No'}</td>}
+                                {visibility.accessories && <td>{booking.accessories && booking.accessories.length > 0 ? booking.accessories.map(acc => `${acc.quantity} x ${acc.name}`).join(', ') : 'No'}</td>}
 
 
 

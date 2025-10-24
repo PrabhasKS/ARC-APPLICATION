@@ -216,7 +216,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                             <select id="accessory-select-input" defaultValue="">
                                  <option value="" disabled>Choose...</option>
                                  {accessories.map(acc => (
-                                     <option key={acc.id} value={acc.id} disabled={selectedAccessories.some(sa => sa.id === acc.id)}>
+                                     <option key={acc.id} value={acc.id}>
                                          {acc.name} - ₹{acc.price}
                                      </option>
                                  ))}
