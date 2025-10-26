@@ -183,216 +183,448 @@
 // export default Ledger;
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
 import api from '../api';
+
 import BookingList from './BookingList';
+
 import EditBookingModal from './EditBookingModal';
+
 import ReceiptModal from './ReceiptModal';
 
+import './Ledger.css';
+
+
+
 const Ledger = ({ user }) => {
+
     const [bookings, setBookings] = useState([]);
+
+    const [filters, setFilters] = useState({ date: '', sport: '', search: '', startTime: '', endTime: '' });
+
     const [sortOrder, setSortOrder] = useState('desc');
+
     const [activeTab, setActiveTab] = useState('active');
-    const [searchTerm, setSearchTerm] = useState('');
+
     const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
+
+    const [isTimeFilterDropdownOpen, setIsTimeFilterDropdownOpen] = useState(false);
+
     
+
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+
     const [selectedBooking, setSelectedBooking] = useState(null);
+
     const [error, setError] = useState(null);
 
+
+
     const [columnVisibility, setColumnVisibility] = useState({
+
         court: true,
+
         discount: true,
+
         discountReason: true,
+
         accessories: true,
+
         paymentId: true,
+
     });
+
     
+
     const toggleableColumns = {
+
         court: 'Court',
+
         discount: 'Discount',
+
         discountReason: 'Discount Reason',
+
         accessories: 'Accessories',
+
         paymentId: 'Payment ID',
+
     };
+
+
 
     const fetchBookings = useCallback(async () => {
+
         try {
-            const res = await api.get('/bookings/all'); 
+
+            const res = await api.get('/bookings/all', { params: filters }); 
+
             setBookings(Array.isArray(res.data) ? res.data : []);
+
         } catch (error) {
+
             console.error("Error fetching bookings:", error);
+
             setBookings([]);
+
         }
-    }, []);
+
+    }, [filters]);
+
+
 
     useEffect(() => {
+
         fetchBookings();
+
     }, [fetchBookings]);
 
+
+
+    const handleFilterChange = (e) => {
+
+        setFilters({ ...filters, [e.target.name]: e.target.value });
+
+    }
+
+
+
     const handleColumnToggle = (columnName) => {
+
         setColumnVisibility(prev => ({ ...prev, [columnName]: !prev[columnName] }));
+
     };
+
+
 
     const isBookingExpired = (booking) => {
+
         try {
+
             if (!booking.date || !booking.time_slot) return false; 
+
     
+
             const now = new Date();
+
             const timeSlotParts = booking.time_slot.split(' - ');
+
             if (timeSlotParts.length < 2) return false;
+
     
+
             const endTimeStr = timeSlotParts[1].trim();
+
             const timeParts = endTimeStr.split(' ');
+
             if (timeParts.length < 2) return false;
+
     
+
             const [time, modifier] = timeParts;
+
             const [hoursStr, minutesStr] = time.split(':');
+
             let hours = parseInt(hoursStr, 10);
+
             const minutes = parseInt(minutesStr, 10);
+
     
+
             if (isNaN(hours) || isNaN(minutes)) return false;
+
     
+
             if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+
             if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
     
+
             const bookingEndDateTime = new Date(booking.date);
+
             bookingEndDateTime.setHours(hours, minutes, 0, 0);
+
             
+
             return now > bookingEndDateTime;
+
         } catch (error) {
+
             console.error("Error parsing booking time:", error);
+
             return false;
+
         }
+
     };
+
+
 
     const filteredAndSortedBookings = useMemo(() => {
+
         return bookings
+
             .filter(booking => {
-                const search = searchTerm.toLowerCase();
-                if (!search) return true;
-                return (
-                    (booking.customer_name || '').toLowerCase().includes(search) ||
-                    (booking.sport_name || '').toLowerCase().includes(search) ||
-                    (booking.id || '').toString().includes(search)
-                );
-            })
-            .filter(booking => {
+
                 if (!booking || !booking.status) return false;
 
+
+
                 const isExpired = isBookingExpired(booking);
+
                 const isCompleted = (booking.payment_status || '').toLowerCase() === 'completed';
+
                 const isCancelled = (booking.status || '').toLowerCase() === 'cancelled';
 
+
+
                 if (activeTab === 'active') {
+
                     return !isCancelled && !(isExpired && isCompleted);
+
                 }
+
                 if (activeTab === 'closed') {
+
                     return !isCancelled && isExpired && isCompleted;
+
                 }
+
                 if (activeTab === 'cancelled') {
+
                     return isCancelled;
+
                 }
+
                 return true;
+
             })
+
             .sort((a, b) => (sortOrder === 'desc' ? b.id - a.id : a.id - b.id));
-    }, [bookings, searchTerm, sortOrder, activeTab]);
+
+    }, [bookings, sortOrder, activeTab]);
+
+
 
     const handleEditClick = (booking) => { setSelectedBooking(booking); setIsEditModalOpen(true); setError(null); };
+
     const handleReceiptClick = (booking) => { setSelectedBooking(booking); setIsReceiptModalOpen(true); };
+
     const handleCloseModal = () => { setIsEditModalOpen(false); setIsReceiptModalOpen(false); setSelectedBooking(null); setError(null); };
+
     const handleSaveBooking = async (bookingId, bookingData) => {
+
         try {
+
             setError(null);
+
             await api.put(`/bookings/${bookingId}`, bookingData);
+
             handleCloseModal();
+
             fetchBookings(); // Refresh data
+
         } catch (saveError) {
+
             if (saveError.response && saveError.response.status === 409) {
+
                 setError(saveError.response.data.message);
+
             } else {
+
                 console.error("Error updating booking:", saveError);
+
                 setError("An unexpected error occurred while saving.");
+
             }
+
         }
+
     };
+
     
+
     const handleCancelClick = async (bookingId) => {
+
         if (window.confirm('Are you sure you want to cancel this booking?')) {
+
             try {
+
                 await api.put(`/bookings/${bookingId}/cancel`);
+
                 fetchBookings(); 
+
                 fetchBookings(); // Refresh data
+
             } catch (error) {
+
                 console.error("Error cancelling booking:", error);
+
             }
+
         }
+
     };
+
+
 
     return (
+
         <div className="ledger-container">
+
             <header className="page-header">
+
                 <h1>Bookings History</h1>
+
             </header>
 
+
+
             <div className="controls-bar">
+
                 <div className="button-group">
+
                     <button className="filter-button" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
+
                         Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+
                     </button>
+
                     <div className="column-toggle">
+
                         <button className="column-toggle-button" onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}>
+
                             Hide Columns
+
                         </button>
+
                         {isColumnDropdownOpen && (
+
                             <div className="column-toggle-dropdown">
+
                                 {Object.entries(toggleableColumns).map(([key, label]) => (
+
                                     <label key={key}>
+
                                         <input
+
                                             type="checkbox"
+
                                             checked={columnVisibility[key]}
+
                                             onChange={() => handleColumnToggle(key)}
+
                                         />
+
                                         {label}
+
                                     </label>
+
                                 ))}
+
                             </div>
+
                         )}
+
                     </div>
+
+                    <input type="date" name="date" value={filters.date} onChange={handleFilterChange} />
+
+                    <div className="column-toggle">
+
+                        <button className="column-toggle-button" onClick={() => setIsTimeFilterDropdownOpen(!isTimeFilterDropdownOpen)}>
+
+                            Filter by Time
+
+                        </button>
+
+                        {isTimeFilterDropdownOpen && (
+
+                            <div className="column-toggle-dropdown">
+
+                                <input type="time" name="startTime" value={filters.startTime} onChange={handleFilterChange} />
+
+                                <input type="time" name="endTime" value={filters.endTime} onChange={handleFilterChange} />
+
+                            </div>
+
+                        )}
+
+                    </div>
+
                 </div>
+
                 <div className="primary-search-bar">
+
                     <input
+
                         type="text"
+
+                        name="search"
+
                         placeholder="Search by name, sport, or ID..."
+
                         className="filter-input"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+
+                        value={filters.search}
+
+                        onChange={handleFilterChange}
+
                     />
+
                 </div>
+
             </div>
+
             
+
             <div className="tabs-container">
+
                 <button className={`tab-button ${activeTab === 'active' ? 'active' : ''}`} onClick={() => setActiveTab('active')}>Active Bookings</button>
+
                 <button className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`} onClick={() => setActiveTab('closed')}>Closed Bookings</button>
+
                 <button className={`tab-button ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')}>Cancelled Bookings</button>
+
             </div>
+
+
 
             <div className="table-wrapper">
+
                 <BookingList
+
                     bookings={filteredAndSortedBookings}
+
                     user={user}
+
                     onEdit={handleEditClick}
+
                     onCancel={handleCancelClick}
+
                     onReceipt={handleReceiptClick}
+
                     columnVisibility={columnVisibility}
+
                 />
+
             </div>
 
+
+
             {isEditModalOpen && <EditBookingModal booking={selectedBooking} onSave={handleSaveBooking} onClose={handleCloseModal} error={error} />}
+
             {isReceiptModalOpen && <ReceiptModal booking={selectedBooking} onClose={handleCloseModal} />}
+
         </div>
+
     );
+
 };
+
+
 
 export default Ledger;
 

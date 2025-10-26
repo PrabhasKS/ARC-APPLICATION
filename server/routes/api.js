@@ -244,7 +244,7 @@ router.get('/bookings', authenticateToken, async (req, res) => {
 // Get all bookings (ledger)
 router.get('/bookings/all', authenticateToken, async (req, res) => {
     try {
-        let { date, sport, customer, startTime, endTime } = req.query;
+        let { date, sport, customer, startTime, endTime, search } = req.query;
         let queryParams = [];
         let query = `
             SELECT 
@@ -287,6 +287,10 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
         if (endTime) {
             whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', -1), '%h:%i %p') <= STR_TO_DATE(?, '%h:%i %p')");
             queryParams.push(endTime);
+        }
+        if (search) {
+            whereClauses.push('(b.id LIKE ? OR b.customer_name LIKE ? OR s.name LIKE ?)');
+            queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
         if (whereClauses.length > 0) {
