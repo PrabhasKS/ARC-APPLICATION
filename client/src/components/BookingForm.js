@@ -16,7 +16,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [totalPrice, setTotalPrice] = useState(0);
     const [balance, setBalance] = useState(0);
     const [message, setMessage] = useState('');
-    const [slotsBooked, setSlotsBooked] = useState(1);
+    const [slotsBooked, setSlotsBooked] = useState('');
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [lastBooking, setLastBooking] = useState(null);
     const [discountAmount, setDiscountAmount] = useState('');
@@ -142,8 +142,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             newErrors.courtId = 'Please select a court.';
         }
 
-        if (slotsBooked <= 0) {
-            newErrors.slotsBooked = 'Number of slots must be greater than 0.';
+        if (slotsBooked === '' || slotsBooked === null || isNaN(slotsBooked) || slotsBooked <= 0) {
+            newErrors.slotsBooked = 'Please enter a valid number of slots.';
         }
 
         setErrors(newErrors);
@@ -190,7 +190,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             setAmountPaid(''); setDiscountAmount(''); setDiscountReason('');
             setShowDiscount(false); setShowAccessories(false); setSelectedAccessories([]);
             setPaymentMethod('Cash'); setOnlinePaymentType('UPI'); setPaymentId('');
-            setSlotsBooked(1);
+            setSlotsBooked('');
             setErrors({});
 
             onBookingSuccess();
@@ -225,8 +225,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         <input
                             type="number"
                             value={slotsBooked}
-                            onChange={(e) => setSlotsBooked(Math.max(1, parseInt(e.target.value) || 1))}
+                            onChange={(e) => setSlotsBooked(e.target.value)}
                             min="1"
+                            placeholder="Enter number of people"
                             required
                         />
                         {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
