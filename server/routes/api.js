@@ -765,6 +765,11 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
                 }
             }
             fields.time_slot = newTimeSlot;
+            fields.date = newDate;
+        } else {
+            // If not rescheduling, do not update date and time related fields
+            delete fields.date;
+            delete fields.time_slot;
         }
 
         // 4. Prepare fields for dynamic update
@@ -778,10 +783,6 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         delete fields.original_price;
         delete fields.total_amount;
         delete fields.created_by_user;
-        
-        if (fields.startTime && fields.endTime) {
-            fields.time_slot = (fields.startTime && fields.endTime) ? `${formatTo12Hour(fields.startTime)} - ${formatTo12Hour(fields.endTime)}` : existingBooking.time_slot;
-        }
         delete fields.startTime;
         delete fields.endTime;
 
