@@ -224,15 +224,17 @@ const Ledger = ({ user }) => {
 
     const [columnVisibility, setColumnVisibility] = useState({
 
-        court: true,
+        court: false,
 
-        discount: true,
+        discount: false,
 
-        discountReason: true,
+        discountReason: false,
 
-        accessories: true,
+        accessories: false,
 
-        paymentId: true,
+        paymentId: false,
+
+        bookedBy: false,
 
     });
 
@@ -249,6 +251,8 @@ const Ledger = ({ user }) => {
         accessories: 'Accessories',
 
         paymentId: 'Payment ID',
+
+        bookedBy: 'Booked By',
 
     };
 
@@ -496,7 +500,7 @@ const Ledger = ({ user }) => {
 
                         <button className="column-toggle-button" onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}>
 
-                            Hide Columns
+                            Show Columns
 
                         </button>
 
@@ -530,7 +534,14 @@ const Ledger = ({ user }) => {
 
                     </div>
 
-                    <input type="date" name="date" value={filters.date} onChange={handleFilterChange} />
+                  {/* <input type="date" name="date" value={filters.date} onChange={handleFilterChange} /> */}
+                  <input
+    type="date"
+    name="date"
+    value={filters.date}
+    onChange={handleFilterChange}
+    className="filter-input" // Make sure this class is present
+/>
 
                     <div className="column-toggle">
 

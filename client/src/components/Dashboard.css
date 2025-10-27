@@ -56,6 +56,8 @@
 .daily-bookings-card {
     grid-column: 1 / -1; /* Daily bookings span all columns below the grid */
     margin-top: 24px; /* Add space above the daily bookings */
+    overflow: visible;
+    z-index: 5;
 }
 
 
@@ -206,3 +208,32 @@
     /* border-bottom and padding-bottom removed */
 }
 
+/* In src/app.css or Dashboard.css */
+
+.table-wrapper { /* Or your specific wrapper class */
+    /* ... other styles ... */
+    overflow-x: auto;
+    overflow-y: visible; /* Make sure this is visible */
+    position: relative;
+    z-index: 1;
+}
+
+.actions-cell {
+    position: relative;
+    overflow: visible !important; /* Force overflow */
+    /* ... other styles ... */
+}
+
+.actions-dropdown {
+    position: absolute;
+    right: 0;
+    z-index: 50 !important; /* High z-index */
+    top: calc(100% + 5px); /* Default down */
+    bottom: auto;
+    /* ... other styles ... */
+}
+
+.actions-dropdown.up {
+    top: auto;
+    bottom: calc(100% + 5px); /* Position above */
+}

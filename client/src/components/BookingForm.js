@@ -351,6 +351,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                              <select value={onlinePaymentType} onChange={handleAmountChange(setOnlinePaymentType)}>
                                 <option value="UPI">UPI</option>
                                 <option value="Card">Card</option>
+                                <option value="Net Banking">Net Banking</option>
                             </select>
                         </div>
                          <div className="form-group">
