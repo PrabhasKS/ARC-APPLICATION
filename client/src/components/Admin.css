@@ -176,3 +176,51 @@
     cursor: pointer;
     font-weight: 500;
 }
+/* --- Password Field (matches Login page style) --- */
+.password-group {
+  position: relative;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 15px;
+  padding: 12px 40px 12px 16px; /* room for icon */
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.password-input-wrapper input:focus {
+  outline: none;
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+  background-color: #fff;
+}
+
+/* --- Eye Button Centered --- */
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.toggle-password-btn:hover {
+  color: #343a40;
+}
