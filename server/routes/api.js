@@ -189,19 +189,18 @@ router.get('/courts/availability', authenticateToken, async (req, res) => {
             const courtBookings = bookings.filter(b => b.court_id === court.id);
 
             if (court.capacity > 1) {
-                const isOverlapping = courtBookings.some(booking => {
+                const overlappingBookings = courtBookings.filter(booking => {
                     const [existingStart, existingEnd] = booking.time_slot.split(' - ');
                     return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
                 });
 
-                if(isOverlapping) {
-                    const slotsBooked = courtBookings.reduce((total, booking) => total + booking.slots_booked, 0);
+                if (overlappingBookings.length > 0) {
+                    const slotsBooked = overlappingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
                     const availableSlots = court.capacity - slotsBooked;
                     return { ...court, is_available: availableSlots > 0, available_slots: availableSlots };
                 } else {
                     return { ...court, is_available: true, available_slots: court.capacity };
                 }
-
             } else {
                 const isOverlapping = courtBookings.some(booking => {
                     const [existingStart, existingEnd] = booking.time_slot.split(' - ');
@@ -742,27 +741,30 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             return `${hours}:${minutes} ${ampm}`;
         };
         
-        const newTimeSlot = (fields.startTime && fields.endTime) ? `${formatTo12Hour(fields.startTime)} - ${formatTo12Hour(fields.endTime)}` : existingBooking.time_slot;
-        const newDate = fields.date ? new Date(fields.date).toISOString().slice(0, 10) : new Date(existingBooking.date).toISOString().slice(0, 10);
+        if (fields.is_rescheduled) {
+            const newTimeSlot = (fields.startTime && fields.endTime) ? `${formatTo12Hour(fields.startTime)} - ${formatTo12Hour(fields.endTime)}` : existingBooking.time_slot;
+            const newDate = fields.date ? new Date(fields.date).toISOString().slice(0, 10) : new Date(existingBooking.date).toISOString().slice(0, 10);
 
-        const hasTimeChanged = newTimeSlot !== existingBooking.time_slot;
-        const hasDateChanged = newDate !== new Date(existingBooking.date).toISOString().slice(0, 10);
+            const hasTimeChanged = newTimeSlot !== existingBooking.time_slot;
+            const hasDateChanged = newDate !== new Date(existingBooking.date).toISOString().slice(0, 10);
 
-        // 3. Conflict Checking
-        if (hasTimeChanged || hasDateChanged) {
-            const [conflictingBookings] = await db.query(
-                'SELECT * FROM bookings WHERE court_id = ? AND date = ? AND id != ? AND status != ?',
-                [existingBooking.court_id, newDate, id, 'Cancelled']
-            );
+            // 3. Conflict Checking
+            if (hasTimeChanged || hasDateChanged) {
+                const [conflictingBookings] = await db.query(
+                    'SELECT * FROM bookings WHERE court_id = ? AND date = ? AND id != ? AND status != ?',
+                    [existingBooking.court_id, newDate, id, 'Cancelled']
+                );
 
-            const overlappingBookings = conflictingBookings.filter(booking => {
-                const [existingStart, existingEnd] = booking.time_slot.split(' - ');
-                return checkOverlap(newTimeSlot.split(' - ')[0], newTimeSlot.split(' - ')[1], existingStart.trim(), existingEnd.trim());
-            });
+                const overlappingBookings = conflictingBookings.filter(booking => {
+                    const [existingStart, existingEnd] = booking.time_slot.split(' - ');
+                    return checkOverlap(newTimeSlot.split(' - ')[0], newTimeSlot.split(' - ')[1], existingStart.trim(), existingEnd.trim());
+                });
 
-            if (overlappingBookings.length > 0) {
-                return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
+                if (overlappingBookings.length > 0) {
+                    return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
+                }
             }
+            fields.time_slot = newTimeSlot;
         }
 
         // 4. Prepare fields for dynamic update
@@ -778,7 +780,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         delete fields.created_by_user;
         
         if (fields.startTime && fields.endTime) {
-            fields.time_slot = newTimeSlot;
+            fields.time_slot = (fields.startTime && fields.endTime) ? `${formatTo12Hour(fields.startTime)} - ${formatTo12Hour(fields.endTime)}` : existingBooking.time_slot;
         }
         delete fields.startTime;
         delete fields.endTime;
