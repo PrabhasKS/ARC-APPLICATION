@@ -25,6 +25,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [accessories, setAccessories] = useState([]);
     const [selectedAccessories, setSelectedAccessories] = useState([]);
     const [showAccessories, setShowAccessories] = useState(false);
+    const [errors, setErrors] = useState({});
 
     // --- Effects ---
     useEffect(() => {
@@ -110,11 +111,55 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
         setSelectedAccessories(selectedAccessories.filter(a => a.id !== accessoryId));
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!customerName.trim()) {
+            newErrors.customerName = 'Customer name is required.';
+        }
+
+        if (!customerContact.trim()) {
+            newErrors.customerContact = 'Phone number is required.';
+        } else if (!/^\d{10}$/.test(customerContact)) {
+            newErrors.customerContact = 'Phone number must be exactly 10 digits.';
+        }
+
+        if (amountPaid === '' || amountPaid === null) {
+            newErrors.amountPaid = 'Amount paid is required.';
+        } else if (isNaN(amountPaid) || amountPaid < 0) {
+            newErrors.amountPaid = 'Please enter a valid amount.';
+        }
+
+        if ((discountAmount > 0) && !discountReason.trim()) {
+            newErrors.discountReason = 'Discount reason is required when a discount is applied.';
+        }
+
+        if (customerEmail && !/\S+@\S+\.\S+/.test(customerEmail)) {
+            newErrors.customerEmail = 'Please enter a valid email address.';
+        }
+
+        if (!courtId) {
+            newErrors.courtId = 'Please select a court.';
+        }
+
+        if (slotsBooked <= 0) {
+            newErrors.slotsBooked = 'Number of slots must be greater than 0.';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!validateForm()) {
+            setMessage('Please fix the errors before submitting.');
+            return;
+        }
+
         setMessage('');
-        if (!courtId) { setMessage('Please select a court.'); return; }
 
         const finalPaymentMethod = paymentMethod === 'Online' ? onlinePaymentType : paymentMethod;
         const finalPaymentId = paymentMethod === 'Online' ? paymentId : null;
@@ -146,6 +191,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             setShowDiscount(false); setShowAccessories(false); setSelectedAccessories([]);
             setPaymentMethod('Cash'); setOnlinePaymentType('UPI'); setPaymentId('');
             setSlotsBooked(1);
+            setErrors({});
 
             onBookingSuccess();
         } catch (err) {
@@ -170,6 +216,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                             <option key={court.id} value={court.id}>{court.name} ({court.sport_name})</option>
                         ))}
                     </select>
+                    {errors.courtId && <p style={{ color: 'red', fontSize: '12px' }}>{errors.courtId}</p>}
                 </div>
 
                 {selectedCourtDetails?.sport_name?.toLowerCase() === 'swimming' && (
@@ -185,22 +232,26 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
                              <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>Exceeds capacity ({selectedCourtDetails.available_slots} available)</p>
                         )}
+                        {errors.slotsBooked && <p style={{ color: 'red', fontSize: '12px' }}>{errors.slotsBooked}</p>}
                     </div>
                 )}
 
                 <div className="form-group">
                     <label>Customer Name</label>
                     <input type="text" value={customerName} onChange={handleAmountChange(setCustomerName)} required />
+                    {errors.customerName && <p style={{ color: 'red', fontSize: '12px' }}>{errors.customerName}</p>}
                 </div>
 
                 <div className="form-group">
                     <label>Customer Contact</label>
                     <input type="text" value={customerContact} onChange={handleAmountChange(setCustomerContact)} required />
+                    {errors.customerContact && <p style={{ color: 'red', fontSize: '12px' }}>{errors.customerContact}</p>}
                 </div>
 
                 <div className="form-group">
                     <label>Customer Email (Optional)</label>
                     <input type="email" value={customerEmail} onChange={handleAmountChange(setCustomerEmail)} />
+                    {errors.customerEmail && <p style={{ color: 'red', fontSize: '12px' }}>{errors.customerEmail}</p>}
                 </div>
 
                  <div className="form-group">
@@ -268,6 +319,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         <div className="form-group">
                             <label>Discount Reason</label>
                             <input type="text" value={discountReason} onChange={handleAmountChange(setDiscountReason)} />
+                            {errors.discountReason && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discountReason}</p>}
                         </div>
                     </>
                 )}
@@ -275,6 +327,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 <div className="form-group">
                     <label>Amount Paid</label>
                     <input type="number" value={amountPaid} onChange={handleAmountChange(setAmountPaid)} placeholder="0.00" required />
+                    {errors.amountPaid && <p style={{ color: 'red', fontSize: '12px' }}>{errors.amountPaid}</p>}
                 </div>
 
                 <div className="form-group">
