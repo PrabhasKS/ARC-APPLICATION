@@ -106,7 +106,6 @@ import Ledger from './components/Ledger';
 import Admin from './components/Admin';
 import Analytics from './components/Analytics';
 import './App.css';
-import logo from './assets/logo.jpg';
 
 const ProtectedRoute = ({ user, allowedRoles, children }) => {
     if (!user) {
@@ -163,9 +162,7 @@ const AppContent = () => {
             {/* ✅ FIX: This line now conditionally renders the Header */}
             {location.pathname !== '/login' && <Header user={user} onLogout={handleLogout} />}
 
-            <div className="watermark-container">
-                <img src={logo} alt="Watermark Logo" className="watermark-logo" />
-            </div>
+
 
             <main>
                 <Routes>

@@ -56,22 +56,23 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     });
                     let baseCourtPrice = res.data.total_price || 0; // This is the base court price from backend
 
-                    const currentDiscount = parseFloat(discountAmount) || 0;
-                    const discountedCourtPrice = baseCourtPrice - currentDiscount; // Apply discount ONLY to court price
-
                     // Calculate total price from selected accessories
                     const accessoriesTotal = selectedAccessories.reduce((total, acc) => {
                         const accessoryDetails = accessories.find(a => a.id === acc.id);
                         return total + ((accessoryDetails?.price || 0) * acc.quantity);
                     }, 0);
                     
-                    const finalDisplayedTotalPrice = discountedCourtPrice + accessoriesTotal; // Final total for display
+                    // totalPrice to display (undiscounted court + accessories)
+                    const undiscountedTotalPrice = baseCourtPrice + accessoriesTotal;
+                    setTotalPrice(undiscountedTotalPrice); 
 
-                    setTotalPrice(finalDisplayedTotalPrice); // Set the discounted total for display
+                    const currentDiscount = parseFloat(discountAmount) || 0;
+                    // Effective total for balance calculation (discounted court + accessories)
+                    const effectiveTotalForBalance = (baseCourtPrice - currentDiscount) + accessoriesTotal;
 
                     // Recalculate balance whenever price, discount, or amount paid changes
                     const currentAmountPaid = parseFloat(amountPaid) || 0;
-                    setBalance(finalDisplayedTotalPrice - currentAmountPaid); // Balance uses the final discounted total
+                    setBalance(effectiveTotalForBalance - currentAmountPaid); // Balance uses the effective total
 
                 } catch (error) {
                     console.error("Error calculating price:", error);

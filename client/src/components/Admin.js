@@ -350,7 +350,6 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import CourtStatusControl from './CourtStatusControl';
 import './Admin.css';
-import { Eye, EyeOff } from 'lucide-react';
 
 const Admin = () => {
   const [sports, setSports] = useState([]);
@@ -542,7 +541,18 @@ const Admin = () => {
                   className="toggle-password-btn"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-7-10-7a18.01 18.01 0 0 1 7.07-5.07M10.1 5.07A10.07 10.07 0 0 1 12 4c7 0 10 7 10 7a18.01 18.01 0 0 1-2.66 4.09"></path>
+                                        <path d="M12 12v.01"></path>
+                                        <path d="M4.93 4.93l14.14 14.14"></path>
+                                    </svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                )}
                 </button>
               </div>
             </div>
