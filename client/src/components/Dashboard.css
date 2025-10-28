@@ -237,3 +237,39 @@
     top: auto;
     bottom: calc(100% + 5px); /* Position above */
 }
+/* --- Styles for "Add Discount" Button --- */
+
+.btn-add-discount {
+    background: none; /* No background */
+    border: none; /* No border */
+    color: #2563eb; /* Blue text color */
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 0; /* Add some padding */
+    text-align: left; /* Align text to the left */
+    margin-top: 0; /* Override default button margin */
+    transition: color 0.2s;
+}
+
+.btn-add-discount:hover {
+    color: #1d4ed8; /* Darker blue on hover */
+}
+
+/* Optional: Style for a "Remove Discount" link/button */
+.btn-link {
+    background: none;
+    border: none;
+    color: #1d4ed8; /* Muted gray color */
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 0;
+    text-align: right; /* Align to the right */
+    margin-top: -10px; /* Adjust spacing */
+    margin-bottom: 10px;
+}
+.btn-link:hover {
+    color: #dc3545; /* Red on hover */
+    text-decoration: underline;
+}
