@@ -554,9 +554,9 @@ const Admin = () => {
                 onChange={(e) => setNewRole(e.target.value)}
                 required
               >
-                <option value="staff">Staff</option>
-                <option value="desk">Desk</option>
                 <option value="admin">Admin</option>
+                <option value="desk">Desk</option>
+                
               </select>
             </div>
 
