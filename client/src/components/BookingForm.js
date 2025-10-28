@@ -398,7 +398,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [totalPrice, setTotalPrice] = useState(0);
     const [balance, setBalance] = useState(0);
     const [message, setMessage] = useState('');
-    const [slotsBooked, setSlotsBooked] = useState('');
+    const [slotsBooked, setSlotsBooked] = useState(1);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [lastBooking, setLastBooking] = useState(null);
     const [discountAmount, setDiscountAmount] = useState('');
@@ -743,17 +743,20 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     </select>
                 </div>
 
-                {paymentMethod === 'Online' && (
+                {(paymentMethod === 'Online' || paymentMethod === 'Cheque') && (
                     <>
-                        <div className="form-group">
-                            <label>Online Payment Type</label>
-                             <select value={onlinePaymentType} onChange={handleAmountChange(setOnlinePaymentType)}>
-                                <option value="UPI">UPI</option>
-                                <option value="Card">Card</option>
-                            </select>
-                        </div>
+                        {paymentMethod === 'Online' && (
+                            <div className="form-group">
+                                <label>Online Payment Type</label>
+                                 <select value={onlinePaymentType} onChange={handleAmountChange(setOnlinePaymentType)}>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Card">Card</option>
+                                    <option value="Net Banking">Net Banking</option>
+                                </select>
+                            </div>
+                        )}
                          <div className="form-group">
-                            <label>Payment ID</label>
+                            <label>Payment ID / Cheque ID</label>
                             <input type="text" value={paymentId} onChange={handleAmountChange(setPaymentId)} />
                         </div>
                     </>
