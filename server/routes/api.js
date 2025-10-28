@@ -984,7 +984,9 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
         }
 
         const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount_paid) as total_revenue FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ total_amount }]] = await db.query(`SELECT SUM(total_price) as total_amount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ amount_received }]] = await db.query(`SELECT SUM(amount_paid) as amount_received FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ amount_pending }]] = await db.query(`SELECT SUM(balance_amount) as amount_pending FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
         const [[{ total_cancellations }]] = await db.query(`SELECT COUNT(*) as total_cancellations FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
         const [[{ total_sports }]] = await db.query('SELECT COUNT(*) as total_sports FROM sports');
         const [[{ total_courts }]] = await db.query('SELECT COUNT(*) as total_courts FROM courts');
@@ -992,7 +994,9 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
 
         res.json({
             total_bookings,
-            total_revenue,
+            total_amount,
+            amount_received,
+            amount_pending,
             total_cancellations,
             total_sports,
             total_courts,

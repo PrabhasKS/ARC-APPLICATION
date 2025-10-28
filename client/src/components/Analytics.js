@@ -282,18 +282,44 @@ const Analytics = () => {
             </div>
                 </div >
 
-    {/* Total Revenue Card */ }
-    < div className = "card" >
-        <div className="stat-card-content">
-            <div className="stat-icon-container" style={{ backgroundColor: 'rgba(75, 192, 192, 0.2)' }}>
-                <span>💰</span>
-            </div>
-            <div className="stat-text">
-                <h4>Total Revenue</h4>
-                <p>₹{summary.total_revenue}</p>
+        {/* Total Amount Card */}
+        <div className = "card" >
+            <div className="stat-card-content">
+                <div className="stat-icon-container" style={{ backgroundColor: 'rgba(75, 192, 192, 0.2)' }}>
+                    <span>💰</span>
+                </div>
+                <div className="stat-text">
+                    <h4>Total Amount</h4>
+                    <p>₹{summary.total_amount}</p>
+                </div>
             </div>
         </div>
-                </div >
+
+        {/* Amount Received Card */}
+        <div className = "card" >
+            <div className="stat-card-content">
+                <div className="stat-icon-container" style={{ backgroundColor: 'rgba(102, 255, 102, 0.2)' }}>
+                    <span>💵</span>
+                </div>
+                <div className="stat-text">
+                    <h4>Amount Received</h4>
+                    <p>₹{summary.amount_received}</p>
+                </div>
+            </div>
+        </div>
+
+        {/* Amount Pending Card */}
+        <div className = "card" >
+            <div className="stat-card-content">
+                <div className="stat-icon-container" style={{ backgroundColor: 'rgba(255, 159, 64, 0.2)' }}>
+                    <span>⏳</span>
+                </div>
+                <div className="stat-text">
+                    <h4>Amount Pending</h4>
+                    <p>₹{summary.amount_pending}</p>
+                </div>
+            </div>
+        </div>
 
     {/* Total Cancellations Card */ }
     < div className = "card" >

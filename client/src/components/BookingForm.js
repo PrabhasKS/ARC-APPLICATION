@@ -398,7 +398,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [totalPrice, setTotalPrice] = useState(0);
     const [balance, setBalance] = useState(0);
     const [message, setMessage] = useState('');
-    const [slotsBooked, setSlotsBooked] = useState(1);
+    const [slotsBooked, setSlotsBooked] = useState('');
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [lastBooking, setLastBooking] = useState(null);
     const [discountAmount, setDiscountAmount] = useState('');
@@ -496,6 +496,47 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     };
 
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!customerName.trim()) {
+            newErrors.customerName = 'Customer name is required.';
+        }
+
+        if (!customerContact.trim()) {
+            newErrors.customerContact = 'Phone number is required.';
+        } else if (!/^\d{10}$/.test(customerContact)) {
+            newErrors.customerContact = 'Phone number must be exactly 10 digits.';
+        }
+
+        if (amountPaid === '' || amountPaid === null) {
+            newErrors.amountPaid = 'Amount paid is required.';
+        } else if (isNaN(amountPaid) || amountPaid < 0) {
+            newErrors.amountPaid = 'Please enter a valid amount.';
+        }
+
+        if ((discountAmount > 0) && !discountReason.trim()) {
+            newErrors.discountReason = 'Discount reason is required when a discount is applied.';
+        }
+
+        if (customerEmail && !/\S+@\S+\.\S+/.test(customerEmail)) {
+            newErrors.customerEmail = 'Please enter a valid email address.';
+        }
+
+        if (!courtId) {
+            newErrors.courtId = 'Please select a court.';
+        }
+
+        if (slotsBooked === '' || slotsBooked === null || isNaN(slotsBooked) || slotsBooked <= 0) {
+            newErrors.slotsBooked = 'Please enter a valid number of slots.';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage(''); // Clear previous messages
@@ -531,6 +572,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             setAmountPaid(''); setDiscountAmount(''); setDiscountReason('');
             setShowDiscount(false); setShowAccessories(false); setSelectedAccessories([]);
             setPaymentMethod('Cash'); setOnlinePaymentType('UPI'); setPaymentId('');
+
             setSlotsBooked(1); // Reset slots booked
 
             onBookingSuccess(); // Notify parent component
@@ -564,8 +606,11 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         <input
                             type="number"
                             value={slotsBooked}
+
                             onChange={(e) => setSlotsBooked(Math.max(1, parseInt(e.target.value) || 1))} // ✅ Use setSlotsBooked
+
                             min="1"
+                            placeholder="Enter number of people"
                             required
                         />
                         {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (

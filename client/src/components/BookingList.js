@@ -13,6 +13,10 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
     const [activeDropdown, setActiveDropdown] = useState(null);
 
 
@@ -25,7 +29,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         if (!dateString) return 'N/A';
+
+
+
+
 
 
 
@@ -33,7 +45,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         if (isNaN(date)) return 'Invalid Date';
+
+
+
+
 
 
 
@@ -41,7 +61,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         const month = String(date.getMonth() + 1).padStart(2, '0');
+
+
+
+
 
 
 
@@ -49,55 +77,191 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         return `${day}/${month}/${year}`;
 
 
 
+
+
+
+
     };
+
+
+
+
+
+
 
     const isBookingExpired = (booking) => {
+
+
+
         try {
+
+
+
             if (!booking.date || !booking.time_slot) return false; 
+
+
+
     
+
+
+
             const now = new Date();
+
+
+
             const timeSlotParts = booking.time_slot.split(' - ');
+
+
+
             if (timeSlotParts.length < 2) return false;
+
+
+
     
+
+
+
             const endTimeStr = timeSlotParts[1].trim();
+
+
+
             const timeParts = endTimeStr.split(' ');
+
+
+
             if (timeParts.length < 2) return false;
+
+
+
     
+
+
+
             const [time, modifier] = timeParts;
+
+
+
             const [hoursStr, minutesStr] = time.split(':');
+
+
+
             let hours = parseInt(hoursStr, 10);
+
+
+
             const minutes = parseInt(minutesStr, 10);
+
+
+
     
+
+
+
             if (isNaN(hours) || isNaN(minutes)) return false;
+
+
+
     
+
+
+
             if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+
+
+
             if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+
+
     
+
+
+
             const bookingEndDateTime = new Date(booking.date);
+
+
+
             bookingEndDateTime.setHours(hours, minutes, 0, 0);
+
+
+
             
+
+
+
             return now > bookingEndDateTime;
+
+
+
         } catch (error) {
+
+
+
             console.error("Error parsing booking time:", error);
+
+
+
             return false;
+
+
+
         }
+
+
+
     };
+
+
+
+
+
+
 
     const rowStyle = (booking) => {
-        let style = {};
-        if (booking.status === 'Cancelled') {
-            style.textDecoration = 'line-through';
-            style.color = '#999';
-        } else if (booking.is_rescheduled && !isBookingExpired(booking)) {
-            style.backgroundColor = 'lightgreen';
-        }
-        return style;
-    };
 
+
+
+        let style = {};
+
+
+
+        if (booking.status === 'Cancelled') {
+
+
+
+            style.textDecoration = 'line-through';
+
+
+
+            style.color = '#999';
+
+
+
+        } else if (booking.is_rescheduled && !isBookingExpired(booking)) {
+
+
+
+            style.backgroundColor = 'lightgreen';
+
+
+
+        }
+
+
+
+        return style;
+
+
+
+    };
 
 
 
@@ -107,7 +271,6 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
         if (!event || (activeDropdown && activeDropdown.id === bookingId)) {
             setActiveDropdown(null);
             return;
-        }
 
         const buttonElement = event.currentTarget;
         const rect = buttonElement.getBoundingClientRect();
@@ -117,13 +280,28 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
         let direction = 'down'; // Default down
 
+
         // Only open up if NOT enough space below AND there IS enough space above
         if (spaceBelow < dropdownHeightEstimate && spaceAbove > dropdownHeightEstimate) {
             direction = 'up';
         }
         // If there isn't enough space above OR below, default to down (it might get cut off slightly, but better than being completely off-screen upwards)
 
+
+
+
+
+
         setActiveDropdown({ id: bookingId, direction: direction });
+
+
+
+
+
+
+
+
+
     };
 
 
@@ -137,7 +315,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         if (!status) return '';
+
+
+
+
 
 
 
@@ -145,7 +331,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         switch (lowerCaseStatus) {
+
+
+
+
 
 
 
@@ -153,7 +347,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             case 'pending': return 'payment-status-pending';
+
+
+
+
 
 
 
@@ -161,7 +363,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             case 'reschedule': return 'payment-status-reschedule';
+
+
+
+
 
 
 
@@ -169,7 +379,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -185,7 +403,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         const paymentStatus = (booking.payment_status || '').toLowerCase();
+
+
+
+
 
 
 
@@ -197,7 +423,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         if (!isCompleted) {
+
+
+
+
 
 
 
@@ -205,7 +439,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             return false;
+
+
+
+
 
 
 
@@ -217,7 +459,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         // If status is 'Completed', check if the time has passed.
+
+
+
+
 
 
 
@@ -225,11 +475,23 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             const now = new Date();
 
 
 
+
+
+
+
             const timeSlotParts = (booking.time_slot || '').split(' - ');
+
+
+
+
 
 
 
@@ -241,11 +503,23 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             const endTimeStr = timeSlotParts[1].trim();
 
 
 
+
+
+
+
             const timeParts = endTimeStr.split(' ');
+
+
+
+
 
 
 
@@ -257,7 +531,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             const [time, modifier] = timeParts;
+
+
+
+
 
 
 
@@ -265,11 +547,23 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             let hours = parseInt(hoursStr, 10);
 
 
 
+
+
+
+
             const minutes = parseInt(minutesStr, 10);
+
+
+
+
 
 
 
@@ -285,7 +579,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+
+
+
+
 
 
 
@@ -297,7 +599,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             const bookingEndDateTime = new Date(booking.date);
+
+
+
+
 
 
 
@@ -305,7 +615,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -313,7 +631,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         } catch (error) {
+
+
+
+
 
 
 
@@ -321,7 +647,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -345,7 +679,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
         <div className="table-container">
+
+
+
+
 
 
 
@@ -353,7 +695,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                 <thead>
+
+
+
+
 
 
 
@@ -361,7 +711,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         <th>Booking ID</th>
+
+
+
+
 
 
 
@@ -369,7 +727,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         {visibility.court && <th>Court</th>}
+
+
+
+
 
 
 
@@ -377,7 +743,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         <th>Contact</th>
+
+
+
+
 
 
 
@@ -385,7 +759,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         <th>Time Slot</th>
+
+
+
+
 
 
 
@@ -393,7 +775,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         <th>Balance</th>
+
+
+
+
 
 
 
@@ -401,7 +791,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         {visibility.discountReason && <th>Discount Reason</th>}
+
+
+
+
 
 
 
@@ -409,7 +807,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         <th>Payment Status</th>
+
+
+
+
 
 
 
@@ -419,7 +825,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         <th>Booking Status</th>
+
+
+
+
 
 
 
@@ -427,7 +841,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                     </tr>
+
+
+
+
 
 
 
@@ -435,7 +857,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                 <tbody>
+
+
+
+
 
 
 
@@ -443,7 +873,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         if (!booking || !booking.id) return null;
+
+
+
+
 
 
 
@@ -451,7 +889,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                         return (
+
+
+
+
 
 
 
@@ -459,7 +905,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 <td>{booking.id || 'N/A'}</td>
+
+
+
+
 
 
 
@@ -467,7 +921,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 {visibility.court && <td>{booking.court_name || 'N/A'}</td>}
+
+
+
+
 
 
 
@@ -475,7 +937,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 <td>{booking.customer_contact || 'N/A'}</td>
+
+
+
+
 
 
 
@@ -483,7 +953,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 <td>{booking.time_slot || 'N/A'}</td>
+
+
+
+
 
 
 
@@ -491,7 +969,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 <td>{booking.balance_amount || 0}</td>
+
+
+
+
 
 
 
@@ -499,7 +985,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 {visibility.discountReason && <td>{booking.discount_reason || 'N/A'}</td>}
+
+
+
+
 
 
 
@@ -507,7 +1001,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 <td>
+
+
+
+
 
 
 
@@ -515,7 +1017,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                         {booking.payment_status || 'N/A'}
+
+
+
+
 
 
 
@@ -523,7 +1033,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 </td>
+
+
+
+
 
 
 
@@ -533,7 +1051,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                 <td>{booking.status || 'N/A'}</td>
+
+
+
+
 
 
 
@@ -541,7 +1067,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                     <button onClick={(e) => toggleDropdown(e, booking.id)}>
+
+
+
+
 
 
 
@@ -549,7 +1083,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                     </button>
+
+
+
+
 
 
 
@@ -557,7 +1099,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                         <div className={`actions-dropdown ${activeDropdown.direction}`}>
+
+
+
+
 
 
 
@@ -565,15 +1115,35 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
-                                            <button onClick={() => { onEdit(booking); toggleDropdown(null, booking.id); }} disabled={editDisabled}>Edit Payment</button>
 
 
 
-                                            {user && user.role === 'admin' && (
+
+                                            {booking.status !== 'Cancelled' && (
 
 
 
-                                                <button onClick={() => { onCancel(booking.id); toggleDropdown(null, booking.id); }} disabled={editDisabled}>Cancel booking</button>
+                                                <>
+
+
+
+                                                    <button onClick={() => { onEdit(booking); toggleDropdown(null, booking.id); }} disabled={editDisabled}>Edit Payment</button>
+
+
+
+                                                    {user && user.role === 'admin' && (
+
+
+
+                                                        <button onClick={() => { onCancel(booking.id); toggleDropdown(null, booking.id); }} disabled={editDisabled}>Cancel booking</button>
+
+
+
+                                                    )}
+
+
+
+                                                </>
 
 
 
@@ -581,7 +1151,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                             <button className="action-close-btn" onClick={() => toggleDropdown(null, booking.id)}>Close</button>
+
+
+
+
 
 
 
@@ -589,7 +1167,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                                     )}
+
+
+
+
 
 
 
@@ -597,7 +1183,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                             </tr>
+
+
+
+
 
 
 
@@ -605,7 +1199,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
                     })}
+
+
+
+
 
 
 
@@ -613,7 +1215,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
             </table>
+
+
+
+
 
 
 
@@ -621,7 +1231,15 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
+
+
     );
+
+
+
+
 
 
 
@@ -632,6 +1250,4 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
-
 export default BookingList;
-
