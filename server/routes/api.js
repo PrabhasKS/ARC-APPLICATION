@@ -658,10 +658,13 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'End time must be after start time.' });
         }
 
-        let total_price = (durationInMinutes / 60) * hourly_price;
+        let base_court_price = (durationInMinutes / 60) * hourly_price;
         if (slots_booked > 1) {
-            total_price *= slots_booked;
+            base_court_price *= slots_booked;
         }
+
+        // Apply discount ONLY to the base court price
+        const final_court_price = base_court_price - (discount_amount || 0);
 
         let accessories_total_price = 0;
         if (accessories && accessories.length > 0) {
@@ -672,8 +675,9 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                 }
             }
         }
-        total_price += accessories_total_price;
-        total_price -= discount_amount || 0;
+        
+        // Total price is discounted court price + accessories price
+        const total_price = final_court_price + accessories_total_price;
 
         const balance_amount = total_price - amount_paid;
         let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
