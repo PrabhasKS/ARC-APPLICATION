@@ -267,90 +267,25 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
-
-
-    const toggleDropdown = (e, bookingId) => {
-
-
-
-
-
-
-
-        if (!e || (activeDropdown && activeDropdown.id === bookingId)) {
-
-
-
-
-
-
-
+    const toggleDropdown = (event, bookingId) => {
+        if (!event || (activeDropdown && activeDropdown.id === bookingId)) {
             setActiveDropdown(null);
-
-
-
-
-
-
-
             return;
 
+        const buttonElement = event.currentTarget;
+        const rect = buttonElement.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const dropdownHeightEstimate = 50; // Keep generous estimate
+
+        let direction = 'down'; // Default down
 
 
-
-
-
-
+        // Only open up if NOT enough space below AND there IS enough space above
+        if (spaceBelow < dropdownHeightEstimate && spaceAbove > dropdownHeightEstimate) {
+            direction = 'up';
         }
-
-
-
-
-
-
-
-
-
-
-
-        const buttonRect = e.currentTarget.getBoundingClientRect();
-
-
-
-
-
-
-
-        const spaceBelow = window.innerHeight - buttonRect.bottom;
-
-
-
-
-
-
-
-        const dropdownHeight = 180; // Estimated height
-
-
-
-
-
-
-
-
-
-
-
-        const direction = spaceBelow < dropdownHeight ? 'up' : 'down';
-
-
-
-
-
-
-
-        
-
+        // If there isn't enough space above OR below, default to down (it might get cut off slightly, but better than being completely off-screen upwards)
 
 
 
@@ -365,7 +300,10 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
+
+
     };
+
 
 
 
@@ -883,6 +821,8 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
                         {visibility.paymentId && <th>Payment ID</th>}
 
+                        {visibility.bookedBy && <th>Booked By</th>}
+
 
 
 
@@ -1107,6 +1047,8 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
                                 {visibility.paymentId && <td>{booking.payment_id || 'N/A'}</td>}
 
+                                {visibility.bookedBy && <td>{booking.created_by_user || 'N/A'}</td>}
+
 
 
 
@@ -1308,6 +1250,4 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
 
 
 
-
 export default BookingList;
-

@@ -92,3 +92,154 @@
 .status.Cancelled {
     background-color: #dc3545;
 }
+
+/* Add this to your ReceiptModal.css or App.css */
+
+/* ... (Your existing styles for modal overlay, content, buttons, etc.) ... */
+
+@media print {
+    /* Hide everything by default */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Make only the receipt content and its children visible */
+    .receipt-modal-content, .receipt-modal-content * {
+        visibility: visible;
+    }
+
+    /* Position the receipt content to take up the whole print page */
+    .receipt-modal-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px; /* Adjust padding as needed */
+        box-shadow: none;
+        border: none;
+        background-color: white !important; /* Ensure background is white */
+    }
+
+    /* Hide the modal overlay/backdrop */
+    .receipt-modal-overlay {
+        background-color: transparent !important; /* Make backdrop invisible */
+        position: static; /* Reset positioning */
+    }
+
+
+    /* Hide the Print and Close buttons */
+    .receipt-actions {
+        display: none !important;
+    }
+
+    /* Ensure specific elements look correct when printed */
+    .receipt-header h1 {
+        font-size: 24px; /* Example: Adjust sizes */
+        text-align: center;
+        margin-bottom: 5px;
+    }
+     .receipt-header p {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #555;
+    }
+     .receipt-section h2, .receipt-section h3 {
+        font-size: 18px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+     .receipt-body p {
+        margin: 5px 0;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .receipt-body p strong {
+         display: inline-block;
+         min-width: 120px; /* Adjust alignment */
+     }
+
+    .receipt-footer {
+        display: flex; /* Adjust layout if needed */
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-top: 30px;
+        page-break-inside: avoid; /* Try to keep footer together */
+    }
+
+    .qr-code {
+        text-align: center;
+    }
+    .qr-code p {
+         font-size: 12px;
+         color: #666;
+     }
+
+    /* Force background colors/styles for status pills (browser support varies) */
+    .status {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-block;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .status.Received, .status.Pending { /* Example */
+        background-color: #fff3cd !important;
+        color: #664d03 !important;
+    }
+     .status.Booked, .status.Completed { /* Example */
+        background-color: #d1e7dd !important;
+        color: #0f5132 !important;
+    }
+    /* Add rules for other specific statuses (Cancelled, etc.) */
+
+}
+/* --- QR Code Display Control (Simplified) --- */
+
+/* No specific screen styles needed, the img tag will show by default */
+.qr-code-img {
+    display: block; /* Make sure it's block for centering */
+    margin: 0 auto 10px auto; /* Center */
+}
+
+
+/* --- Print Styles --- */
+@media print {
+    /* ... (Your existing @media print styles for hiding body *, showing modal, hiding buttons etc.) ... */
+
+     /* Ensure QR code container and image are visible and sized correctly */
+    .qr-code {
+        visibility: visible !important;
+        display: block !important;
+        text-align: center;
+        margin-top: 20px;
+        page-break-inside: avoid;
+    }
+
+    .qr-code-img {
+        display: block !important; /* Ensure it shows */
+        visibility: visible !important;
+        width: 100px !important; /* Explicit size */
+        height: 100px !important;
+        margin: 0 auto 10px auto; /* Center */
+    }
+
+     .qr-code p {
+         visibility: visible !important;
+         font-size: 12px;
+         color: #666 !important;
+         text-align: center;
+     }
+
+     /* Ensure SVG rules are removed or don't interfere */
+     .qr-code-svg {
+         display: none !important; /* Make sure SVG is definitely hidden */
+     }
+
+    /* ... (Rest of your @media print styles) ... */
+}

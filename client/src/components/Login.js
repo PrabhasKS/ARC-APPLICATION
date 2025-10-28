@@ -44,14 +44,15 @@
 
 import React, { useState } from 'react';
 import api from '../api';
-import './Login.css'; // Import the new CSS file
-import logo from '../assets/logo.jpg'; // Import your logo
+import './Login.css';
+import logo from '../assets/logo.jpg';
+import { Eye, EyeOff } from 'lucide-react'; // 👈 lightweight icon package (auto-installed in shadcn setup)
 
 const Login = ({ onLogin }) => {
-    // Your existing state and logic are unchanged
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // 👈 state to toggle visibility
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -75,22 +76,34 @@ const Login = ({ onLogin }) => {
                 <form onSubmit={handleLogin} className="login-form">
                     <div className="form-group">
                         <label>Username</label>
-                        <input 
-                            type="text" 
-                            value={username} 
-                            onChange={(e) => setUsername(e.target.value)} 
-                            required 
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
                         />
                     </div>
-                    <div className="form-group">
+
+                    {/* --- Password Field with Eye Icon --- */}
+                    <div className="form-group password-group">
                         <label>Password</label>
-                        <input 
-                            type="password" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            required 
-                        />
+                        <div className="password-input-wrapper">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="toggle-password-btn"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
                     </div>
+
                     <button type="submit" className="login-btn">Login</button>
                     {error && <p className="login-error">{error}</p>}
                 </form>
@@ -100,3 +113,4 @@ const Login = ({ onLogin }) => {
 };
 
 export default Login;
+
