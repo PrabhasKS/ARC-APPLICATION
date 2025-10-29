@@ -281,7 +281,7 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
                 b.is_rescheduled,
                 b.discount_amount,
                 b.discount_reason,
-                GROUP_CONCAT(JSON_OBJECT('name', a.name, 'quantity', ba.quantity, 'price', ba.price_at_booking)) as accessories
+                GROUP_CONCAT(JSON_OBJECT('id', a.id, 'name', a.name, 'quantity', ba.quantity, 'price', ba.price_at_booking)) as accessories
             FROM bookings b 
             LEFT JOIN booking_accessories ba ON b.id = ba.booking_id
             LEFT JOIN accessories a ON ba.accessory_id = a.id
@@ -576,7 +576,7 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
 
 // Calculate price dynamically
 router.post('/bookings/calculate-price', authenticateToken, async (req, res) => {
-    const { sport_id, startTime, endTime, slots_booked } = req.body;
+    const { sport_id, startTime, endTime, slots_booked, accessories, discount_amount } = req.body;
 
     if (!sport_id || !startTime || !endTime) {
         return res.status(400).json({ message: 'sport_id, startTime, and endTime are required.' });
@@ -595,30 +595,45 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
         };
         const durationInMinutes = parseTime(endTime) - parseTime(startTime);
 
-        if (durationInMinutes < 30) { // Only charge for 30 mins or more
-            return res.json({ total_price: 0 });
-        }
-
-        const num_of_hours = Math.floor(durationInMinutes / 60);
-        const remaining_minutes = durationInMinutes % 60;
-        
-        let total_price = num_of_hours * hourly_price;
-        if (remaining_minutes >= 30) {
-            total_price += hourly_price / 2;
+        let court_price = 0;
+        if (durationInMinutes >= 30) { // Only charge for 30 mins or more
+            const num_of_hours = Math.floor(durationInMinutes / 60);
+            const remaining_minutes = durationInMinutes % 60;
+            
+            court_price = num_of_hours * hourly_price;
+            if (remaining_minutes >= 30) {
+                court_price += hourly_price / 2;
+            }
         }
 
         if (slots_booked > 1) {
-            total_price *= slots_booked;
+            court_price *= slots_booked;
         }
 
-        res.json({ total_price });
+        let accessories_total_price = 0;
+        if (accessories && accessories.length > 0) {
+            for (const acc of accessories) {
+                const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.id]);
+                if (accessoryData && parseFloat(accessoryData.price) > 0) {
+                    accessories_total_price += parseFloat(accessoryData.price) * acc.quantity;
+                } else {
+                    // Fallback to price provided in the request body if DB price is not found or is 0
+                    accessories_total_price += parseFloat(acc.price) * acc.quantity;
+                }
+            }
+        }
+
+        let final_total_price = court_price + accessories_total_price;
+        if (discount_amount) {
+            final_total_price -= parseFloat(discount_amount);
+        }
+
+        res.json({ total_price: final_total_price });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-
-// Add a new booking
 router.post('/bookings', authenticateToken, async (req, res) => {
     const { court_id, customer_name, customer_contact, customer_email, date, startTime, endTime,
             payment_mode, payment_id, amount_paid, slots_booked, discount_amount, discount_reason, accessories } = req.body;
@@ -757,6 +772,9 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         }
         const existingBooking = existingBookings[0];
 
+        // Fetch existing accessories for the booking
+        const [currentAccessories] = await db.query('SELECT a.id, a.price, ba.quantity FROM booking_accessories ba JOIN accessories a ON ba.accessory_id = a.id WHERE ba.booking_id = ?', [id]);
+
         // 2. Format new time slot for comparison and potential update
         const formatTo12Hour = (time) => {
             if(!time) return '';
@@ -808,8 +826,8 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         }
 
         // Recalculate price if time or sport changes
-        let new_total_price = existingBooking.total_price;
-        let new_balance_amount = existingBooking.balance_amount;
+        let new_total_price = parseFloat(existingBooking.total_price);
+        let new_balance_amount = parseFloat(existingBooking.balance_amount);
         let payment_status = existingBooking.payment_status;
 
         if (hasTimeChanged || fields.sport_id || fields.slots_booked) {
@@ -820,7 +838,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             if (sports.length === 0) {
                 return res.status(404).json({ message: 'Sport not found' });
             }
-            const hourly_price = sports[0].price;
+            const hourly_price = parseFloat(sports[0].price);
 
             const [startStr, endStr] = newTimeSlot.split(' - ');
             const startTime24 = parseTimeTo24Hour(startStr);
@@ -834,39 +852,41 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
 
             const durationInMinutes = (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60);
 
-            if (durationInMinutes < 30) { // Only charge for 30 mins or more
-                new_total_price = 0;
-            } else {
+            let court_price_for_new_duration = 0;
+            if (durationInMinutes >= 30) { // Only charge for 30 mins or more
                 const num_of_hours = Math.floor(durationInMinutes / 60);
                 const remaining_minutes = durationInMinutes % 60;
                 
-                new_total_price = num_of_hours * hourly_price;
+                court_price_for_new_duration = num_of_hours * hourly_price;
                 if (remaining_minutes >= 30) {
-                    new_total_price += hourly_price / 2;
+                    court_price_for_new_duration += hourly_price / 2;
                 }
             }
 
             if (slots_booked_to_use > 1) {
-                new_total_price *= slots_booked_to_use;
+                court_price_for_new_duration *= slots_booked_to_use;
             }
 
             // Adjust for accessories and discount if they are part of the update
             let accessories_total_price = 0;
             if (fields.accessories && fields.accessories.length > 0) {
                 for (const acc of fields.accessories) {
-                    const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
-                    if (accessoryData) {
-                        accessories_total_price += accessoryData.price * acc.quantity;
+                    const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.id]);
+                    if (accessoryData && parseFloat(accessoryData.price) > 0) {
+                        accessories_total_price += parseFloat(accessoryData.price) * acc.quantity;
+                    } else {
+                        // Fallback to price provided in the request body if DB price is not found or is 0
+                        accessories_total_price += parseFloat(acc.price) * acc.quantity;
                     }
                 }
-            } else if (existingBooking.accessories) { // If no new accessories, use existing ones for price calculation
-                const [existingAccessories] = await db.query('SELECT a.price, ba.quantity FROM booking_accessories ba JOIN accessories a ON ba.accessory_id = a.id WHERE ba.booking_id = ?', [id]);
-                accessories_total_price = existingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0);
+            } else if (currentAccessories && currentAccessories.length > 0) { // If no new accessories, use existing ones for price calculation
+                accessories_total_price = currentAccessories.reduce((sum, acc) => sum + (parseFloat(acc.price) * acc.quantity), 0);
             }
-            new_total_price += accessories_total_price;
-            new_total_price -= (fields.discount_amount || existingBooking.discount_amount || 0);
+            new_total_price = court_price_for_new_duration + accessories_total_price;
+            const discount_to_apply = parseFloat(fields.discount_amount || existingBooking.discount_amount || 0);
+            new_total_price -= discount_to_apply;
 
-            new_balance_amount = new_total_price - (fields.amount_paid || existingBooking.amount_paid);
+            new_balance_amount = new_total_price - parseFloat(fields.amount_paid || existingBooking.amount_paid);
             payment_status = new_balance_amount <= 0 ? 'Completed' : (new_balance_amount === new_total_price ? 'Pending' : 'Received');
         }
 

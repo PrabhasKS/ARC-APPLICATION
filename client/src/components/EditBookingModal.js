@@ -99,7 +99,9 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 sport_id: formData.sport_id,
                 startTime: formData.startTime,
                 endTime: newEndTime,
-                slots_booked: formData.slots_booked
+                slots_booked: formData.slots_booked,
+                accessories: booking.accessories, // Use booking.accessories
+                discount_amount: booking.discount_amount // Use booking.discount_amount
             })
             .then(response => {
                 setFormData(prev => ({
@@ -110,7 +112,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 }));
             })
             .catch(error => {
-                console.error("Error calculating price:", error);
+                console.error("Error calculating price:", error.response || error);
             });
         }
     };
