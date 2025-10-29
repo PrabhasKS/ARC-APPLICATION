@@ -368,6 +368,10 @@ const Admin = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    fetchSports();
+    fetchCourts();
+    fetchAccessories();
+
     const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/events`);
     eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -375,6 +379,8 @@ const Admin = () => {
             fetchCourts();
         } else if (data.message === 'sports_updated') {
             fetchSports();
+        } else if (data.message === 'accessories_updated') {
+            fetchAccessories();
         }
     };
 

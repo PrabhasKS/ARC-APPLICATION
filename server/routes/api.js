@@ -1169,6 +1169,7 @@ router.post('/accessories', authenticateToken, isAdmin, async (req, res) => {
     }
     try {
         const [result] = await db.query('INSERT INTO accessories (name, price) VALUES (?, ?)', [name, price]);
+        sendEventsToAll({ message: 'accessories_updated' });
         res.json({ success: true, accessoryId: result.insertId });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1183,6 +1184,7 @@ router.put('/accessories/:id', authenticateToken, isAdmin, async (req, res) => {
     }
     try {
         await db.query('UPDATE accessories SET name = ?, price = ? WHERE id = ?', [name, price, id]);
+        sendEventsToAll({ message: 'accessories_updated' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1193,6 +1195,7 @@ router.delete('/accessories/:id', authenticateToken, isAdmin, async (req, res) =
     const { id } = req.params;
     try {
         await db.query('DELETE FROM accessories WHERE id = ?', [id]);
+        sendEventsToAll({ message: 'accessories_updated' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
