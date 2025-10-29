@@ -675,6 +675,9 @@ const Dashboard = ({ user }) => {
             if (data.message === 'bookings_updated') {
                 fetchBookingsForDate();
                 fetchHeatmapData();
+            } else if (data.message === 'courts_updated') {
+                fetchAvailability();
+                fetchHeatmapData();
             }
         };
 

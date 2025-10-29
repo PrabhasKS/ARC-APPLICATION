@@ -61,6 +61,13 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
+const isPrivilegedUser = (req, res, next) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'desk') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+    next();
+};
+
 const toMinutes = (timeStr) => {
     const [time, modifier] = timeStr.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
@@ -1068,13 +1075,12 @@ router.put('/bookings/:id/cancel', authenticateToken, isAdmin, async (req, res) 
 });
 
 // Update court status
-router.put('/courts/:id/status', authenticateToken, isAdmin, async (req, res) => {
+router.put('/courts/:id/status', authenticateToken, isPrivilegedUser, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
         await db.query('UPDATE courts SET status = ? WHERE id = ?', [status, id]);
-        req.io.emit('courts_updated');
-        sendEventsToAll({ message: 'bookings_updated' });
+        sendEventsToAll({ message: 'courts_updated' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
