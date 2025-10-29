@@ -132,12 +132,20 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
         if (amountPaid === '' || amountPaid === null) {
             newErrors.amountPaid = 'Amount paid is required.';
-        } else if (isNaN(amountPaid) || amountPaid < 0) {
-            newErrors.amountPaid = 'Please enter a valid amount.';
+        } else if (isNaN(amountPaid) || parseFloat(amountPaid) < 0) {
+            newErrors.amountPaid = 'Amount paid must be a positive number.';
+        }
+
+        if (discountAmount && (isNaN(discountAmount) || parseFloat(discountAmount) < 0)) {
+            newErrors.discountAmount = 'Discount must be a positive number.';
         }
 
         if ((discountAmount > 0) && !discountReason.trim()) {
             newErrors.discountReason = 'Discount reason is required when a discount is applied.';
+        }
+
+        if (paymentId && !/^[a-zA-Z0-9]+$/.test(paymentId)) {
+            newErrors.paymentId = 'Payment ID must be alphanumeric.';
         }
 
         if (customerEmail && !/\S+@\S+\.\S+/.test(customerEmail)) {
@@ -334,6 +342,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         <div className="form-group">
                             <label>Discount Amount</label>
                             <input type="number" value={discountAmount} onChange={handleAmountChange(setDiscountAmount)} placeholder="0.00" />
+                            {errors.discountAmount && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discountAmount}</p>}
                         </div>
                         <div className="form-group">
                             <label>Discount Reason</label>
@@ -381,6 +390,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                          <div className="form-group">
                             <label>Payment ID / Cheque ID</label>
                             <input type="text" value={paymentId} onChange={handleAmountChange(setPaymentId)} />
+                            {errors.paymentId && <p style={{ color: 'red', fontSize: '12px' }}>{errors.paymentId}</p>}
                         </div>
                     </>
                 )}
