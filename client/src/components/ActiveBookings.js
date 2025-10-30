@@ -23,7 +23,7 @@ const ActiveBookings = () => {
         });
 
         return (
-            <div className={`active-booking-card ${booking.status}`} onClick={() => onCardClick(booking)}>
+            <div className={`active-booking-card ${booking.displayStatus}`} onClick={() => onCardClick(booking)}>
                 <div className="booking-info">
                     <span className="sport-name">{booking.sport_name}</span>
                     <span className="court-name">{booking.court_name}</span>
@@ -31,7 +31,7 @@ const ActiveBookings = () => {
                 <div className="booking-date">{formattedDate}</div>
                 <div className="booking-time">{booking.time_slot}</div>
                 <div className="customer-name">{booking.customer_name}</div>
-                {showClear && booking.status === 'ended' && (
+                {showClear && booking.displayStatus === 'ended' && (
                     <div className="ended-message">
                         Time has ended, inform customer.
                         {booking.payment_status === 'Completed' ? (
