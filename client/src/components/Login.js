@@ -55,6 +55,7 @@ const Login = ({ onLogin }) => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setError('');
         try {
             const res = await api.post('/login', { username, password });
             if (res.data.success) {

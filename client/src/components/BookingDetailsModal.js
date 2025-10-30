@@ -31,6 +31,18 @@ const BookingDetailsModal = ({ booking, onClose }) => {
                             <p><strong>Amount Paid:</strong> ₹{booking.amount_paid}</p>
                             <p><strong>Balance:</strong> ₹{booking.balance_amount}</p>
                             <p><strong>Payment Status:</strong> <span className={`status ${booking.payment_status}`}>{booking.payment_status}</span></p>
+                            {booking.payments && booking.payments.length > 0 && (
+                                <div>
+                                    <h4>Payment History:</h4>
+                                    <ul>
+                                        {booking.payments.map(payment => (
+                                            <li key={payment.id}>
+                                                ₹{payment.amount} via {payment.payment_mode} on {new Date(payment.payment_date).toLocaleDateString()}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                         <div className="receipt-footer">
                             <div className="booking-info">

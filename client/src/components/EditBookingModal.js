@@ -9,6 +9,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [showReschedule, setShowReschedule] = useState(false);
     const [isRescheduled, setIsRescheduled] = useState(false);
     const [timeError, setTimeError] = useState('');
+    const [newPaymentAmount, setNewPaymentAmount] = useState('');
+    const [newPaymentMode, setNewPaymentMode] = useState('cash');
 
     const checkClash = useCallback(async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
@@ -112,15 +114,19 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 accessories: booking.accessories, // Use booking.accessories
                 discount_amount: booking.discount_amount // Use booking.discount_amount
             })
-            .then(response => {
-                setFormData(prev => ({
-                    ...prev,
-                    endTime: newEndTime,
-                    total_price: response.data.total_price,
-                    balance_amount: response.data.total_price - prev.amount_paid
-                }));
-            })
-            .catch(error => {
+                    .then(response => {
+                        setFormData(prev => {
+                            console.log('Debugging time extension: Prev endTime:', prev.endTime, 'New endTime:', newEndTime);
+                            const newState = {
+                                ...prev,
+                                endTime: newEndTime,
+                                total_price: response.data.total_price,
+                                balance_amount: response.data.total_price - prev.amount_paid
+                            };
+                            console.log('New state being set:', newState);
+                            return newState;
+                        });
+                    })            .catch(error => {
                 console.error("Error calculating price:", error.response || error);
             });
         }
@@ -128,21 +134,27 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => {
-            const newFormData = { ...prev, [name]: value };
-            if (name === 'amount_paid') {
-                const amountPaid = parseFloat(value) || 0;
-                newFormData.balance_amount = newFormData.total_price - amountPaid;
-                if (amountPaid === 0) {
-                    newFormData.payment_status = 'Pending';
-                } else if (amountPaid < newFormData.total_price) {
-                    newFormData.payment_status = 'Received';
-                } else {
-                    newFormData.payment_status = 'Completed';
-                }
-            }
-            return newFormData;
-        });
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleAddPayment = async () => {
+        if (!newPaymentAmount || parseFloat(newPaymentAmount) <= 0) {
+            alert('Please enter a valid payment amount.');
+            return;
+        }
+    
+        try {
+            const response = await api.post(`/bookings/${booking.id}/payments`, {
+                amount: newPaymentAmount,
+                payment_mode: newPaymentMode,
+                new_total_price: formData.total_price // Send the updated total price
+            });
+            setFormData(response.data.booking); // Update state with the returned booking
+            setNewPaymentAmount('');
+        } catch (error) {
+            console.error("Error adding payment:", error);
+            alert('Failed to add payment.');
+        }
     };
 
     const handleSave = () => {
@@ -165,19 +177,32 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         onSave(formData.id, { ...formData, is_rescheduled: isRescheduled });
     };
 
-    const handleSaveAsPaid = () => {
+    const handleSaveAsPaid = async () => {
         if (timeError) {
             alert(timeError);
             return;
         }
-        const updatedFormData = {
-            ...formData,
-            amount_paid: formData.total_price,
-            balance_amount: 0,
-            payment_status: 'Completed',
-            is_rescheduled: false
-        };
-        onSave(formData.id, updatedFormData);
+    
+        let updatedBooking = { ...formData };
+
+        const remainingBalance = formData.balance_amount;
+        if (remainingBalance > 0) {
+            try {
+                const response = await api.post(`/bookings/${booking.id}/payments`, {
+                    amount: remainingBalance,
+                    payment_mode: newPaymentMode, // Use the selected payment mode
+                });
+                updatedBooking = response.data.booking; // Get the latest booking data
+                setFormData(updatedBooking); // Update the UI immediately
+            } catch (error) {
+                console.error("Error adding final payment:", error);
+                alert('Failed to add final payment.');
+                return;
+            }
+        }
+    
+        // Now, save any other changes that might have been made in the modal
+        onSave(updatedBooking.id, { ...updatedBooking, is_rescheduled: isRescheduled });
     };
 
     if (!booking) return null;
@@ -254,9 +279,40 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                     <hr style={{ margin: '20px 0' }}/>
 
-                    <h4>Payment</h4>
-                    <input type="number" name="amount_paid" value={formData.amount_paid || 0} onChange={handleInputChange} placeholder="Amount Paid" />
+                    <h4>Payments</h4>
+                    <p><strong>Total Price:</strong> ₹{formData.total_price}</p>
+                    <p><strong>Amount Paid:</strong> ₹{formData.amount_paid}</p>
+                    <p><strong>Balance:</strong> ₹{formData.balance_amount}</p>
                     <p><strong>Payment Status:</strong> {formData.payment_status}</p>
+
+                    {formData.payments && formData.payments.length > 0 && (
+                        <div>
+                            <h5>Payment History:</h5>
+                            <ul>
+                                {formData.payments.map(payment => (
+                                    <li key={payment.id}>
+                                        ₹{payment.amount} via {payment.payment_mode} on {new Date(payment.payment_date).toLocaleDateString()}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    <div>
+                        <h5>Add Payment</h5>
+                        <input
+                            type="number"
+                            placeholder="Amount"
+                            value={newPaymentAmount}
+                            onChange={(e) => setNewPaymentAmount(e.target.value)}
+                        />
+                        <select value={newPaymentMode} onChange={(e) => setNewPaymentMode(e.target.value)}>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="card">Card</option>
+                        </select>
+                        <button onClick={handleAddPayment}>Add Payment</button>
+                    </div>
 
                     <hr style={{ margin: '20px 0' }}/>
 
