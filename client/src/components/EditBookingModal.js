@@ -3,13 +3,13 @@ import api from '../api';
 
 const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [formData, setFormData] = useState({});
+    const [originalBookingData, setOriginalBookingData] = useState(null);
     const [extensionMinutes, setExtensionMinutes] = useState(0);
     const [availabilityMessage, setAvailabilityMessage] = useState('');
-
     const [showReschedule, setShowReschedule] = useState(false);
     const [isRescheduled, setIsRescheduled] = useState(false);
+    const [timeError, setTimeError] = useState('');
 
-    // ✅ Wrap in useCallback to fix missing dependency warning
     const checkClash = useCallback(async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
             try {
@@ -66,21 +66,30 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             const endDate = new Date(booking.date);
             endDate.setHours(parsedEndTime.hours, parsedEndTime.minutes);
 
-            setFormData({
+            const initialFormData = {
                 ...booking,
                 startTime: formatTime24(startDate),
                 endTime: formatTime24(endDate)
-            });
+            };
+            setFormData(initialFormData);
+            setOriginalBookingData(initialFormData);
         }
     }, [booking]);
 
-    // ✅ Add checkClash dependency properly
     useEffect(() => {
         const handler = setTimeout(() => {
             checkClash();
         }, 500);
         return () => clearTimeout(handler);
     }, [checkClash, formData.date, formData.startTime, formData.endTime, formData.court_id]);
+
+    useEffect(() => {
+        if (formData.startTime && formData.endTime && formData.startTime === formData.endTime) {
+            setTimeError('Start time and end time cannot be the same.');
+        } else {
+            setTimeError('');
+        }
+    }, [formData.startTime, formData.endTime]);
 
     const handleExtensionChange = (e) => {
         const minutes = parseInt(e.target.value, 10);
@@ -137,10 +146,30 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     };
 
     const handleSave = () => {
+        if (timeError) {
+            alert(timeError);
+            return;
+        }
+
+        if (showReschedule) {
+            const hasDateChanged = originalBookingData.date !== formData.date;
+            const hasStartTimeChanged = originalBookingData.startTime !== formData.startTime;
+            const hasEndTimeChanged = originalBookingData.endTime !== formData.endTime;
+    
+            if ((hasDateChanged || hasStartTimeChanged || hasEndTimeChanged) && !isRescheduled) {
+                alert('Please check the "Mark as Rescheduled" box to save date or time changes.');
+                return;
+            }
+        }
+
         onSave(formData.id, { ...formData, is_rescheduled: isRescheduled });
     };
 
     const handleSaveAsPaid = () => {
+        if (timeError) {
+            alert(timeError);
+            return;
+        }
         const updatedFormData = {
             ...formData,
             amount_paid: formData.total_price,
@@ -214,6 +243,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                                 <label>New End Time: </label>
                                 <input type="time" name="endTime" value={formData.endTime || ''} onChange={handleInputChange} />
                             </div>
+                            {timeError && <p style={{ color: 'red' }}>{timeError}</p>}
                         </>
                     )}
                     {availabilityMessage && (
@@ -234,8 +264,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 </div>
 
                 <div style={{ marginTop: '20px' }}>
-                    <button onClick={handleSave}>Save Changes</button>
-                    <button onClick={handleSaveAsPaid} style={{ marginLeft: '10px' }}>Mark as Fully Paid & Save</button>
+                    <button onClick={handleSave} disabled={!!timeError}>Save Changes</button>
+                    <button onClick={handleSaveAsPaid} style={{ marginLeft: '10px' }} disabled={!!timeError}>Mark as Fully Paid & Save</button>
                     <button onClick={onClose} style={{ marginLeft: '10px' }}>Cancel</button>
                 </div>
             </div>
