@@ -114,19 +114,17 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 accessories: booking.accessories, // Use booking.accessories
                 discount_amount: booking.discount_amount // Use booking.discount_amount
             })
-                    .then(response => {
-                        setFormData(prev => {
-                            console.log('Debugging time extension: Prev endTime:', prev.endTime, 'New endTime:', newEndTime);
-                            const newState = {
-                                ...prev,
-                                endTime: newEndTime,
-                                total_price: response.data.total_price,
-                                balance_amount: response.data.total_price - prev.amount_paid
-                            };
-                            console.log('New state being set:', newState);
-                            return newState;
-                        });
-                    })            .catch(error => {
+                            .then(response => {
+                                setFormData(prev => {
+                                    const newState = {
+                                        ...prev,
+                                        endTime: newEndTime,
+                                        total_price: response.data.total_price,
+                                        balance_amount: response.data.total_price - prev.amount_paid
+                                    };
+                                    return newState;
+                                });
+                            })            .catch(error => {
                 console.error("Error calculating price:", error.response || error);
             });
         }

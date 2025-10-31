@@ -1391,16 +1391,17 @@ router.get('/analytics/revenue-by-payment-mode', authenticateToken, isAdmin, asy
         let queryParams = ['Cancelled'];
 
         if (startDate && endDate) {
-            dateFilter = ' AND date BETWEEN ? AND ?';
+            dateFilter = ' AND b.date BETWEEN ? AND ?';
             queryParams.push(startDate, endDate);
         }
 
         const [rows] = await db.query(`
-            SELECT payment_mode, SUM(amount_paid) as revenue
-            FROM bookings
-            WHERE status != ?
+            SELECT p.payment_mode, SUM(p.amount) as revenue
+            FROM payments p
+            JOIN bookings b ON p.booking_id = b.id
+            WHERE b.status != ?
             ${dateFilter}
-            GROUP BY payment_mode
+            GROUP BY p.payment_mode
             ORDER BY revenue DESC
         `, queryParams);
         res.json(rows);
