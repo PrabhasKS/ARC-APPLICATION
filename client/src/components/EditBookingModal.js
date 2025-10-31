@@ -93,6 +93,29 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         }
     }, [formData.startTime, formData.endTime]);
 
+    useEffect(() => {
+        if (showReschedule && formData.startTime && formData.endTime && (originalBookingData?.startTime !== formData.startTime || originalBookingData?.endTime !== formData.endTime)) {
+            api.post('/bookings/calculate-price', {
+                sport_id: formData.sport_id,
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                slots_booked: formData.slots_booked,
+                accessories: booking.accessories,
+                discount_amount: booking.discount_amount
+            })
+            .then(response => {
+                setFormData(prev => ({
+                    ...prev,
+                    total_price: response.data.total_price,
+                    balance_amount: response.data.total_price - prev.amount_paid
+                }));
+            })
+            .catch(error => {
+                console.error("Error calculating price:", error.response || error);
+            });
+        }
+    }, [formData.startTime, formData.endTime, formData.sport_id, formData.slots_booked, booking.accessories, booking.discount_amount, showReschedule, originalBookingData]);
+
     const handleExtensionChange = (e) => {
         const minutes = parseInt(e.target.value, 10);
         setExtensionMinutes(minutes);
@@ -256,7 +279,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                             <div style={{ margin: '10px 0' }}>
                                 <label>New Date: </label>
-                                <input type="date" name="date" value={formData.date ? new Date(formData.date).toISOString().slice(0, 10) : ''} onChange={handleInputChange} />
+                                <input type="date" name="date" value={formData.date ? new Date(formData.date).toISOString().slice(0, 10) : ''} onChange={handleInputChange} min={new Date().toISOString().slice(0, 10)} />
                             </div>
                             <div style={{ margin: '10px 0' }}>
                                 <label>New Start Time: </label>
