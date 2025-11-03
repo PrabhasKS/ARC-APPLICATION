@@ -168,12 +168,12 @@ const AppContent = () => {
                 <Routes>
                     <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} />} />
                     <Route path="/" element={
-                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk', 'staff']}>
+                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk']}>
                             <Dashboard user={user} />
                         </ProtectedRoute>
                     } />
                     <Route path="/ledger" element={
-                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk', 'staff']}>
+                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk']}>
                             <Ledger user={user} />
                         </ProtectedRoute>
                     } />

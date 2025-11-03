@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DashboardCourtStatusToggle from './DashboardCourtStatusToggle';
 
-const CourtActions = ({ court, onStatusChange }) => {
+const CourtActions = ({ court, onStatusChange, user }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -36,7 +36,7 @@ const CourtActions = ({ court, onStatusChange }) => {
                     zIndex: 10,
                     padding: '10px'
                 }}>
-                    <DashboardCourtStatusToggle court={court} onStatusChange={onStatusChange} />
+                    <DashboardCourtStatusToggle court={court} onStatusChange={onStatusChange} user={user} />
                 </div>
             )}
         </div>

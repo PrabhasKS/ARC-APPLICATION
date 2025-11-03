@@ -350,7 +350,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import CourtStatusControl from './CourtStatusControl';
 import './Admin.css';
-import { Eye, EyeOff } from 'lucide-react'; // Assuming you have lucide-react installed
+
 
 const Admin = () => {
   // --- State Variables ---
@@ -365,7 +365,7 @@ const Admin = () => {
   const [newAccessoryPrice, setNewAccessoryPrice] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState('staff');
+  const [newRole, setNewRole] = useState('desk');
   const [showPassword, setShowPassword] = useState(false);
 
   const [notification, setNotification] = useState({ text: '', type: '' });
@@ -571,7 +571,18 @@ const Admin = () => {
                   required
                 />
                 <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-7-10-7a18.01 18.01 0 0 1 7.07-5.07M10.1 5.07A10.07 10.07 0 0 1 12 4c7 0 10 7 10 7a18.01 18.01 0 0 1-2.66 4.09"></path>
+                                        <path d="M12 12v.01"></path>
+                                        <path d="M4.93 4.93l14.14 14.14"></path>
+                                    </svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                )}
                 </button>
               </div>
               {errors.password && <p className="form-error">{errors.password}</p>}
@@ -579,7 +590,6 @@ const Admin = () => {
             <div className="form-group">
               <label>Role</label>
               <select value={newRole} onChange={(e) => setNewRole(e.target.value)} required>
-                <option value="staff">Staff</option>
                 <option value="desk">Desk</option>
                 <option value="admin">Admin</option>
               </select>

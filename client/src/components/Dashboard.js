@@ -820,7 +820,7 @@ const Dashboard = ({ user }) => {
                                         <td style={{ color: court.is_available ? 'green' : 'red', fontWeight: '500' }}>
                                             {['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'].includes(court.status) ? court.status : court.is_available ? (court.capacity > 1 ? `${court.available_slots} / ${court.capacity} available` : 'Available') : 'Engaged'}
                                         </td>
-                                        <td><CourtActions court={court} onStatusChange={handleCourtStatusChange} /></td>
+                                        <td><CourtActions court={court} onStatusChange={handleCourtStatusChange} user={user} /></td>
                                     </tr>
                                 ))}
                             </tbody>

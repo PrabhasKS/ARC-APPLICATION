@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import api from '../api';
 
-const DashboardCourtStatusToggle = ({ court, onStatusChange }) => {
+const DashboardCourtStatusToggle = ({ court, onStatusChange, user }) => {
     const [status, setStatus] = useState(court.status);
     const [isLoading, setIsLoading] = useState(false);
+
+    const isEnabled = user && (user.role === 'admin' || user.role === 'desk');
 
     const handleStatusChange = async (e) => {
         const newStatus = e.target.value;
@@ -20,7 +22,7 @@ const DashboardCourtStatusToggle = ({ court, onStatusChange }) => {
     };
 
     return (
-        <select value={status} onChange={handleStatusChange} disabled={isLoading}>
+        <select value={status} onChange={handleStatusChange} disabled={isLoading || !isEnabled}>
             <option value="Available">Available</option>
             <option value="Under Maintenance">Maintenance</option>
             <option value="Membership">Membership</option>
