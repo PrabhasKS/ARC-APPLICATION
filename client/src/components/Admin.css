@@ -224,3 +224,9 @@
 .toggle-password-btn:hover {
   color: #343a40;
 }
+.form-error {
+  color: red;
+  font-size: 0.9rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
