@@ -350,8 +350,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import CourtStatusControl from './CourtStatusControl';
 import './Admin.css';
+import { Eye, EyeOff } from 'lucide-react'; // Assuming you have lucide-react installed
 
 const Admin = () => {
+  // --- State Variables ---
   const [sports, setSports] = useState([]);
   const [courts, setCourts] = useState([]);
   const [accessories, setAccessories] = useState([]);
@@ -364,118 +366,133 @@ const Admin = () => {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('staff');
-  const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const [notification, setNotification] = useState({ text: '', type: '' });
+  const [errors, setErrors] = useState({});
+
+  // --- Effects ---
   useEffect(() => {
     fetchSports();
     fetchCourts();
     fetchAccessories();
-
-    const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/events`);
-    eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.message === 'courts_updated') {
-            fetchCourts();
-        } else if (data.message === 'sports_updated') {
-            fetchSports();
-        } else if (data.message === 'accessories_updated') {
-            fetchAccessories();
-        }
-    };
-
-    return () => {
-        eventSource.close();
-    };
-}, []);
+  }, []);
 
   useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(''), 3000);
+    if (notification.text) {
+      const timer = setTimeout(() => {
+        setNotification({ text: '', type: '' }); // Clear notification
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [message]);
+  }, [notification]);
 
+  // --- Fetch Functions ---
   const fetchSports = async () => {
     const res = await api.get('/sports');
-    setSports(res.data);
+    setSports(res.data || []);
   };
-
   const fetchCourts = async () => {
     const res = await api.get('/courts');
-    setCourts(res.data);
+    setCourts(res.data || []);
   };
-
   const fetchAccessories = async () => {
     const res = await api.get('/accessories');
-    setAccessories(res.data);
+    setAccessories(res.data || []);
   };
 
+  // --- Validation Function ---
+  const validateForm = (formType) => {
+    const newErrors = {};
+    let isValid = true;
+    const alphanumericRegex = /^[a-z0-9 ]+$/i;
+
+    if (formType === 'sport') {
+      if (!newSportName.trim()) {
+        newErrors.sportName = 'Sport name is required.';
+        isValid = false;
+      } else if (!alphanumericRegex.test(newSportName)) { // ✅ UPDATED Check
+        newErrors.sportName = 'Sport name can only contain letters, numbers, and spaces.';
+        isValid = false;
+      }
+      if (!newSportPrice || parseFloat(newSportPrice) <= 0) {
+        newErrors.sportPrice = 'Price must be a positive number.';
+        isValid = false;
+      }
+    }
+    if (formType === 'court') {
+      if (!newCourtName.trim()) { newErrors.courtName = 'Court name is required.'; isValid = false; }
+      if (!selectedSportId) { newErrors.courtSport = 'Please select a sport.'; isValid = false; }
+    }
+    if (formType === 'accessory') {
+      if (!newAccessoryName.trim()) { newErrors.accessoryName = 'Accessory name is required.'; isValid = false; }
+      if (!newAccessoryPrice || parseFloat(newAccessoryPrice) <= 0) { newErrors.accessoryPrice = 'Price must be a positive number.'; isValid = false; }
+    }
+    if (formType === 'user') {
+      if (!newUsername.trim()) { newErrors.username = 'Username is required.'; isValid = false; }
+      if (!newPassword || newPassword.length < 6) { newErrors.password = 'Password must be at least 6 characters.'; isValid = false; }
+    }
+
+    setErrors(newErrors);
+
+    if (!isValid) {
+      setNotification({ text: 'Please fix the errors in the form.', type: 'error' });
+    }
+
+    return isValid;
+  };
+
+  // --- Handler Functions ---
   const handleAddSport = async (e) => {
     e.preventDefault();
+    if (!validateForm('sport')) return;
     try {
       await api.post('/sports', { name: newSportName, price: newSportPrice });
-      setNewSportName('');
-      setNewSportPrice('');
-      fetchSports();
-      setMessage('Sport added successfully!');
+      setNewSportName(''); setNewSportPrice(''); fetchSports();
+      setNotification({ text: 'Sport added successfully!', type: 'success' });
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Error adding sport');
+      setNotification({ text: err.response?.data?.message || 'Error adding sport', type: 'error' });
     }
   };
 
   const handleAddCourt = async (e) => {
     e.preventDefault();
-    // Client-side check for duplicate court names
-    if (courts.some(court => court.name.toLowerCase() === newCourtName.toLowerCase())) {
-      setMessage('Court with this name already exists. Please choose a different name.');
-      return;
-    }
+    if (!validateForm('court')) return;
     try {
       await api.post('/courts', { name: newCourtName, sport_id: selectedSportId });
-      setNewCourtName('');
-      setSelectedSportId('');
-      fetchCourts();
-      setMessage('Court added successfully!');
+      setNewCourtName(''); setSelectedSportId(''); fetchCourts();
+      setNotification({ text: 'Court added successfully!', type: 'success' });
     } catch (err) {
-      if (err.response && err.response.status === 409) {
-        setMessage(err.response.data.message); // Display specific message from backend
-      } else {
-        setMessage(err.response?.data?.message || 'Error adding court');
-      }
+      setNotification({ text: err.response?.data?.message || 'Error adding court', type: 'error' });
     }
   };
 
   const handleAddAccessory = async (e) => {
     e.preventDefault();
+    if (!validateForm('accessory')) return;
     try {
       await api.post('/accessories', { name: newAccessoryName, price: newAccessoryPrice });
-      setNewAccessoryName('');
-      setNewAccessoryPrice('');
-      fetchAccessories();
-      setMessage('Accessory added successfully!');
+      setNewAccessoryName(''); setNewAccessoryPrice(''); fetchAccessories();
+      setNotification({ text: 'Accessory added successfully!', type: 'success' });
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Error adding accessory');
+      setNotification({ text: err.response?.data?.message || 'Error adding accessory', type: 'error' });
     }
   };
 
   const handleAddUser = async (e) => {
     e.preventDefault();
+    if (!validateForm('user')) return;
     try {
       await api.post('/admin/users', { username: newUsername, password: newPassword, role: newRole });
-      setNewUsername('');
-      setNewPassword('');
-      setNewRole('staff');
-      setMessage('User added successfully!');
+      setNewUsername(''); setNewPassword(''); setNewRole('staff');
+      setNotification({ text: 'User added successfully!', type: 'success' });
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Error adding user');
+      setNotification({ text: err.response?.data?.message || 'Error adding user', type: 'error' });
     }
   };
 
   const handlePriceChange = (e, sportId) => {
-    const updated = sports.map((s) =>
-      s.id === sportId ? { ...s, price: e.target.value } : s
-    );
+    const updated = sports.map((s) => s.id === sportId ? { ...s, price: e.target.value } : s);
     setSports(updated);
   };
 
@@ -483,29 +500,24 @@ const Admin = () => {
     const sport = sports.find((s) => s.id === sportId);
     try {
       await api.put(`/sports/${sportId}`, { price: sport.price });
-      setMessage(`Price for ${sport.name} updated successfully!`);
+      setNotification({ text: `Price for ${sport.name} updated!`, type: 'success' });
     } catch {
-      setMessage('Error updating price');
+      setNotification({ text: 'Error updating price', type: 'error' });
     }
   };
 
   const handleAccessoryPriceChange = (e, accessoryId) => {
-    const updated = accessories.map((a) =>
-      a.id === accessoryId ? { ...a, price: e.target.value } : a
-    );
+    const updated = accessories.map((a) => a.id === accessoryId ? { ...a, price: e.target.value } : a);
     setAccessories(updated);
   };
 
   const handleUpdateAccessory = async (accessoryId) => {
     const acc = accessories.find((a) => a.id === accessoryId);
     try {
-      await api.put(`/accessories/${accessoryId}`, {
-        name: acc.name,
-        price: acc.price,
-      });
-      setMessage(`Price for ${acc.name} updated successfully!`);
+      await api.put(`/accessories/${accessoryId}`, { name: acc.name, price: acc.price });
+      setNotification({ text: `Price for ${acc.name} updated!`, type: 'success' });
     } catch {
-      setMessage('Error updating accessory price');
+      setNotification({ text: 'Error updating accessory price', type: 'error' });
     }
   };
 
@@ -514,44 +526,41 @@ const Admin = () => {
       try {
         await api.delete(url);
         refreshFn();
-        setMessage(messageText);
+        setNotification({ text: messageText, type: 'success' });
       } catch {
-        setMessage('Error deleting item');
+        setNotification({ text: 'Error deleting item', type: 'error' });
       }
     }
   };
 
   const handleCourtStatusChange = (courtId, newStatus) => {
-    const updatedCourts = courts.map((c) =>
-      c.id === courtId ? { ...c, status: newStatus } : c
-    );
+    const updatedCourts = courts.map((c) => c.id === courtId ? { ...c, status: newStatus } : c);
     setCourts(updatedCourts);
-    setMessage(`Court status updated to ${newStatus}`);
+    setNotification({ text: `Court status updated to ${newStatus}`, type: 'success' });
   };
 
   return (
     <div className="admin-container">
-      {message && <div className="notification-popup">{message}</div>}
+      {notification.text && (
+        <div className={`notification-popup ${notification.type}`}>
+          {notification.text}
+        </div>
+      )}
 
       <div className="admin-header">
         <h1>Admin Panel</h1>
       </div>
 
       <div className="admin-grid">
-        {/* Add User */}
+        {/* --- Add User Card --- */}
         <div className="admin-card">
           <h2>Add a New User</h2>
           <form onSubmit={handleAddUser}>
             <div className="form-group">
               <label>Username</label>
-              <input
-                type="text"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                required
-              />
+              <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} required />
+              {errors.username && <p className="form-error">{errors.username}</p>}
             </div>
-
             <div className="form-group password-group">
               <label>Password</label>
               <div className="password-input-wrapper">
@@ -561,152 +570,93 @@ const Admin = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                 />
-                <button
-                  type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-7-10-7a18.01 18.01 0 0 1 7.07-5.07M10.1 5.07A10.07 10.07 0 0 1 12 4c7 0 10 7 10 7a18.01 18.01 0 0 1-2.66 4.09"></path>
-                                        <path d="M12 12v.01"></path>
-                                        <path d="M4.93 4.93l14.14 14.14"></path>
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                )}
+                <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {errors.password && <p className="form-error">{errors.password}</p>}
             </div>
-
             <div className="form-group">
               <label>Role</label>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                required
-              >
-                <option value="admin">Admin</option>
+              <select value={newRole} onChange={(e) => setNewRole(e.target.value)} required>
+                <option value="staff">Staff</option>
                 <option value="desk">Desk</option>
-                
+                <option value="admin">Admin</option>
               </select>
             </div>
-
-            <button type="submit" className="btn-primary">
-              Add User
-            </button>
+            <button type="submit" className="btn-primary">Add User</button>
           </form>
         </div>
 
-        {/* Add Sport */}
+        {/* --- Add Sport Card --- */}
         <div className="admin-card">
           <h2>Add a New Sport</h2>
           <form onSubmit={handleAddSport}>
             <div className="form-group">
               <label>Sport Name</label>
-              <input
-                type="text"
-                value={newSportName}
-                onChange={(e) => setNewSportName(e.target.value)}
-                required
-              />
+              <input type="text" value={newSportName} onChange={(e) => setNewSportName(e.target.value)} required />
+              {errors.sportName && <p className="form-error">{errors.sportName}</p>}
             </div>
             <div className="form-group">
               <label>Price</label>
-              <input
-                type="number"
-                value={newSportPrice}
-                onChange={(e) => setNewSportPrice(e.target.value)}
-                required
-              />
+              <input type="number" value={newSportPrice} onChange={(e) => setNewSportPrice(e.target.value)} required />
+              {errors.sportPrice && <p className="form-error">{errors.sportPrice}</p>}
             </div>
             <button type="submit" className="btn-primary">Add Sport</button>
           </form>
         </div>
 
-        {/* Add Court */}
+        {/* --- Add Court Card --- */}
         <div className="admin-card">
           <h2>Add a New Court</h2>
           <form onSubmit={handleAddCourt}>
             <div className="form-group">
               <label>Sport</label>
-              <select
-                value={selectedSportId}
-                onChange={(e) => setSelectedSportId(e.target.value)}
-                required
-              >
+              <select value={selectedSportId} onChange={(e) => setSelectedSportId(e.target.value)} required>
                 <option value="">Select a Sport</option>
                 {sports.map((sport) => (
-                  <option key={sport.id} value={sport.id}>
-                    {sport.name}
-                  </option>
+                  <option key={sport.id} value={sport.id}>{sport.name}</option>
                 ))}
               </select>
+              {errors.courtSport && <p className="form-error">{errors.courtSport}</p>}
             </div>
             <div className="form-group">
               <label>Court Name</label>
-              <input
-                type="text"
-                value={newCourtName}
-                onChange={(e) => setNewCourtName(e.target.value)}
-                required
-              />
+              <input type="text" value={newCourtName} onChange={(e) => setNewCourtName(e.target.value)} required />
+              {errors.courtName && <p className="form-error">{errors.courtName}</p>}
             </div>
             <button type="submit" className="btn-primary">Add Court</button>
           </form>
         </div>
 
-        {/* Add Accessory */}
+        {/* --- Add Accessory Card --- */}
         <div className="admin-card">
           <h2>Add a New Accessory</h2>
           <form onSubmit={handleAddAccessory}>
             <div className="form-group">
               <label>Accessory Name</label>
-              <input
-                type="text"
-                value={newAccessoryName}
-                onChange={(e) => setNewAccessoryName(e.target.value)}
-                required
-              />
+              <input type="text" value={newAccessoryName} onChange={(e) => setNewAccessoryName(e.target.value)} required />
+              {errors.accessoryName && <p className="form-error">{errors.accessoryName}</p>}
             </div>
             <div className="form-group">
               <label>Price</label>
-              <input
-                type="number"
-                value={newAccessoryPrice}
-                onChange={(e) => setNewAccessoryPrice(e.target.value)}
-                required
-              />
+              <input type="number" value={newAccessoryPrice} onChange={(e) => setNewAccessoryPrice(e.target.value)} required />
+              {errors.accessoryPrice && <p className="form-error">{errors.accessoryPrice}</p>}
             </div>
             <button type="submit" className="btn-primary">Add Accessory</button>
           </form>
         </div>
 
-        {/* Manage Sections */}
+        {/* --- Manage Sections --- */}
         <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
           <h2>Manage Sports</h2>
           <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Sport</th>
-                <th>Price</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Sport</th><th>Price</th><th>Actions</th></tr></thead>
             <tbody>
               {sports.map((sport) => (
                 <tr key={sport.id}>
                   <td>{sport.name}</td>
-                  <td>
-                    <input
-                      type="number"
-                      value={sport.price}
-                      onChange={(e) => handlePriceChange(e, sport.id)}
-                    />
-                  </td>
+                  <td><input type="number" value={sport.price} onChange={(e) => handlePriceChange(e, sport.id)} /></td>
                   <td className="actions-group">
                     <button className="btn-update" onClick={() => handleUpdatePrice(sport.id)}>Update</button>
                     <button className="btn-delete" onClick={() => handleDelete(`/sports/${sport.id}`, fetchSports, 'Sport deleted successfully!')}>Delete</button>
@@ -720,32 +670,15 @@ const Admin = () => {
         <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
           <h2>Manage Courts</h2>
           <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Court</th>
-                <th>Sport</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Court</th><th>Sport</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
               {courts.map((court) => (
                 <tr key={court.id}>
                   <td>{court.name}</td>
                   <td>{court.sport_name}</td>
-                  <td>
-                    <CourtStatusControl
-                      court={court}
-                      onStatusChange={handleCourtStatusChange}
-                    />
-                  </td>
+                  <td><CourtStatusControl court={court} onStatusChange={handleCourtStatusChange} /></td>
                   <td className="actions-group">
-                    <button
-                      className="btn-delete"
-                      onClick={() => handleDelete(`/courts/${court.id}`, fetchCourts, 'Court deleted successfully!')}
-                    >
-                      Delete
-                    </button>
+                    <button className="btn-delete" onClick={() => handleDelete(`/courts/${court.id}`, fetchCourts, 'Court deleted successfully!')}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -756,24 +689,12 @@ const Admin = () => {
         <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
           <h2>Manage Accessories</h2>
           <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Accessory</th>
-                <th>Price</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Accessory</th><th>Price</th><th>Actions</th></tr></thead>
             <tbody>
               {accessories.map((acc) => (
                 <tr key={acc.id}>
                   <td>{acc.name}</td>
-                  <td>
-                    <input
-                      type="number"
-                      value={acc.price}
-                      onChange={(e) => handleAccessoryPriceChange(e, acc.id)}
-                    />
-                  </td>
+                  <td><input type="number" value={acc.price} onChange={(e) => handleAccessoryPriceChange(e, acc.id)} /></td>
                   <td className="actions-group">
                     <button className="btn-update" onClick={() => handleUpdateAccessory(acc.id)}>Update</button>
                     <button className="btn-delete" onClick={() => handleDelete(`/accessories/${acc.id}`, fetchAccessories, 'Accessory deleted successfully!')}>Delete</button>
@@ -789,6 +710,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
-
-
