@@ -48,8 +48,7 @@
 /* --- Responsive Grid for Admin Cards --- */
 .admin-grid {
     display: grid;
-    /* ✅ FIX: This creates a strict grid with two equal-width columns */
-    grid-template-columns: repeat(2, 1fr); 
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
     gap: 24px;
 }
 

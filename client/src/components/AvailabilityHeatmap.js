@@ -7,10 +7,7 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
         return <p>Loading availability...</p>;
     }
 
-    const timeSlots = Array.from({ length: 16 }, (_, i) => {
-        const hour = 6 + i;
-        return `${String(hour).padStart(2, '0')}:00`;
-    });
+    const timeSlots = heatmapData[0]?.slots.map(slot => slot.time) || [];
 
     const getCellColor = (availability) => {
         switch (availability) {

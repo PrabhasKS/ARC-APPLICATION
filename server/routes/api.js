@@ -384,8 +384,8 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, s.name as sport_name, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id ORDER BY s.name, c.name');
         const [bookings] = await db.query('SELECT * FROM bookings WHERE date = ? AND status != ?', [date, 'Cancelled']);
 
-        const timeSlots = Array.from({ length: 16 }, (_, i) => {
-            const hour = 6 + i;
+        const timeSlots = Array.from({ length: 18 }, (_, i) => {
+            const hour = 5 + i;
             return `${String(hour).padStart(2, '0')}:00`;
         });
 

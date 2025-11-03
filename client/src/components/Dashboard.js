@@ -751,8 +751,8 @@ const Dashboard = ({ user }) => {
         }
     };
 
-    const timeSlots = useMemo(() => Array.from({ length: 16 }, (_, i) => {
-        const startHour = 6 + i;
+    const timeSlots = useMemo(() => Array.from({ length: 18 }, (_, i) => {
+        const startHour = 5 + i;
         const endHour = startHour + 1;
         const startTimeValue = `${String(startHour).padStart(2, '0')}:00`;
         const endTimeValue = `${String(endHour).padStart(2, '0')}:00`;
