@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS `courts` (
     FOREIGN KEY (`sport_id`) REFERENCES `sports`(`id`) ON DELETE CASCADE
 );
 
+ALTER TABLE courts ADD UNIQUE (name);
+
 CREATE TABLE IF NOT EXISTS `bookings` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `court_id` INT,
