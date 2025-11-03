@@ -352,8 +352,7 @@ import CourtStatusControl from './CourtStatusControl';
 import './Admin.css';
 
 
-const Admin = () => {
-  // --- State Variables ---
+const Admin = ({ user }) => {
   const [sports, setSports] = useState([]);
   const [courts, setCourts] = useState([]);
   const [accessories, setAccessories] = useState([]);
@@ -368,6 +367,8 @@ const Admin = () => {
   const [newRole, setNewRole] = useState('desk');
   const [showPassword, setShowPassword] = useState(false);
 
+  const [users, setUsers] = useState([]);
+
   const [notification, setNotification] = useState({ text: '', type: '' });
   const [errors, setErrors] = useState({});
 
@@ -376,6 +377,7 @@ const Admin = () => {
     fetchSports();
     fetchCourts();
     fetchAccessories();
+    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -399,6 +401,15 @@ const Admin = () => {
   const fetchAccessories = async () => {
     const res = await api.get('/accessories');
     setAccessories(res.data || []);
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('/admin/users');
+      setUsers(res.data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
   };
 
   // --- Validation Function ---
@@ -533,6 +544,18 @@ const Admin = () => {
     }
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await api.delete(`/admin/users/${userId}`);
+        fetchUsers();
+        setNotification({ text: 'User deleted successfully!', type: 'success' });
+      } catch (err) {
+        setNotification({ text: err.response?.data?.message || 'Error deleting user', type: 'error' });
+      }
+    }
+  };
+
   const handleCourtStatusChange = (courtId, newStatus) => {
     const updatedCourts = courts.map((c) => c.id === courtId ? { ...c, status: newStatus } : c);
     setCourts(updatedCourts);
@@ -596,6 +619,33 @@ const Admin = () => {
             </div>
             <button type="submit" className="btn-primary">Add User</button>
           </form>
+        </div>
+
+        {/* --- Manage Users Card --- */}
+        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+          <h2>Manage Users</h2>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((userToDelete) => (
+                <tr key={userToDelete.id}>
+                  <td>{userToDelete.username}</td>
+                  <td>{userToDelete.role}</td>
+                  <td className="actions-group">
+                    {user && user.role === 'admin' && (
+                      <button className="btn-delete" onClick={() => handleDeleteUser(userToDelete.id)}>Delete</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* --- Add Sport Card --- */}

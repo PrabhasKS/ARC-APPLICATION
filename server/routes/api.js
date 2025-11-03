@@ -167,6 +167,27 @@ router.post('/admin/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
+// Get all users (Admin only)
+router.get('/admin/users', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const [users] = await db.query('SELECT id, username, role FROM users');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a user (Admin only)
+router.delete('/admin/users/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM users WHERE id = ?', [id]);
+        res.json({ success: true, message: 'User deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // Get all sports
 router.get('/sports', authenticateToken, async (req, res) => {
