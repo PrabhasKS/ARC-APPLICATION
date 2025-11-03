@@ -426,6 +426,11 @@ const Admin = () => {
 
   const handleAddCourt = async (e) => {
     e.preventDefault();
+    // Client-side check for duplicate court names
+    if (courts.some(court => court.name.toLowerCase() === newCourtName.toLowerCase())) {
+      setMessage('Court with this name already exists. Please choose a different name.');
+      return;
+    }
     try {
       await api.post('/courts', { name: newCourtName, sport_id: selectedSportId });
       setNewCourtName('');
@@ -433,7 +438,11 @@ const Admin = () => {
       fetchCourts();
       setMessage('Court added successfully!');
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Error adding court');
+      if (err.response && err.response.status === 409) {
+        setMessage(err.response.data.message); // Display specific message from backend
+      } else {
+        setMessage(err.response?.data?.message || 'Error adding court');
+      }
     }
   };
 

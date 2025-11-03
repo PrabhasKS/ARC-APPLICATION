@@ -1160,6 +1160,9 @@ router.post('/courts', authenticateToken, isAdmin, async (req, res) => {
         const [result] = await db.query('INSERT INTO courts (name, sport_id) VALUES (?, ?)', [name, sport_id]);
         res.json({ success: true, courtId: result.insertId });
     } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'Court name already exists' });
+        }
         res.status(500).json({ error: err.message });
     }
 });
