@@ -165,6 +165,27 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     };
 
 
+    const resetForm = () => {
+        setCourtId('');
+        setCustomerName('');
+        setCustomerContact('');
+        setCustomerEmail('');
+        setAmountPaid('');
+        setTotalPrice(0);
+        setBalance(0);
+        setMessage('');
+        setSlotsBooked(1);
+        setDiscountAmount('');
+        setDiscountReason('');
+        setShowDiscount(false);
+        setSelectedAccessories([]);
+        setShowAccessories(false);
+        setErrors({});
+        setPaymentMethod('Cash');
+        setOnlinePaymentType('UPI');
+        setPaymentId('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -198,16 +219,9 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
             setLastBooking(res.data);
             setIsConfirmationModalOpen(true);
-            setMessage('Booking created successfully!');
-
-            setCourtId(''); setCustomerName(''); setCustomerContact(''); setCustomerEmail('');
-            setAmountPaid(''); setDiscountAmount(''); setDiscountReason('');
-            setShowDiscount(false); setShowAccessories(false); setSelectedAccessories([]);
-            setPaymentMethod('Cash'); setOnlinePaymentType('UPI'); setPaymentId('');
-            setSlotsBooked('');
-            setErrors({});
-
             onBookingSuccess();
+            resetForm();
+
         } catch (err) {
             setMessage(err.response?.data?.message || 'Error creating booking');
         }
@@ -403,8 +417,14 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             {isConfirmationModalOpen && (
                 <ConfirmationModal
                     booking={lastBooking}
-                    onClose={() => setIsConfirmationModalOpen(false)}
-                    onCreateNew={() => setIsConfirmationModalOpen(false)}
+                    onClose={() => {
+                        setIsConfirmationModalOpen(false);
+                        setMessage('');
+                    }}
+                    onCreateNew={() => {
+                        setIsConfirmationModalOpen(false);
+                        setMessage('');
+                    }}
                 />
             )}
         </>
