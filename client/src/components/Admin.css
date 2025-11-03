@@ -5,17 +5,44 @@
     margin: 0 auto;
 }
 
+.admin-tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.admin-tabs button {
+  padding: 10px 20px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  color: #6c757d;
+  position: relative;
+  top: 2px; /* Adjust to align with border */
+}
+
+.admin-tabs button.active {
+  color: #0d6efd;
+  border-bottom: 2px solid #0d6efd;
+  font-weight: 600;
+}
+
+.admin-tabs button:hover:not(.active) {
+  color: #0d6efd;
+}
+
+/* Adjust admin-header to accommodate tabs */
 .admin-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
+    flex-direction: column; /* Stack title and tabs */
+    align-items: flex-start; /* Align items to the start */
+    margin-bottom: 0; /* Remove bottom margin as tabs have their own */
 }
 
 .admin-header h1 {
-    font-size: 32px;
-    font-weight: 700;
-    color: #212529;
+    margin-bottom: 15px; /* Space between title and tabs */
 }
 
 /* --- Responsive Grid for Admin Cards --- */

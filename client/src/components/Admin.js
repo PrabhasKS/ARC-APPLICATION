@@ -366,6 +366,7 @@ const Admin = ({ user }) => {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('desk');
   const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState('users');
 
   const [users, setUsers] = useState([]);
 
@@ -572,199 +573,215 @@ const Admin = ({ user }) => {
 
       <div className="admin-header">
         <h1>Admin Panel</h1>
+        <div className="admin-tabs">
+          <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>User Management</button>
+          <button className={activeTab === 'sports' ? 'active' : ''} onClick={() => setActiveTab('sports')}>Sport & Court Management</button>
+          <button className={activeTab === 'accessories' ? 'active' : ''} onClick={() => setActiveTab('accessories')}>Accessory Management</button>
+        </div>
       </div>
 
-      <div className="admin-grid">
-        {/* --- Add User Card --- */}
-        <div className="admin-card">
-          <h2>Add a New User</h2>
-          <form onSubmit={handleAddUser}>
-            <div className="form-group">
-              <label>Username</label>
-              <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} required />
-              {errors.username && <p className="form-error">{errors.username}</p>}
-            </div>
-            <div className="form-group password-group">
-              <label>Password</label>
-              <div className="password-input-wrapper">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-                <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-7-10-7a18.01 18.01 0 0 1 7.07-5.07M10.1 5.07A10.07 10.07 0 0 1 12 4c7 0 10 7 10 7a18.01 18.01 0 0 1-2.66 4.09"></path>
-                                        <path d="M12 12v.01"></path>
-                                        <path d="M4.93 4.93l14.14 14.14"></path>
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                )}
-                </button>
+      {activeTab === 'users' && (
+        <div className="admin-grid">
+          {/* --- Add User Card --- */}
+          <div className="admin-card">
+            <h2>Add a New User</h2>
+            <form onSubmit={handleAddUser}>
+              <div className="form-group">
+                <label>Username</label>
+                <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} required />
+                {errors.username && <p className="form-error">{errors.username}</p>}
               </div>
-              {errors.password && <p className="form-error">{errors.password}</p>}
-            </div>
-            <div className="form-group">
-              <label>Role</label>
-              <select value={newRole} onChange={(e) => setNewRole(e.target.value)} required>
-                <option value="desk">Desk</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <button type="submit" className="btn-primary">Add User</button>
-          </form>
-        </div>
+              <div className="form-group password-group">
+                <label>Password</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                  <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-7-10-7a18.01 18.01 0 0 1 7.07-5.07M10.1 5.07A10.07 10.07 0 0 1 12 4c7 0 10 7 10 7a18.01 18.01 0 0 1-2.66 4.09"></path>
+                                          <path d="M12 12v.01"></path>
+                                          <path d="M4.93 4.93l14.14 14.14"></path>
+                                      </svg>
+                                  ) : (
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                          <circle cx="12" cy="12" r="3"></circle>
+                                      </svg>
+                                  )}
+                  </button>
+                </div>
+                {errors.password && <p className="form-error">{errors.password}</p>}
+              </div>
+              <div className="form-group">
+                <label>Role</label>
+                <select value={newRole} onChange={(e) => setNewRole(e.target.value)} required>
+                  <option value="desk">Desk</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button type="submit" className="btn-primary">Add User</button>
+            </form>
+          </div>
 
-        {/* --- Manage Users Card --- */}
-        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
-          <h2>Manage Users</h2>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((userToDelete) => (
-                <tr key={userToDelete.id}>
-                  <td>{userToDelete.username}</td>
-                  <td>{userToDelete.role}</td>
-                  <td className="actions-group">
-                    {user && user.role === 'admin' && (
-                      <button className="btn-delete" onClick={() => handleDeleteUser(userToDelete.id)}>Delete</button>
-                    )}
-                  </td>
+          {/* --- Manage Users Card --- */}
+          <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+            <h2>Manage Users</h2>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* --- Add Sport Card --- */}
-        <div className="admin-card">
-          <h2>Add a New Sport</h2>
-          <form onSubmit={handleAddSport}>
-            <div className="form-group">
-              <label>Sport Name</label>
-              <input type="text" value={newSportName} onChange={(e) => setNewSportName(e.target.value)} required />
-              {errors.sportName && <p className="form-error">{errors.sportName}</p>}
-            </div>
-            <div className="form-group">
-              <label>Price</label>
-              <input type="number" value={newSportPrice} onChange={(e) => setNewSportPrice(e.target.value)} required />
-              {errors.sportPrice && <p className="form-error">{errors.sportPrice}</p>}
-            </div>
-            <button type="submit" className="btn-primary">Add Sport</button>
-          </form>
-        </div>
-
-        {/* --- Add Court Card --- */}
-        <div className="admin-card">
-          <h2>Add a New Court</h2>
-          <form onSubmit={handleAddCourt}>
-            <div className="form-group">
-              <label>Sport</label>
-              <select value={selectedSportId} onChange={(e) => setSelectedSportId(e.target.value)} required>
-                <option value="">Select a Sport</option>
-                {sports.map((sport) => (
-                  <option key={sport.id} value={sport.id}>{sport.name}</option>
+              </thead>
+              <tbody>
+                {users.map((userToDelete) => (
+                  <tr key={userToDelete.id}>
+                    <td>{userToDelete.username}</td>
+                    <td>{userToDelete.role}</td>
+                    <td className="actions-group">
+                      {user && user.role === 'admin' && (
+                        <button className="btn-delete" onClick={() => handleDeleteUser(userToDelete.id)}>Delete</button>
+                      )}
+                    </td>
+                  </tr>
                 ))}
-              </select>
-              {errors.courtSport && <p className="form-error">{errors.courtSport}</p>}
-            </div>
-            <div className="form-group">
-              <label>Court Name</label>
-              <input type="text" value={newCourtName} onChange={(e) => setNewCourtName(e.target.value)} required />
-              {errors.courtName && <p className="form-error">{errors.courtName}</p>}
-            </div>
-            <button type="submit" className="btn-primary">Add Court</button>
-          </form>
+              </tbody>
+            </table>
+          </div>
         </div>
+      )}
 
-        {/* --- Add Accessory Card --- */}
-        <div className="admin-card">
-          <h2>Add a New Accessory</h2>
-          <form onSubmit={handleAddAccessory}>
-            <div className="form-group">
-              <label>Accessory Name</label>
-              <input type="text" value={newAccessoryName} onChange={(e) => setNewAccessoryName(e.target.value)} required />
-              {errors.accessoryName && <p className="form-error">{errors.accessoryName}</p>}
-            </div>
-            <div className="form-group">
-              <label>Price</label>
-              <input type="number" value={newAccessoryPrice} onChange={(e) => setNewAccessoryPrice(e.target.value)} required />
-              {errors.accessoryPrice && <p className="form-error">{errors.accessoryPrice}</p>}
-            </div>
-            <button type="submit" className="btn-primary">Add Accessory</button>
-          </form>
-        </div>
+      {activeTab === 'sports' && (
+        <div className="admin-grid">
+          {/* --- Add Sport Card --- */}
+          <div className="admin-card">
+            <h2>Add a New Sport</h2>
+            <form onSubmit={handleAddSport}>
+              <div className="form-group">
+                <label>Sport Name</label>
+                <input type="text" value={newSportName} onChange={(e) => setNewSportName(e.target.value)} required />
+                {errors.sportName && <p className="form-error">{errors.sportName}</p>}
+              </div>
+              <div className="form-group">
+                <label>Price</label>
+                <input type="number" value={newSportPrice} onChange={(e) => setNewSportPrice(e.target.value)} required />
+                {errors.sportPrice && <p className="form-error">{errors.sportPrice}</p>}
+              </div>
+              <button type="submit" className="btn-primary">Add Sport</button>
+            </form>
+          </div>
 
-        {/* --- Manage Sections --- */}
-        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
-          <h2>Manage Sports</h2>
-          <table className="admin-table">
-            <thead><tr><th>Sport</th><th>Price</th><th>Actions</th></tr></thead>
-            <tbody>
-              {sports.map((sport) => (
-                <tr key={sport.id}>
-                  <td>{sport.name}</td>
-                  <td><input type="number" value={sport.price} onChange={(e) => handlePriceChange(e, sport.id)} /></td>
-                  <td className="actions-group">
-                    <button className="btn-update" onClick={() => handleUpdatePrice(sport.id)}>Update</button>
-                    <button className="btn-delete" onClick={() => handleDelete(`/sports/${sport.id}`, fetchSports, 'Sport deleted successfully!')}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          {/* --- Add Court Card --- */}
+          <div className="admin-card">
+            <h2>Add a New Court</h2>
+            <form onSubmit={handleAddCourt}>
+              <div className="form-group">
+                <label>Sport</label>
+                <select value={selectedSportId} onChange={(e) => setSelectedSportId(e.target.value)} required>
+                  <option value="">Select a Sport</option>
+                  {sports.map((sport) => (
+                    <option key={sport.id} value={sport.id}>{sport.name}</option>
+                  ))}
+                </select>
+                {errors.courtSport && <p className="form-error">{errors.courtSport}</p>}
+              </div>
+              <div className="form-group">
+                <label>Court Name</label>
+                <input type="text" value={newCourtName} onChange={(e) => setNewCourtName(e.target.value)} required />
+                {errors.courtName && <p className="form-error">{errors.courtName}</p>}
+              </div>
+              <button type="submit" className="btn-primary">Add Court</button>
+            </form>
+          </div>
 
-        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
-          <h2>Manage Courts</h2>
-          <table className="admin-table">
-            <thead><tr><th>Court</th><th>Sport</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody>
-              {courts.map((court) => (
-                <tr key={court.id}>
-                  <td>{court.name}</td>
-                  <td>{court.sport_name}</td>
-                  <td><CourtStatusControl court={court} onStatusChange={handleCourtStatusChange} /></td>
-                  <td className="actions-group">
-                    <button className="btn-delete" onClick={() => handleDelete(`/courts/${court.id}`, fetchCourts, 'Court deleted successfully!')}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          {/* --- Manage Sections --- */}
+          <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+            <h2>Manage Sports</h2>
+            <table className="admin-table">
+              <thead><tr><th>Sport</th><th>Price</th><th>Actions</th></tr></thead>
+              <tbody>
+                {sports.map((sport) => (
+                  <tr key={sport.id}>
+                    <td>{sport.name}</td>
+                    <td><input type="number" value={sport.price} onChange={(e) => handlePriceChange(e, sport.id)} /></td>
+                    <td className="actions-group">
+                      <button className="btn-update" onClick={() => handleUpdatePrice(sport.id)}>Update</button>
+                      <button className="btn-delete" onClick={() => handleDelete(`/sports/${sport.id}`, fetchSports, 'Sport deleted successfully!')}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
-          <h2>Manage Accessories</h2>
-          <table className="admin-table">
-            <thead><tr><th>Accessory</th><th>Price</th><th>Actions</th></tr></thead>
-            <tbody>
-              {accessories.map((acc) => (
-                <tr key={acc.id}>
-                  <td>{acc.name}</td>
-                  <td><input type="number" value={acc.price} onChange={(e) => handleAccessoryPriceChange(e, acc.id)} /></td>
-                  <td className="actions-group">
-                    <button className="btn-update" onClick={() => handleUpdateAccessory(acc.id)}>Update</button>
-                    <button className="btn-delete" onClick={() => handleDelete(`/accessories/${acc.id}`, fetchAccessories, 'Accessory deleted successfully!')}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+            <h2>Manage Courts</h2>
+            <table className="admin-table">
+              <thead><tr><th>Court</th><th>Sport</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                {courts.map((court) => (
+                  <tr key={court.id}>
+                    <td>{court.name}</td>
+                    <td>{court.sport_name}</td>
+                    <td><CourtStatusControl court={court} onStatusChange={handleCourtStatusChange} /></td>
+                    <td className="actions-group">
+                      <button className="btn-delete" onClick={() => handleDelete(`/courts/${court.id}`, fetchCourts, 'Court deleted successfully!')}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'accessories' && (
+        <div className="admin-grid">
+          {/* --- Add Accessory Card --- */}
+          <div className="admin-card">
+            <h2>Add a New Accessory</h2>
+            <form onSubmit={handleAddAccessory}>
+              <div className="form-group">
+                <label>Accessory Name</label>
+                <input type="text" value={newAccessoryName} onChange={(e) => setNewAccessoryName(e.target.value)} required />
+                {errors.accessoryName && <p className="form-error">{errors.accessoryName}</p>}
+              </div>
+              <div className="form-group">
+                <label>Price</label>
+                <input type="number" value={newAccessoryPrice} onChange={(e) => setNewAccessoryPrice(e.target.value)} required />
+                {errors.accessoryPrice && <p className="form-error">{errors.accessoryPrice}</p>}
+              </div>
+              <button type="submit" className="btn-primary">Add Accessory</button>
+            </form>
+          </div>
+
+          {/* --- Manage Sections --- */}
+          <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
+            <h2>Manage Accessories</h2>
+            <table className="admin-table">
+              <thead><tr><th>Accessory</th><th>Price</th><th>Actions</th></tr></thead>
+              <tbody>
+                {accessories.map((acc) => (
+                  <tr key={acc.id}>
+                    <td>{acc.name}</td>
+                    <td><input type="number" value={acc.price} onChange={(e) => handleAccessoryPriceChange(e, acc.id)} /></td>
+                    <td className="actions-group">
+                      <button className="btn-update" onClick={() => handleUpdateAccessory(acc.id)}>Update</button>
+                      <button className="btn-delete" onClick={() => handleDelete(`/accessories/${acc.id}`, fetchAccessories, 'Accessory deleted successfully!')}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
