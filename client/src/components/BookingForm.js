@@ -96,6 +96,13 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
         setBalance(totalPrice - currentDiscount - currentAmountPaid);
     }, [amountPaid, discountAmount, totalPrice]);
 
+    useEffect(() => {
+        const selectedCourt = courts.find(c => c.id === parseInt(courtId));
+        if (selectedCourt && selectedCourt.sport_name.toLowerCase() !== 'swimming') {
+            setSlotsBooked(1);
+        }
+    }, [courtId, courts]);
+
     // --- Handlers ---
     const handleAmountChange = (setter) => (e) => setter(e.target.value);
 
