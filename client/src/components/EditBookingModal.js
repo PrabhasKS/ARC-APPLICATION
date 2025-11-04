@@ -255,8 +255,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                     <hr style={{ margin: '20px 0' }}/>
 
                     <h4>Customer Details</h4>
-                    <input name="customer_name" value={formData.customer_name || ''} onChange={handleInputChange} placeholder="Customer Name" />
-                    <input name="customer_contact" value={formData.customer_contact || ''} onChange={handleInputChange} placeholder="Customer Contact" />
+                    <input name="customer_name" value={formData.customer_name || ''} readOnly placeholder="Customer Name" />
+                    <input name="customer_contact" value={formData.customer_contact || ''} readOnly placeholder="Customer Contact" />
 
                     <hr style={{ margin: '20px 0' }}/>
 

@@ -1294,13 +1294,16 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
         }
 
         const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ total_amount }]] = await db.query(`SELECT SUM(total_price) as total_amount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ amount_received }]] = await db.query(`SELECT SUM(amount_paid) as amount_received FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ amount_pending }]] = await db.query(`SELECT SUM(balance_amount) as amount_pending FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ active_total_amount }]] = await db.query(`SELECT SUM(total_price) as active_total_amount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ amount_received }]] = await db.query(`SELECT SUM(amount_paid) as amount_received FROM bookings WHERE 1=1${dateFilter}`, [...queryParams]);
         const [[{ total_cancellations }]] = await db.query(`SELECT COUNT(*) as total_cancellations FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
         const [[{ total_sports }]] = await db.query('SELECT COUNT(*) as total_sports FROM sports');
         const [[{ total_courts }]] = await db.query('SELECT COUNT(*) as total_courts FROM courts');
         const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ cancelled_revenue }]] = await db.query(`SELECT SUM(amount_paid) as cancelled_revenue FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
+
+        const total_amount = (parseFloat(active_total_amount) || 0) + (parseFloat(cancelled_revenue) || 0);
+        const amount_pending = total_amount - (parseFloat(amount_received) || 0);
 
         res.json({
             total_bookings,
@@ -1310,7 +1313,8 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
             total_cancellations,
             total_sports,
             total_courts,
-            total_discount
+            total_discount,
+            cancelled_revenue
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

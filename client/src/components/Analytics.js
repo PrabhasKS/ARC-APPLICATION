@@ -372,6 +372,19 @@ const Analytics = () => {
             </div>
         </div>
                 </div >
+
+    {/* Cancelled Revenue Card */ }
+    < div className = "card" >
+        <div className="stat-card-content">
+            <div className="stat-icon-container" style={{ backgroundColor: 'rgba(201, 203, 207, 0.2)' }}>
+                <span>💸</span>
+            </div>
+            <div className="stat-text">
+                <h4>Cancelled Revenue</h4>
+                <p>₹{summary.cancelled_revenue}</p>
+            </div>
+        </div>
+    </div >
             </div >
 
     {/* Download Button (This div is now inside .analytics-header) */ }
