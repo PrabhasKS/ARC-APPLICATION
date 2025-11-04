@@ -141,6 +141,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             newErrors.amountPaid = 'Amount paid is required.';
         } else if (isNaN(amountPaid) || parseFloat(amountPaid) < 0) {
             newErrors.amountPaid = 'Amount paid must be a positive number.';
+        } else if (parseFloat(amountPaid) > totalPrice) {
+            newErrors.amountPaid = 'Amount paid cannot exceed total price.';
         }
 
         if (discountAmount && (isNaN(discountAmount) || parseFloat(discountAmount) < 0)) {

@@ -722,6 +722,13 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         // Total price is discounted court price + accessories price
         const total_price = final_court_price + accessories_total_price;
 
+        // Server-side validation: amount_paid cannot exceed total_price
+        if (parseFloat(amount_paid) > total_price) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ message: 'Amount paid cannot exceed total price.' });
+        }
+
         const balance_amount = total_price - amount_paid;
         let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
 
@@ -1148,6 +1155,9 @@ router.post('/sports', authenticateToken, isAdmin, async (req, res) => {
     if (!name || price === undefined) {
         return res.status(400).json({ message: 'Sport name and price are required' });
     }
+    if (parseFloat(price) < 0) {
+        return res.status(400).json({ message: 'Price cannot be negative' });
+    }
     try {
         const [result] = await db.query('INSERT INTO sports (name, price) VALUES (?, ?)', [name, price]);
         res.json({ success: true, sportId: result.insertId });
@@ -1162,6 +1172,9 @@ router.put('/sports/:id', authenticateToken, isAdmin, async (req, res) => {
     const { price } = req.body;
     if (price === undefined) {
         return res.status(400).json({ message: 'Price is required' });
+    }
+    if (parseFloat(price) < 0) {
+        return res.status(400).json({ message: 'Price cannot be negative' });
     }
     try {
         await db.query('UPDATE sports SET price = ? WHERE id = ?', [price, id]);
@@ -1225,6 +1238,10 @@ router.post('/accessories', authenticateToken, isAdmin, async (req, res) => {
     if (!name || price === undefined) {
         return res.status(400).json({ message: 'Accessory name and price are required' });
     }
+    if (parseFloat(price) < 0) {
+        return res.status(400).json({ message: 'Price cannot be negative' });
+    }
+
     try {
         const [result] = await db.query('INSERT INTO accessories (name, price) VALUES (?, ?)', [name, price]);
         sendEventsToAll({ message: 'accessories_updated' });
@@ -1239,6 +1256,9 @@ router.put('/accessories/:id', authenticateToken, isAdmin, async (req, res) => {
     const { name, price } = req.body;
     if (!name || price === undefined) {
         return res.status(400).json({ message: 'Accessory name and price are required' });
+    }
+    if (parseFloat(price) < 0) {
+        return res.status(400).json({ message: 'Price cannot be negative' });
     }
     try {
         await db.query('UPDATE accessories SET name = ?, price = ? WHERE id = ?', [name, price, id]);
