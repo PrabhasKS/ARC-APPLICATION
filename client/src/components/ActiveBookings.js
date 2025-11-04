@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { useActiveBookings } from '../hooks/useActiveBookings';
 import BookingDetailsModal from './BookingDetailsModal';
 import './ActiveBookings.css';
@@ -6,6 +7,7 @@ import './ActiveBookings.css';
 const ActiveBookings = () => {
     const { inProgress, upcoming, removeBooking, markAsCompletedAndClear } = useActiveBookings();
     const [selectedBooking, setSelectedBooking] = useState(null);
+    const navigate = useNavigate(); // Get navigate function
 
     const handleCardClick = (booking) => {
         setSelectedBooking(booking);
@@ -48,7 +50,7 @@ const ActiveBookings = () => {
                             <button 
                                 onClick={(e) => { 
                                     e.stopPropagation();
-                                    markAsCompletedAndClear(booking); 
+                                    navigate('/ledger', { state: { openBookingId: booking.id } });
                                 }} 
                                 className="clear-btn mark-completed-btn"
                             >

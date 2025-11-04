@@ -183,6 +183,7 @@
 // export default Ledger;
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom'; // Import useLocation and useNavigate
 
 import api from '../api';
 
@@ -218,11 +219,19 @@ const Ledger = ({ user }) => {
 
     const [selectedBooking, setSelectedBooking] = useState(null);
 
-    const [error, setError] = useState(null);
+        const [error, setError] = useState(null);
 
+    
 
+        const location = useLocation();
 
-    const [columnVisibility, setColumnVisibility] = useState({
+        const navigate = useNavigate();
+
+    
+
+        const [columnVisibility, setColumnVisibility] = useState({
+
+    
 
         court: false,
 
@@ -283,6 +292,18 @@ const Ledger = ({ user }) => {
         fetchBookings();
 
     }, [fetchBookings]);
+
+    useEffect(() => {
+        const { openBookingId } = location.state || {};
+        if (openBookingId && bookings.length > 0) {
+            const bookingToEdit = bookings.find(b => b.id === openBookingId);
+            if (bookingToEdit) {
+                handleEditClick(bookingToEdit);
+                // Clear the state to prevent re-opening on refresh
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+        }
+    }, [location.state, bookings, navigate]);
 
 
 
