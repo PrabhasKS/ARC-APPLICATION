@@ -168,7 +168,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             const response = await api.post(`/bookings/${booking.id}/payments`, {
                 amount: newPaymentAmount,
                 payment_mode: newPaymentMode,
-                new_total_price: formData.total_price // Send the updated total price
+                new_total_price: formData.total_price, // Send the updated total price
+                endTime: formData.endTime // Send the updated end time
             });
             setFormData(response.data.booking); // Update state with the returned booking
             setNewPaymentAmount('');

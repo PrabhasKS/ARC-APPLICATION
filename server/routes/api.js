@@ -901,7 +901,44 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
 
         await connection.commit();
         sendEventsToAll({ message: 'bookings_updated' });
-        res.json({ success: true, message: 'Booking updated successfully' });
+
+        const [updatedBookingRows] = await connection.query(
+            `SELECT 
+                b.*, 
+                b.time_slot, -- Explicitly select time_slot to ensure it's not lost
+                c.name as court_name, 
+                s.name as sport_name,
+                (b.total_price + b.discount_amount) as original_price,
+                b.total_price as total_amount,
+                u.username as created_by_user,
+                DATE_FORMAT(b.date, '%Y-%m-%d') as date,
+                (
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', a.id, 'name', a.name, 'quantity', ba.quantity, 'price', ba.price_at_booking)), ']')
+                    FROM booking_accessories ba
+                    JOIN accessories a ON ba.accessory_id = a.id
+                    WHERE ba.booking_id = b.id
+                ) as accessories,
+                (
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username)), ']')
+                    FROM payments p
+                    LEFT JOIN users u ON p.created_by_user_id = u.id
+                    WHERE p.booking_id = b.id
+                ) as payments
+            FROM bookings b 
+            JOIN courts c ON b.court_id = c.id
+            JOIN sports s ON b.sport_id = s.id
+            LEFT JOIN users u ON b.created_by_user_id = u.id
+            WHERE b.id = ?`,
+            [id]
+        );
+
+        const updatedBooking = updatedBookingRows[0];
+
+        // Parse accessories and payments
+        updatedBooking.accessories = updatedBooking.accessories ? JSON.parse(updatedBooking.accessories) : [];
+        updatedBooking.payments = updatedBooking.payments ? JSON.parse(updatedBooking.payments) : [];
+
+        res.json({ success: true, message: 'Booking updated successfully', booking: updatedBooking });
 
     } catch (err) {
         if (connection) await connection.rollback();
@@ -1037,7 +1074,7 @@ router.put('/bookings/:id/payment', authenticateToken, async (req, res) => {
 // Add a new payment to a booking
 router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { amount, payment_mode, new_total_price } = req.body;
+    const { amount, payment_mode, new_total_price, endTime } = req.body;
     const created_by_user_id = req.user.id;
 
     if (!amount || !payment_mode) {
@@ -1052,6 +1089,14 @@ router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
         // 0. If a new total price is provided (e.g., from an extension), update it first.
         if (new_total_price !== undefined) {
             await connection.query('UPDATE bookings SET total_price = ? WHERE id = ?', [new_total_price, id]);
+        }
+
+        // If endTime is provided, update the time_slot
+        if (endTime) {
+            const [existingBooking] = await connection.query('SELECT time_slot FROM bookings WHERE id = ?', [id]);
+            const [startTime] = existingBooking[0].time_slot.split(' - ');
+            const newTimeSlot = `${startTime} - ${formatTo12Hour(endTime)}`;
+            await connection.query('UPDATE bookings SET time_slot = ? WHERE id = ?', [newTimeSlot, id]);
         }
 
         // 1. Add the new payment

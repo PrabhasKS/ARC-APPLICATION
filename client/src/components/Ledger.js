@@ -445,8 +445,9 @@ const Ledger = ({ user }) => {
 
             setError(null);
 
-            await api.put(`/bookings/${bookingId}`, bookingData);
-
+            const res = await api.put(`/bookings/${bookingId}`, bookingData);
+            const updatedBooking = res.data.booking;
+            setSelectedBooking(updatedBooking);
             handleCloseModal();
 
             fetchBookings(); // Refresh data
