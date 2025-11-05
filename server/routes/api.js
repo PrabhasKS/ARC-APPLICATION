@@ -317,8 +317,9 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
                     WHERE ba.booking_id = b.id
                 ) as accessories,
                 (
-                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date)), ']')
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username)), ']')
                     FROM payments p
+                    LEFT JOIN users u ON p.created_by_user_id = u.id
                     WHERE p.booking_id = b.id
                 ) as payments
             FROM bookings b 
@@ -537,8 +538,14 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
         const booking = rows[0];
 
         const [accessories] = await db.query('SELECT a.name, ba.quantity, ba.price_at_booking FROM booking_accessories ba JOIN accessories a ON ba.accessory_id = a.id WHERE ba.booking_id = ?', [id]);
+        const [payments] = await db.query(`
+            SELECT p.amount, p.payment_mode, DATE_FORMAT(p.payment_date, '%Y-%m-%d') as payment_date, u.username 
+            FROM payments p 
+            LEFT JOIN users u ON p.created_by_user_id = u.id 
+            WHERE p.booking_id = ?
+        `, [id]);
 
-        const doc = new PDFDocument({ size: 'A4', margin: 50 });
+        const doc = new PDFDocument({ size: [302, 400], margin: 10 });
         const buffers = [];
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', () => {
@@ -552,46 +559,47 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
         });
 
         // Header
-        doc.fontSize(20).text('ARC SportsZone Booking Receipt', { align: 'center' });
+        doc.fontSize(14).text('ARC SportsZone', { align: 'center' });
+        doc.fontSize(8).text('Booking Receipt', { align: 'center' });
         doc.moveDown();
 
         // Booking Details
-        doc.fontSize(12).text(`Booking ID: ${booking.booking_id}`);
-        doc.text(`Date: ${booking.date}`);
-        doc.text(`Time: ${booking.time_slot}`);
-        doc.moveDown();
+        doc.fontSize(8).text(`ID: ${booking.booking_id} | Date: ${booking.date} | Time: ${booking.time_slot}`);
+        doc.moveDown(0.5);
 
         // Customer Details
-        doc.fontSize(14).text('Customer Details', { underline: true });
-        doc.fontSize(12).text(`Name: ${booking.customer_name}`);
-        doc.text(`Contact: ${booking.customer_contact}`);
-        doc.moveDown();
+        doc.fontSize(8).text(`Customer: ${booking.customer_name} | Contact: ${booking.customer_contact}`);
+        doc.moveDown(0.5);
         
         // Booking Info
-        doc.fontSize(14).text('Booking Information', { underline: true });
-        doc.fontSize(12).text(`Sport: ${booking.sport_name}`);
-        doc.text(`Court: ${booking.court_name}`);
+        doc.fontSize(8).text(`Sport: ${booking.sport_name} | Court: ${booking.court_name}`);
         doc.moveDown();
 
         // Accessories
         if (accessories.length > 0) {
-            doc.fontSize(14).text('Accessories', { underline: true });
+            doc.fontSize(10).text('Accessories', { underline: true });
             accessories.forEach(acc => {
-                doc.fontSize(12).text(`${acc.name} (x${acc.quantity}) - Rs. ${acc.price_at_booking * acc.quantity}`)
+                doc.fontSize(8).text(`${acc.name} (x${acc.quantity}) - Rs. ${acc.price_at_booking * acc.quantity}`)
             });
             doc.moveDown();
         }
 
         // Payment Details
-        doc.fontSize(14).text('Payment Details', { underline: true });
-        doc.fontSize(12).text(`Total Amount: Rs. ${booking.total_amount}`);
-        doc.text(`Amount Paid: Rs. ${booking.amount_paid}`);
-        doc.font('Helvetica-Bold').text(`Balance: Rs. ${booking.balance_amount}`);
-        doc.font('Helvetica').text(`Payment Status: ${booking.payment_status}`);
+        doc.fontSize(10).text('Payment Details', { underline: true });
+        doc.fontSize(8).text(`Total: Rs. ${booking.total_amount} | Paid: Rs. ${booking.amount_paid} | Balance: Rs. ${booking.balance_amount}`);
         doc.moveDown();
 
+        // Payment History
+        if (payments.length > 0) {
+            doc.fontSize(10).text('Payment History', { underline: true });
+            payments.forEach(p => {
+                doc.fontSize(8).text(`${p.amount} rs via ${p.payment_mode} on ${p.payment_date} by ${p.username || 'N/A'}`);
+            });
+            doc.moveDown();
+        }
+
         // Footer
-        doc.fontSize(10).text('Thank you for your booking!', { align: 'center' });
+        doc.fontSize(8).text('Thank you for your booking!', { align: 'center' });
 
         doc.end();
 
@@ -1094,8 +1102,9 @@ router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
                     WHERE ba.booking_id = b.id
                 ) as accessories,
                 (
-                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date)), ']')
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username)), ']')
                     FROM payments p
+                    LEFT JOIN users u ON p.created_by_user_id = u.id
                     WHERE p.booking_id = b.id
                 ) as payments
             FROM bookings b 
