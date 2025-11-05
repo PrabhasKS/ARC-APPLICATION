@@ -336,8 +336,11 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                                                 <button type="button" onClick={() => handleRemoveAccessory(acc.id)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
                                             </li>
                                         );
-                                    })}<button type="button" className="btn-link" onClick={() => setShowAccessories(false)}>
-                                    - Remove Accessories
+                                    })}<button type="button" className="btn-link" onClick={() => {
+                                        setShowAccessories(false);
+                                        setSelectedAccessories([]);
+                                    }}>
+                                    - Clear Accessories
                                 </button>
                                 </ul>
                              )}
@@ -372,8 +375,12 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                             <input type="text" value={discountReason} onChange={handleAmountChange(setDiscountReason)} />
                             {errors.discountReason && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discountReason}</p>}
                         </div>
-                        <button type="button" className="btn-link" onClick={() => setShowDiscount(false)}>
-                            - Remove Discount
+                        <button type="button" className="btn-link" onClick={() => {
+                            setShowDiscount(false);
+                            setDiscountAmount('');
+                            setDiscountReason('');
+                        }}>
+                            - Clear Discount
                         </button>
                     </>
                 )}
