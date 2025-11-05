@@ -1363,7 +1363,39 @@ const BookingList = ({ bookings, user, onEdit, onCancel, onReceipt, columnVisibi
                                         {booking.payment_status || 'N/A'}
                                     </span>
                                 </td>
-                                {visibility.paymentId && <td>{booking.payment_id || 'N/A'}</td>}
+                                {visibility.paymentId && (
+                                    <td>
+                                        {
+                                            (() => {
+                                                const allPaymentIds = new Set();
+                                                if (booking.payment_id) {
+                                                    allPaymentIds.add(booking.payment_id);
+                                                }
+                                                if (booking.payments && booking.payments.length > 0) {
+                                                    booking.payments.forEach(p => {
+                                                        if (p.payment_id) {
+                                                            allPaymentIds.add(p.payment_id);
+                                                        }
+                                                    });
+                                                }
+
+                                                const uniquePaymentIds = Array.from(allPaymentIds);
+
+                                                if (uniquePaymentIds.length > 0) {
+                                                    return (
+                                                        <ul>
+                                                            {uniquePaymentIds.map((id, index) => (
+                                                                <li key={index}>{id}</li>
+                                                            ))}
+                                                        </ul>
+                                                    );
+                                                } else {
+                                                    return 'N/A';
+                                                }
+                                            })()
+                                        }
+                                    </td>
+                                )}
                                 {visibility.bookedBy && <td>{booking.created_by_user || 'N/A'}</td>}
                                 <td>{booking.status || 'N/A'}</td>
                                 <td className="actions-cell">

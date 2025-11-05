@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 
-const EditBookingModal = ({ booking, onSave, onClose, error }) => {
+const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) => {
     const [formData, setFormData] = useState({});
     const [originalBookingData, setOriginalBookingData] = useState(null);
     const [extensionMinutes, setExtensionMinutes] = useState(0);
@@ -11,6 +11,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [timeError, setTimeError] = useState('');
     const [newPaymentAmount, setNewPaymentAmount] = useState('');
     const [newPaymentMode, setNewPaymentMode] = useState('cash');
+    const [newPaymentId, setNewPaymentId] = useState(''); // New state for payment ID
+    const [newOnlinePaymentType, setNewOnlinePaymentType] = useState('UPI'); // New state for online payment type
 
     const checkClash = useCallback(async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
@@ -88,7 +90,9 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     useEffect(() => {
         if (formData.startTime && formData.endTime && formData.startTime === formData.endTime) {
             setTimeError('Start time and end time cannot be the same.');
-        } else {
+        }
+
+        else {
             setTimeError('');
         }
     }, [formData.startTime, formData.endTime]);
@@ -165,14 +169,27 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         }
     
         try {
-            const response = await api.post(`/bookings/${booking.id}/payments`, {
+            const paymentData = {
                 amount: newPaymentAmount,
-                payment_mode: newPaymentMode,
-                new_total_price: formData.total_price, // Send the updated total price
-                endTime: formData.endTime // Send the updated end time
-            });
-            setFormData(response.data.booking); // Update state with the returned booking
+                payment_mode: newPaymentMode === 'online' ? newOnlinePaymentType : newPaymentMode,
+                payment_id: newPaymentId,
+                new_total_price: formData.total_price,
+                endTime: formData.endTime
+            };
+
+            const response = await api.post(`/bookings/${booking.id}/payments`, paymentData);
+            
+            setFormData(response.data.booking);
+
+            if (onPaymentAdded) {
+                onPaymentAdded();
+            }
+
+            // Reset fields
             setNewPaymentAmount('');
+            setNewPaymentId('');
+            setNewPaymentMode('cash');
+            setNewOnlinePaymentType('UPI');
         } catch (error) {
             console.error("Error adding payment:", error);
             alert('Failed to add payment.');
@@ -330,9 +347,27 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                         />
                         <select value={newPaymentMode} onChange={(e) => setNewPaymentMode(e.target.value)}>
                             <option value="cash">Cash</option>
-                            <option value="upi">UPI</option>
-                            <option value="card">Card</option>
+                            <option value="online">Online</option>
+                            <option value="cheque">Cheque</option>
                         </select>
+
+                        {newPaymentMode === 'online' && (
+                            <select value={newOnlinePaymentType} onChange={(e) => setNewOnlinePaymentType(e.target.value)}>
+                                <option value="UPI">UPI</option>
+                                <option value="Card">Card</option>
+                                <option value="Net Banking">Net Banking</option>
+                            </select>
+                        )}
+
+                        {(newPaymentMode === 'online' || newPaymentMode === 'cheque') && (
+                            <input
+                                type="text"
+                                placeholder="Payment ID / Cheque ID"
+                                value={newPaymentId}
+                                onChange={(e) => setNewPaymentId(e.target.value)}
+                            />
+                        )}
+
                         <button onClick={handleAddPayment}>Add Payment</button>
                     </div>
 

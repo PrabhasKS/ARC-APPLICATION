@@ -303,7 +303,7 @@ const Ledger = ({ user }) => {
                 navigate(location.pathname, { replace: true, state: {} });
             }
         }
-    }, [location.state, bookings, navigate]);
+    }, [location.state, bookings, navigate, location.pathname]);
 
 
 
@@ -647,7 +647,7 @@ const Ledger = ({ user }) => {
 
 
 
-            {isEditModalOpen && <EditBookingModal booking={selectedBooking} onSave={handleSaveBooking} onClose={handleCloseModal} error={error} />}
+            {isEditModalOpen && <EditBookingModal booking={selectedBooking} onSave={handleSaveBooking} onClose={handleCloseModal} error={error} onPaymentAdded={fetchBookings} />}
 
             {isReceiptModalOpen && <ReceiptModal booking={selectedBooking} onClose={handleCloseModal} />}
 

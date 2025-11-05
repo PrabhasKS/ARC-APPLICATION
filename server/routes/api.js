@@ -297,7 +297,11 @@ router.get('/bookings', authenticateToken, async (req, res) => {
 
 // Get all bookings (ledger)
 router.get('/bookings/all', authenticateToken, async (req, res) => {
+    let connection;
     try {
+        connection = await db.getConnection();
+        await connection.query('SET SESSION group_concat_max_len = 1000000;');
+
         let { date, sport, customer, startTime, endTime, search } = req.query;
         let queryParams = [];
         let query = `
@@ -317,7 +321,7 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
                     WHERE ba.booking_id = b.id
                 ) as accessories,
                 (
-                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username)), ']')
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username, 'payment_id', p.payment_id)), ']')
                     FROM payments p
                     LEFT JOIN users u ON p.created_by_user_id = u.id
                     WHERE p.booking_id = b.id
@@ -360,7 +364,7 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
 
         query += ' ORDER BY b.date DESC';
 
-        const [rows] = await db.query(query, queryParams);
+        const [rows] = await connection.query(query, queryParams);
         
         const bookings = rows.map(row => {
             row.accessories = row.accessories ? JSON.parse(row.accessories) : [];
@@ -371,6 +375,8 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
         res.json(bookings);
     } catch (err) {
         res.status(500).json({ error: err.message });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
@@ -1074,7 +1080,7 @@ router.put('/bookings/:id/payment', authenticateToken, async (req, res) => {
 // Add a new payment to a booking
 router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { amount, payment_mode, new_total_price, endTime } = req.body;
+    const { amount, payment_mode, new_total_price, endTime, payment_id } = req.body;
     const created_by_user_id = req.user.id;
 
     if (!amount || !payment_mode) {
@@ -1101,8 +1107,8 @@ router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
 
         // 1. Add the new payment
         await connection.query(
-            'INSERT INTO payments (booking_id, amount, payment_mode, created_by_user_id) VALUES (?, ?, ?, ?)',
-            [id, amount, payment_mode, created_by_user_id]
+            'INSERT INTO payments (booking_id, amount, payment_mode, created_by_user_id, payment_id) VALUES (?, ?, ?, ?, ?)',
+            [id, amount, payment_mode, created_by_user_id, payment_id]
         );
 
         // 2. Recalculate total amount paid
@@ -1147,7 +1153,7 @@ router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
                     WHERE ba.booking_id = b.id
                 ) as accessories,
                 (
-                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username)), ']')
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username, 'payment_id', p.payment_id)), ']')
                     FROM payments p
                     LEFT JOIN users u ON p.created_by_user_id = u.id
                     WHERE p.booking_id = b.id
