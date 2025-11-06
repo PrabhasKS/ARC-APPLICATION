@@ -13,6 +13,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
     const [newPaymentMode, setNewPaymentMode] = useState('cash');
     const [newPaymentId, setNewPaymentId] = useState(''); // New state for payment ID
     const [newOnlinePaymentType, setNewOnlinePaymentType] = useState('UPI'); // New state for online payment type
+    const [stagedPayments, setStagedPayments] = useState([]);
+
 
     const checkClash = useCallback(async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
@@ -141,17 +143,18 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                 accessories: booking.accessories, // Use booking.accessories
                 discount_amount: booking.discount_amount // Use booking.discount_amount
             })
-                            .then(response => {
-                                setFormData(prev => {
-                                    const newState = {
-                                        ...prev,
-                                        endTime: newEndTime,
-                                        total_price: response.data.total_price,
-                                        balance_amount: response.data.total_price - prev.amount_paid
-                                    };
-                                    return newState;
-                                });
-                            })            .catch(error => {
+            .then(response => {
+                setFormData(prev => {
+                    const newState = {
+                        ...prev,
+                        endTime: newEndTime,
+                        total_price: response.data.total_price,
+                        balance_amount: response.data.total_price - prev.amount_paid
+                    };
+                    return newState;
+                });
+            })
+            .catch(error => {
                 console.error("Error calculating price:", error.response || error);
             });
         }
@@ -162,38 +165,38 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAddPayment = async () => {
+    const handleAddPayment = () => {
         if (!newPaymentAmount || parseFloat(newPaymentAmount) <= 0) {
             alert('Please enter a valid payment amount.');
             return;
         }
-    
-        try {
-            const paymentData = {
-                amount: newPaymentAmount,
-                payment_mode: newPaymentMode === 'online' ? newOnlinePaymentType : newPaymentMode,
-                payment_id: newPaymentId,
-                new_total_price: formData.total_price,
-                endTime: formData.endTime
+
+        const paymentAmount = parseFloat(newPaymentAmount);
+
+        const newPayment = {
+            amount: paymentAmount,
+            payment_mode: newPaymentMode === 'online' ? newOnlinePaymentType : newPaymentMode,
+            payment_id: newPaymentId,
+        };
+
+        setStagedPayments(prev => [...prev, newPayment]);
+
+        setFormData(prev => {
+            const updatedAmountPaid = parseFloat(prev.amount_paid || 0) + paymentAmount;
+            const updatedBalance = prev.total_price - updatedAmountPaid;
+            return {
+                ...prev,
+                amount_paid: updatedAmountPaid,
+                balance_amount: updatedBalance,
+                payment_status: updatedBalance <= 0 ? 'Completed' : 'Received'
             };
+        });
 
-            const response = await api.post(`/bookings/${booking.id}/payments`, paymentData);
-            
-            setFormData(response.data.booking);
-
-            if (onPaymentAdded) {
-                onPaymentAdded();
-            }
-
-            // Reset fields
-            setNewPaymentAmount('');
-            setNewPaymentId('');
-            setNewPaymentMode('cash');
-            setNewOnlinePaymentType('UPI');
-        } catch (error) {
-            console.error("Error adding payment:", error);
-            alert('Failed to add payment.');
-        }
+        // Reset fields
+        setNewPaymentAmount('');
+        setNewPaymentId('');
+        setNewPaymentMode('cash');
+        setNewOnlinePaymentType('UPI');
     };
 
     const handleSave = () => {
@@ -213,7 +216,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
             }
         }
 
-        onSave(formData.id, { ...formData, is_rescheduled: isRescheduled });
+        onSave(formData.id, { ...formData, is_rescheduled: isRescheduled, stagedPayments });
     };
 
     const handleSaveAsPaid = async () => {

@@ -825,12 +825,11 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         date,
         startTime,
         endTime,
-        amount_paid,
         total_price,
-        balance_amount,
-        payment_status,
-        is_rescheduled
+        is_rescheduled,
+        stagedPayments 
     } = req.body;
+    const created_by_user_id = req.user.id;
 
     let connection;
     try {
@@ -875,17 +874,27 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             }
         }
 
-        // 4. Prepare fields for update
-        // Trust the client-calculated prices, but perform a final validation
-        const final_total_price = parseFloat(total_price);
-        const final_amount_paid = parseFloat(amount_paid);
-        const final_balance_amount = final_total_price - final_amount_paid;
+        // 4. Insert staged payments
+        if (stagedPayments && stagedPayments.length > 0) {
+            for (const payment of stagedPayments) {
+                await connection.query(
+                    'INSERT INTO payments (booking_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+                    [id, payment.amount, payment.payment_mode, payment.payment_id, created_by_user_id]
+                );
+            }
+        }
 
-        // Determine payment status based on the final amounts
+        // 5. Recalculate payment totals from the database
+        const [payments] = await connection.query('SELECT SUM(amount) as total_paid FROM payments WHERE booking_id = ?', [id]);
+        const total_paid = payments[0].total_paid || 0;
+
+        const final_total_price = parseFloat(total_price);
+        const final_balance_amount = final_total_price - total_paid;
+
         let final_payment_status = 'Pending';
         if (final_balance_amount <= 0) {
             final_payment_status = 'Completed';
-        } else if (final_amount_paid > 0) {
+        } else if (total_paid > 0) {
             final_payment_status = 'Received';
         }
         
@@ -895,23 +904,23 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             date: newDate,
             time_slot: newTimeSlot,
             total_price: final_total_price,
-            amount_paid: final_amount_paid,
-            balance_amount: final_balance_amount,
+            amount_paid: total_paid, // Use server-calculated total
+            balance_amount: final_balance_amount, // Use server-calculated balance
             payment_status: final_payment_status,
-            is_rescheduled: is_rescheduled || existingBooking.is_rescheduled, // Persist reschedule flag
+            is_rescheduled: is_rescheduled || existingBooking.is_rescheduled,
         };
 
-        // 5. Execute update
+        // 6. Execute booking update
         const sql = 'UPDATE bookings SET ? WHERE id = ?';
         await connection.query(sql, [updateFields, id]);
 
         await connection.commit();
         sendEventsToAll({ message: 'bookings_updated' });
 
+        // 7. Fetch and return the fully updated booking
         const [updatedBookingRows] = await connection.query(
             `SELECT 
                 b.*, 
-                b.time_slot, -- Explicitly select time_slot to ensure it's not lost
                 c.name as court_name, 
                 s.name as sport_name,
                 (b.total_price + b.discount_amount) as original_price,
@@ -925,7 +934,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
                     WHERE ba.booking_id = b.id
                 ) as accessories,
                 (
-                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username)), ']')
+                    SELECT CONCAT('[', GROUP_CONCAT(JSON_OBJECT('id', p.id, 'amount', p.amount, 'payment_mode', p.payment_mode, 'payment_date', p.payment_date, 'username', u.username, 'payment_id', p.payment_id)), ']')
                     FROM payments p
                     LEFT JOIN users u ON p.created_by_user_id = u.id
                     WHERE p.booking_id = b.id
@@ -939,8 +948,6 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         );
 
         const updatedBooking = updatedBookingRows[0];
-
-        // Parse accessories and payments
         updatedBooking.accessories = updatedBooking.accessories ? JSON.parse(updatedBooking.accessories) : [];
         updatedBooking.payments = updatedBooking.payments ? JSON.parse(updatedBooking.payments) : [];
 
