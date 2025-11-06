@@ -141,6 +141,14 @@
   gap: 4px;
 }
 
+.booking-summary-info p {
+  margin-bottom: 5px; /* Add space between paragraphs */
+}
+
+.booking-summary-info p:last-child {
+  margin-bottom: 0; /* No margin after the last paragraph */
+}
+
 /* ===========================
    STATUS STYLES
    =========================== */

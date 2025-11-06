@@ -51,9 +51,17 @@
 
 .booking-info {
     display: flex;
-    justify-content: space-between;
+    flex-direction: row; /* Explicitly set direction */
+    justify-content: space-between; /* Place items in opposite corners */
+    align-items: center; /* Vertically align items */
     font-weight: bold;
     margin-bottom: 8px;
+}
+
+.sport-name,
+.court-name {
+    flex-shrink: 0; /* Prevent items from shrinking */
+    white-space: nowrap; /* Prevent text from wrapping */
 }
 
 .sport-name {

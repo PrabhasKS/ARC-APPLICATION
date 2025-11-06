@@ -4,13 +4,6 @@ import './ReceiptModal.css'; // Reuse the same CSS for styling consistency
 const BookingDetailsModal = ({ booking, onClose }) => {
     if (!booking) return null;
 
-    const publicServerUrl = process.env.REACT_APP_RECIEPT_URL || 'http://localhost:5000'; 
-    const receiptPdfUrl = `${publicServerUrl}/api/booking/${booking.id}/receipt.pdf`;
-
-    const handleDownload = () => {
-        window.open(receiptPdfUrl, '_blank');
-    };
-
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -52,7 +45,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
                             )}
                         </div>
                         <div className="receipt-footer">
-                            <div className="booking-info">
+                            <div className="booking-summary-info">
                                 <p><strong>Booked By:</strong> {booking.created_by_user || 'N/A'}</p>
                                 <p><strong>Booking Status:</strong> <span className={`status ${booking.status}`}>{booking.status}</span></p>
                             </div>
@@ -60,7 +53,6 @@ const BookingDetailsModal = ({ booking, onClose }) => {
                     </div>
                 </div>
                 <div className="modal-actions">
-                    <button onClick={handleDownload}>Download Receipt</button>
                     <button onClick={onClose}>Close</button>
                 </div>
             </div>
