@@ -18,24 +18,11 @@ const ReceiptModal = ({ booking, onClose }) => {
     const publicServerUrl = process.env.REACT_APP_RECIEPT_URL || 'http://localhost:5000'; 
     const receiptPdfUrl = `${publicServerUrl}/api/booking/${booking.id}/receipt.pdf`;
 
-    const handlePrint = () => {
-        const printContent = document.getElementById('receipt-content-to-print');
-        const windowUrl = 'Receipt';
-        const uniqueName = new Date().getTime();
-        const windowName = windowUrl + '_' + uniqueName;
-        const printWindow = window.open('', windowName, 'height=600,width=800');
-        printWindow.document.write(`<html><head><title>${windowUrl}</title>`);
-        printWindow.document.write('<link rel="stylesheet" href="ReceiptModal.css" type="text/css" />'); // Optional: link to your css
-        printWindow.document.write('</head><body>');
-        printWindow.document.write(printContent.innerHTML);
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 500);
-    };
+        const handlePrint = () => {
+
+            window.print();
+
+        };
 
     return (
         <div className="modal-overlay">
