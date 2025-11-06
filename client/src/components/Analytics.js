@@ -48,6 +48,7 @@ const Analytics = () => {
     }, [dateRange]);
 
     const fetchAnalyticsData = async (dates) => {
+        if (!dates.startDate || !dates.endDate) return; // Do not fetch if dates are not set
         try {
             const params = { ...dates };
 
