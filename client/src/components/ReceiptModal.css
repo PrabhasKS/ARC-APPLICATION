@@ -208,6 +208,7 @@
 
   body, html {
     background: #fff;
+    font-size: 12pt; /* Set a base font size for the print document */
   }
 
   /* Hide everything by default */
@@ -215,7 +216,7 @@
     visibility: hidden;
   }
 
-  /* Make the receipt content and its parents visible */
+  /* Make only the receipt content and its parents visible */
   .modal-overlay, .modal-content, #receipt-content-to-print, #receipt-content-to-print * {
     visibility: visible;
   }
@@ -243,30 +244,39 @@
     display: none;
   }
 
-  /* Compact styles to fit on one page */
+  /* Space-utilizing styles */
   .receipt-header h1 {
-    font-size: 1.8rem;
+    font-size: 2.5rem;
   }
   .receipt-header p {
-    font-size: 1rem;
+    font-size: 1.2rem;
   }
   .receipt-section {
-    margin-bottom: 1rem;
-    line-height: 1.4;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    border-bottom: 1px solid #eee; /* Add separators for clarity */
+    padding-bottom: 1rem;
   }
   .receipt-section h2, .receipt-section h3 {
-    font-size: 1.1rem;
-    padding-bottom: 0.2rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
   }
   .receipt-section p {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
+    display: block; /* Override flexbox for a document-like flow */
   }
+  .receipt-section strong {
+      display: inline-block;
+      width: 180px; /* Align labels neatly */
+      font-weight: bold;
+  }
+
   .receipt-section li {
-    font-size: 0.85rem;
+    font-size: 1rem;
   }
   .qr-code div {
-    max-width: 90px !important;
+    max-width: 120px !important;
   }
 
   /* Ensure colors print */
