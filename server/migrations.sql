@@ -10,6 +10,14 @@ CREATE TABLE IF NOT EXISTS `payments` (
   FOREIGN KEY (`created_by_user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 );
 
+
+-- Migrate existing payments from the 'bookings' table to the 'payments' table
+INSERT INTO payments (booking_id, amount, payment_mode, created_by_user_id)
+SELECT id, amount_paid, payment_mode, created_by_user_id
+FROM bookings
+WHERE amount_paid > 0;
+
+
 -- Add payment_id to payments table
 ALTER TABLE payments
 ADD COLUMN payment_id VARCHAR(255) NULL;

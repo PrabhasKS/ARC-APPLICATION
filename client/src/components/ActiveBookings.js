@@ -5,7 +5,7 @@ import BookingDetailsModal from './BookingDetailsModal';
 import './ActiveBookings.css';
 
 const ActiveBookings = () => {
-    const { inProgress, upcoming, removeBooking, markAsCompletedAndClear } = useActiveBookings();
+    const { inProgress, upcoming, removeBooking } = useActiveBookings();
     const [selectedBooking, setSelectedBooking] = useState(null);
     const navigate = useNavigate(); // Get navigate function
 
