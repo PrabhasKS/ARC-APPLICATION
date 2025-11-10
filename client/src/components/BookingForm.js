@@ -26,6 +26,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
     const [selectedAccessories, setSelectedAccessories] = useState([]);
     const [showAccessories, setShowAccessories] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // --- Effects ---
     useEffect(() => {
@@ -203,6 +204,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
             return;
         }
 
+        setIsSubmitting(true);
         setMessage('');
 
         const finalPaymentMethod = paymentMethod === 'Online' ? onlinePaymentType : paymentMethod;
@@ -233,6 +235,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
         } catch (err) {
             setMessage(err.response?.data?.message || 'Error creating booking');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -425,8 +429,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     </>
                 )}
 
-                <button type="submit" className="btn btn-primary">
-                    Create Booking
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Booking'}
                 </button>
             </form>
 
