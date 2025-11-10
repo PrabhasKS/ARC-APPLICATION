@@ -529,6 +529,8 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
                 b.status as booking_status,
                 c.name as court_name,
                 s.name as sport_name,
+                (b.total_price + b.discount_amount) as original_price,
+                b.discount_amount,
                 b.total_price as total_amount,
                 u.username as created_by
             FROM bookings b
@@ -592,7 +594,12 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
 
         // Payment Details
         doc.fontSize(10).text('Payment Details', { underline: true });
-        doc.fontSize(8).text(`Total: Rs. ${booking.total_amount} | Paid: Rs. ${booking.amount_paid} | Balance: Rs. ${booking.balance_amount}`);
+        doc.fontSize(8).text(`Total: Rs. ${booking.original_price}`);
+        if (booking.discount_amount > 0) {
+            doc.fontSize(8).text(`Discount: Rs. ${booking.discount_amount}`);
+        }
+        doc.fontSize(8).text(`Final Amount: Rs. ${booking.total_amount}`);
+        doc.fontSize(8).text(`Paid: Rs. ${booking.amount_paid} | Balance: Rs. ${booking.balance_amount}`);
         doc.moveDown();
 
         // Payment History

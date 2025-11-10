@@ -55,7 +55,7 @@ const ReceiptModal = ({ booking, onClose }) => {
                         )}
                         <div className="receipt-section">
                             <h3>Payment Details</h3>
-                            <p><strong>Total Amount:</strong> ₹{booking.total_price}</p>
+                            <p><strong>Total Amount:</strong> ₹{booking.original_price}</p>
                             <p><strong>Discount:</strong> ₹{booking.discount_amount || 0}</p>
                             <p><strong>Final Amount:</strong> ₹{booking.total_amount}</p>
                             <p><strong>Amount Paid:</strong> ₹{booking.amount_paid}</p>
