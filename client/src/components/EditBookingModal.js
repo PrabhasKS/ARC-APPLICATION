@@ -174,6 +174,14 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
 
         const paymentAmount = parseFloat(newPaymentAmount);
 
+        const currentAmountPaid = parseFloat(formData.amount_paid || 0);
+        const totalPrice = parseFloat(formData.total_price);
+
+        if ((currentAmountPaid + paymentAmount) > totalPrice) {
+            alert(`Cannot pay more than the total amount. Remaining balance is ₹${totalPrice - currentAmountPaid}.`);
+            return;
+        }
+
         const newPayment = {
             amount: paymentAmount,
             payment_mode: newPaymentMode === 'online' ? newOnlinePaymentType : newPaymentMode,
