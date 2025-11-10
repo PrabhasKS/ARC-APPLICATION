@@ -24,7 +24,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                     date: new Date(formData.date).toISOString().slice(0, 10),
                     startTime: formData.startTime,
                     endTime: formData.endTime,
-                    bookingId: formData.id
+                    bookingId: formData.id,
+                    slots_booked: formData.slots_booked
                 });
                 setAvailabilityMessage(response.data.message);
             } catch (error) {

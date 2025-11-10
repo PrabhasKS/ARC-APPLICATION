@@ -857,20 +857,40 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         const hasTimeChanged = newTimeSlot !== existingBooking.time_slot;
 
         if (hasDateChanged || hasTimeChanged) {
+            // Get the capacity of the sport to determine which logic to use
+            const [[sportDetails]] = await connection.query('SELECT capacity FROM sports WHERE id = ?', [existingBooking.sport_id]);
+            const capacity = parseInt(sportDetails.capacity, 10);
+
             const [conflictingBookings] = await connection.query(
                 'SELECT * FROM bookings WHERE court_id = ? AND date = ? AND id != ? AND status != ?',
                 [existingBooking.court_id, newDate, id, 'Cancelled']
             );
 
-            const isOverlapping = conflictingBookings.some(booking => {
+            // Find all bookings that truly overlap with the new time
+            const overlappingBookings = conflictingBookings.filter(booking => {
                 const [existingStart, existingEnd] = booking.time_slot.split(' - ');
-                return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
+                // Note: `startTime` and `endTime` are the new times from the request body
+                return checkOverlap(formatTo12Hour(startTime), formatTo12Hour(endTime), existingStart.trim(), existingEnd.trim());
             });
 
-            if (isOverlapping) {
-                await connection.rollback();
-                connection.release();
-                return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
+            if (capacity > 1) {
+                // For multi-capacity resources, check if there are enough slots
+                const totalSlotsInOverlap = overlappingBookings.reduce((total, b) => total + parseInt(b.slots_booked, 10), 0);
+                const slotsBeingMoved = parseInt(existingBooking.slots_booked, 10);
+                
+                if ((totalSlotsInOverlap + slotsBeingMoved) > capacity) {
+                    await connection.rollback();
+                    connection.release();
+                    const availableSlots = capacity - totalSlotsInOverlap;
+                    return res.status(409).json({ message: `The selected time slot conflicts with another booking. Only ${availableSlots} slots are available.` });
+                }
+            } else {
+                // For single-capacity resources, any overlap is a conflict
+                if (overlappingBookings.length > 0) {
+                    await connection.rollback();
+                    connection.release();
+                    return res.status(409).json({ message: 'The selected time slot conflicts with another booking.' });
+                }
             }
         }
 
@@ -1752,7 +1772,7 @@ Thank you for booking with ARC SportsZone!
 
 // Check for booking conflicts in real-time
 router.post('/bookings/check-clash', authenticateToken, async (req, res) => {
-    const { court_id, date, startTime, endTime, bookingId } = req.body;
+    const { court_id, date, startTime, endTime, bookingId, slots_booked } = req.body;
 
     if (!court_id || !date || !startTime || !endTime) {
         return res.status(400).json({ message: 'court_id, date, startTime, and endTime are required.' });
@@ -1770,17 +1790,42 @@ router.post('/bookings/check-clash', authenticateToken, async (req, res) => {
         const newStart = formatTo12Hour(startTime);
         const newEnd = formatTo12Hour(endTime);
 
-        const isOverlapping = conflictingBookings.some(booking => {
+        // Get sport_id from court_id
+        const [[courtDetails]] = await db.query('SELECT sport_id FROM courts WHERE id = ?', [court_id]);
+        if (!courtDetails) {
+            return res.status(404).json({ message: 'Court not found' });
+        }
+        const sport_id = courtDetails.sport_id;
+
+        // Get capacity for the sport
+        const [[sportDetails]] = await db.query('SELECT capacity FROM sports WHERE id = ?', [sport_id]);
+        const capacity = parseInt(sportDetails.capacity, 10);
+
+        // Filter conflicting bookings to only those that actually overlap
+        const overlappingBookings = conflictingBookings.filter(booking => {
             const [existingStart, existingEnd] = booking.time_slot.split(' - ');
             return checkOverlap(newStart, newEnd, existingStart.trim(), existingEnd.trim());
         });
 
-        if (isOverlapping) {
-            return res.status(200).json({ is_clashing: true, message: 'The selected time slot conflicts with another booking.' });
-        } else {
-            return res.status(200).json({ is_clashing: false, message: 'The selected time slot is available.' });
-        }
+        if (capacity > 1) {
+            // Multi-capacity logic
+            const totalSlotsInOverlap = overlappingBookings.reduce((total, b) => total + parseInt(b.slots_booked, 10), 0);
+            const slotsForNewBooking = parseInt(slots_booked || 1, 10); // Use slots_booked from req.body, default to 1
 
+            if ((totalSlotsInOverlap + slotsForNewBooking) > capacity) {
+                const availableSlots = capacity - totalSlotsInOverlap;
+                return res.status(200).json({ is_clashing: true, message: `Not enough slots available. Only ${availableSlots} slots left.` });
+            } else {
+                return res.status(200).json({ is_clashing: false, message: 'The selected time slot is available.' });
+            }
+        } else {
+            // Single-capacity logic
+            if (overlappingBookings.length > 0) {
+                return res.status(200).json({ is_clashing: true, message: 'The selected time slot conflicts with another booking.' });
+            } else {
+                return res.status(200).json({ is_clashing: false, message: 'The selected time slot is available.' });
+            }
+        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
