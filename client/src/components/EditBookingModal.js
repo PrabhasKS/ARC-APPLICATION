@@ -356,6 +356,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                             placeholder="Amount"
                             value={newPaymentAmount}
                             onChange={(e) => setNewPaymentAmount(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()} // Blur to prevent scroll increment/decrement
                         />
                         <select value={newPaymentMode} onChange={(e) => setNewPaymentMode(e.target.value)}>
                             <option value="cash">Cash</option>

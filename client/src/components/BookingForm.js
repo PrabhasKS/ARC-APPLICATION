@@ -259,15 +259,15 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 {selectedCourtDetails?.sport_name?.toLowerCase() === 'swimming' && (
                     <div className="form-group">
                         <label>Number of People (Slots)</label>
-                        <input
-                            type="number"
-                            value={slotsBooked}
-                            onChange={(e) => setSlotsBooked(e.target.value)}
-                            min="1"
-                            placeholder="Enter number of people"
-                            required
-                        />
-                        {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
+                                                    <input
+                                                        type="number"
+                                                        value={slotsBooked}
+                                                        onChange={(e) => setSlotsBooked(e.target.value)}
+                                                        onWheel={(e) => e.currentTarget.blur()} // Blur to prevent scroll increment/decrement
+                                                        min="1"
+                                                        placeholder="Enter number of people"
+                                                        required
+                                                    />                        {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
                              <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>Exceeds capacity ({selectedCourtDetails.available_slots} available)</p>
                         )}
                         {errors.slotsBooked && <p style={{ color: 'red', fontSize: '12px' }}>{errors.slotsBooked}</p>}
@@ -350,7 +350,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
                 <div className="form-group">
                     <label>Total Price</label>
-                    <input type="number" value={totalPrice.toFixed(2)} readOnly style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
+                    <input type="number" value={totalPrice.toFixed(2)} readOnly onWheel={(e) => e.currentTarget.blur()} style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
                 </div>
 
                {!showDiscount ? (
@@ -367,7 +367,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     <>
                         <div className="form-group">
                             <label>Discount Amount</label>
-                            <input type="number" value={discountAmount} onChange={handleAmountChange(setDiscountAmount)} placeholder="0.00" />
+                            <input type="number" value={discountAmount} onChange={handleAmountChange(setDiscountAmount)} onWheel={(e) => e.currentTarget.blur()} placeholder="0.00" />
                             {errors.discountAmount && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discountAmount}</p>}
                         </div>
                         <div className="form-group">
@@ -387,13 +387,13 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
                 <div className="form-group">
                     <label>Amount Paid</label>
-                    <input type="number" value={amountPaid} onChange={handleAmountChange(setAmountPaid)} placeholder="0.00" required />
+                    <input type="number" value={amountPaid} onChange={handleAmountChange(setAmountPaid)} onWheel={(e) => e.currentTarget.blur()} placeholder="0.00" required />
                     {errors.amountPaid && <p style={{ color: 'red', fontSize: '12px' }}>{errors.amountPaid}</p>}
                 </div>
 
                 <div className="form-group">
                     <label>Balance</label>
-                    <input type="number" value={balance.toFixed(2)} readOnly style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
+                    <input type="number" value={balance.toFixed(2)} readOnly onWheel={(e) => e.currentTarget.blur()} style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
                 </div>
 
                 <div className="form-group">
