@@ -99,7 +99,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
 
     useEffect(() => {
         const selectedCourt = courts.find(c => c.id === parseInt(courtId));
-        if (selectedCourt && selectedCourt.sport_name.toLowerCase() !== 'swimming') {
+        if (selectedCourt && selectedCourt.capacity <= 1) {
             setSlotsBooked(1);
         }
     }, [courtId, courts]);
@@ -260,7 +260,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     {errors.courtId && <p style={{ color: 'red', fontSize: '12px' }}>{errors.courtId}</p>}
                 </div>
 
-                {selectedCourtDetails?.sport_name?.toLowerCase() === 'swimming' && (
+                {selectedCourtDetails?.capacity > 1 && (
                     <div className="form-group">
                         <label>Number of People (Slots)</label>
                                                     <input

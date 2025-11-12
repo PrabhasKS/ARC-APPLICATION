@@ -632,11 +632,12 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
     }
 
     try {
-        const [sports] = await db.query('SELECT price FROM sports WHERE id = ?', [sport_id]);
+        const [sports] = await db.query('SELECT name, price, capacity FROM sports WHERE id = ?', [sport_id]);
         if (sports.length === 0) {
             return res.status(404).json({ message: 'Sport not found' });
         }
         const hourly_price = sports[0].price;
+        const capacity = sports[0].capacity;
 
         const parseTime = (timeStr) => {
             const [hours, minutes] = timeStr.split(':').map(Number);
@@ -644,16 +645,22 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
         };
         const durationInMinutes = parseTime(endTime) - parseTime(startTime);
 
-        let court_price = 0;
-        if (durationInMinutes >= 30) { // Only charge for 30 mins or more
-            const num_of_hours = Math.floor(durationInMinutes / 60);
-            const remaining_minutes = durationInMinutes % 60;
-            
-            court_price = num_of_hours * hourly_price;
-            if (remaining_minutes >= 30) {
-                court_price += hourly_price / 2;
+        let court_price;
+        if (capacity > 1) {
+            court_price = 0;
+            if (durationInMinutes >= 30) { // Only charge for 30 mins or more
+                const num_of_hours = Math.floor(durationInMinutes / 60);
+                const remaining_minutes = durationInMinutes % 60;
+                
+                court_price = num_of_hours * hourly_price;
+                if (remaining_minutes >= 30) {
+                    court_price += hourly_price / 2;
+                }
             }
+        } else {
+            court_price = (durationInMinutes / 60) * hourly_price;
         }
+
 
         if (slots_booked > 1) {
             court_price *= slots_booked;
@@ -701,12 +708,13 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         }
         const sport_id = courts[0].sport_id;
 
-        const [sports] = await connection.query('SELECT price, capacity FROM sports WHERE id = ?', [sport_id]);
+        const [sports] = await connection.query('SELECT name, price, capacity FROM sports WHERE id = ?', [sport_id]);
         if (sports.length === 0) {
             await connection.rollback();
             connection.release();
             return res.status(404).json({ message: 'Sport not found' });
         }
+        const sport_name = sports[0].name;
         const hourly_price = sports[0].price;
         const capacity = sports[0].capacity;
 
@@ -722,7 +730,22 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'End time must be after start time.' });
         }
 
-        let base_court_price = (durationInMinutes / 60) * hourly_price;
+        let base_court_price;
+        if (capacity > 1) {
+            base_court_price = 0;
+            if (durationInMinutes >= 30) { // Only charge for 30 mins or more
+                const num_of_hours = Math.floor(durationInMinutes / 60);
+                const remaining_minutes = durationInMinutes % 60;
+                
+                base_court_price = num_of_hours * hourly_price;
+                if (remaining_minutes >= 30) {
+                    base_court_price += hourly_price / 2;
+                }
+            }
+        } else {
+            base_court_price = (durationInMinutes / 60) * hourly_price;
+        }
+
         if (slots_booked > 1) {
             base_court_price *= slots_booked;
         }
@@ -1245,7 +1268,7 @@ router.put('/courts/:id/status', authenticateToken, isPrivilegedUser, async (req
 
 // Add a new sport
 router.post('/sports', authenticateToken, isAdmin, async (req, res) => {
-    const { name, price } = req.body;
+    const { name, price, capacity } = req.body;
     if (!name || price === undefined) {
         return res.status(400).json({ message: 'Sport name and price are required' });
     }
@@ -1253,7 +1276,7 @@ router.post('/sports', authenticateToken, isAdmin, async (req, res) => {
         return res.status(400).json({ message: 'Price cannot be negative' });
     }
     try {
-        const [result] = await db.query('INSERT INTO sports (name, price) VALUES (?, ?)', [name, price]);
+        const [result] = await db.query('INSERT INTO sports (name, price, capacity) VALUES (?, ?, ?)', [name, price, capacity || 1]);
         res.json({ success: true, sportId: result.insertId });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1263,7 +1286,7 @@ router.post('/sports', authenticateToken, isAdmin, async (req, res) => {
 // Update sport price
 router.put('/sports/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
-    const { price } = req.body;
+    const { price, capacity } = req.body;
     if (price === undefined) {
         return res.status(400).json({ message: 'Price is required' });
     }
@@ -1271,7 +1294,7 @@ router.put('/sports/:id', authenticateToken, isAdmin, async (req, res) => {
         return res.status(400).json({ message: 'Price cannot be negative' });
     }
     try {
-        await db.query('UPDATE sports SET price = ? WHERE id = ?', [price, id]);
+        await db.query('UPDATE sports SET price = ?, capacity = ? WHERE id = ?', [price, capacity || 1, id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

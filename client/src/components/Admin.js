@@ -358,6 +358,7 @@ const Admin = ({ user }) => {
   const [accessories, setAccessories] = useState([]);
   const [newSportName, setNewSportName] = useState('');
   const [newSportPrice, setNewSportPrice] = useState('');
+  const [newSportCapacity, setNewSportCapacity] = useState(1);
   const [newCourtName, setNewCourtName] = useState('');
   const [selectedSportId, setSelectedSportId] = useState('');
   const [newAccessoryName, setNewAccessoryName] = useState('');
@@ -459,8 +460,8 @@ const Admin = ({ user }) => {
     e.preventDefault();
     if (!validateForm('sport')) return;
     try {
-      await api.post('/sports', { name: newSportName, price: newSportPrice });
-      setNewSportName(''); setNewSportPrice(''); fetchSports();
+      await api.post('/sports', { name: newSportName, price: newSportPrice, capacity: newSportCapacity });
+      setNewSportName(''); setNewSportPrice(''); setNewSportCapacity(1); fetchSports();
       setNotification({ text: 'Sport added successfully!', type: 'success' });
     } catch (err) {
       setNotification({ text: err.response?.data?.message || 'Error adding sport', type: 'error' });
@@ -503,18 +504,18 @@ const Admin = ({ user }) => {
     }
   };
 
-  const handlePriceChange = (e, sportId) => {
-    const updated = sports.map((s) => s.id === sportId ? { ...s, price: e.target.value } : s);
+  const handleSportChange = (e, sportId, field) => {
+    const updated = sports.map((s) => s.id === sportId ? { ...s, [field]: e.target.value } : s);
     setSports(updated);
   };
 
-  const handleUpdatePrice = async (sportId) => {
+  const handleUpdateSport = async (sportId) => {
     const sport = sports.find((s) => s.id === sportId);
     try {
-      await api.put(`/sports/${sportId}`, { price: sport.price });
-      setNotification({ text: `Price for ${sport.name} updated!`, type: 'success' });
+      await api.put(`/sports/${sportId}`, { price: sport.price, capacity: sport.capacity });
+      setNotification({ text: `${sport.name} updated!`, type: 'success' });
     } catch {
-      setNotification({ text: 'Error updating price', type: 'error' });
+      setNotification({ text: 'Error updating sport', type: 'error' });
     }
   };
 
@@ -673,6 +674,10 @@ const Admin = ({ user }) => {
                 <input type="number" value={newSportPrice} onChange={(e) => setNewSportPrice(e.target.value)} required />
                 {errors.sportPrice && <p className="form-error">{errors.sportPrice}</p>}
               </div>
+              <div className="form-group">
+                <label>Capacity</label>
+                <input type="number" value={newSportCapacity} onChange={(e) => setNewSportCapacity(e.target.value)} required />
+              </div>
               <button type="submit" className="btn-primary">Add Sport</button>
             </form>
           </div>
@@ -704,14 +709,15 @@ const Admin = ({ user }) => {
           <div className="admin-card" style={{ gridColumn: '1 / -1' }}>
             <h2>Manage Sports</h2>
             <table className="admin-table">
-              <thead><tr><th>Sport</th><th>Price</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Sport</th><th>Price</th><th>Capacity</th><th>Actions</th></tr></thead>
               <tbody>
                 {sports.map((sport) => (
                   <tr key={sport.id}>
                     <td>{sport.name}</td>
-                    <td><input type="number" value={sport.price} onChange={(e) => handlePriceChange(e, sport.id)} /></td>
+                    <td><input type="number" value={sport.price} onChange={(e) => handleSportChange(e, sport.id, 'price')} /></td>
+                    <td><input type="number" value={sport.capacity} onChange={(e) => handleSportChange(e, sport.id, 'capacity')} /></td>
                     <td className="actions-group">
-                      <button className="btn-update" onClick={() => handleUpdatePrice(sport.id)}>Update</button>
+                      <button className="btn-update" onClick={() => handleUpdateSport(sport.id)}>Update</button>
                       <button className="btn-delete" onClick={() => handleDelete(`/sports/${sport.id}`, fetchSports, 'Sport deleted successfully!')}>Delete</button>
                     </td>
                   </tr>
