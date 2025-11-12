@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import './EditBookingModal.css';
 
 const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) => {
     const [formData, setFormData] = useState({});
@@ -14,7 +15,21 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
     const [newPaymentId, setNewPaymentId] = useState(''); // New state for payment ID
     const [newOnlinePaymentType, setNewOnlinePaymentType] = useState('UPI'); // New state for online payment type
     const [stagedPayments, setStagedPayments] = useState([]);
+    const [accessories, setAccessories] = useState([]);
+    const [selectedAccessories, setSelectedAccessories] = useState([]);
 
+
+    useEffect(() => {
+        const fetchAccessories = async () => {
+            try {
+                const res = await api.get('/accessories');
+                setAccessories(res.data || []);
+            } catch (error) {
+                console.error("Error fetching accessories:", error);
+            }
+        };
+        fetchAccessories();
+    }, []);
 
     const checkClash = useCallback(async () => {
         if (formData.date && formData.startTime && formData.endTime && formData.court_id) {
@@ -80,6 +95,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
             };
             setFormData(initialFormData);
             setOriginalBookingData(initialFormData);
+            setSelectedAccessories(booking.accessories || []);
         }
     }, [booking]);
 
@@ -101,27 +117,38 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
     }, [formData.startTime, formData.endTime]);
 
     useEffect(() => {
-        if (showReschedule && formData.startTime && formData.endTime && (originalBookingData?.startTime !== formData.startTime || originalBookingData?.endTime !== formData.endTime)) {
+        if (!booking) return;
+
+        const calculatePrice = () => {
+            if (!formData.sport_id || !formData.startTime || !formData.endTime) return;
+
             api.post('/bookings/calculate-price', {
                 sport_id: formData.sport_id,
                 startTime: formData.startTime,
                 endTime: formData.endTime,
                 slots_booked: formData.slots_booked,
-                accessories: booking.accessories,
-                discount_amount: booking.discount_amount
+                accessories: selectedAccessories,
+                discount_amount: formData.discount_amount
             })
             .then(response => {
-                setFormData(prev => ({
-                    ...prev,
-                    total_price: response.data.total_price,
-                    balance_amount: response.data.total_price - prev.amount_paid
-                }));
+                setFormData(prev => {
+                    const newTotal = response.data.total_price;
+                    const newBalance = newTotal - prev.amount_paid;
+                    if (prev.total_price !== newTotal || prev.balance_amount !== newBalance) {
+                        return { ...prev, total_price: newTotal, balance_amount: newBalance };
+                    }
+                    return prev;
+                });
             })
             .catch(error => {
                 console.error("Error calculating price:", error.response || error);
             });
-        }
-    }, [formData.startTime, formData.endTime, formData.sport_id, formData.slots_booked, booking.accessories, booking.discount_amount, showReschedule, originalBookingData]);
+        };
+
+        const handler = setTimeout(calculatePrice, 300);
+        return () => clearTimeout(handler);
+
+    }, [booking, formData.sport_id, formData.startTime, formData.endTime, formData.slots_booked, formData.discount_amount, formData.amount_paid, selectedAccessories]);
 
     const handleExtensionChange = (e) => {
         const minutes = parseInt(e.target.value, 10);
@@ -136,28 +163,10 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
             const newEndDate = new Date(originalEndDate.getTime() + minutes * 60000);
             const newEndTime = formatTime24(newEndDate);
 
-            api.post('/bookings/calculate-price', {
-                sport_id: formData.sport_id,
-                startTime: formData.startTime,
+            setFormData(prev => ({
+                ...prev,
                 endTime: newEndTime,
-                slots_booked: formData.slots_booked,
-                accessories: booking.accessories, // Use booking.accessories
-                discount_amount: booking.discount_amount // Use booking.discount_amount
-            })
-            .then(response => {
-                setFormData(prev => {
-                    const newState = {
-                        ...prev,
-                        endTime: newEndTime,
-                        total_price: response.data.total_price,
-                        balance_amount: response.data.total_price - prev.amount_paid
-                    };
-                    return newState;
-                });
-            })
-            .catch(error => {
-                console.error("Error calculating price:", error.response || error);
-            });
+            }));
         }
     };
 
@@ -225,7 +234,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
             }
         }
 
-        onSave(formData.id, { ...formData, is_rescheduled: isRescheduled, stagedPayments });
+        onSave(formData.id, { ...formData, is_rescheduled: isRescheduled, stagedPayments, accessories: selectedAccessories });
     };
 
     const handleSaveAsPaid = async () => {
@@ -253,174 +262,197 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
         }
     
         // Now, save any other changes that might have been made in the modal
-        onSave(updatedBooking.id, { ...updatedBooking, is_rescheduled: isRescheduled });
+        onSave(updatedBooking.id, { ...updatedBooking, is_rescheduled: isRescheduled, accessories: selectedAccessories });
+    };
+
+    const handleAddSelectedAccessory = (accessoryId) => {
+        if (!accessoryId) return;
+        const existingAcc = selectedAccessories.find(a => a.id === accessoryId);
+        if (existingAcc) {
+            setSelectedAccessories(
+                selectedAccessories.map(a =>
+                    a.id === accessoryId ? { ...a, quantity: a.quantity + 1 } : a
+                )
+            );
+        } else {
+            setSelectedAccessories([...selectedAccessories, { id: accessoryId, quantity: 1 }]);
+        }
+    };
+
+    const handleRemoveAccessory = (accessoryId) => {
+        setSelectedAccessories(selectedAccessories.filter(a => a.id !== accessoryId));
     };
 
     if (!booking) return null;
 
     return (
-        <>
-            <div style={overlayStyle} onClick={onClose} />
-            <div style={modalStyle}>
-                <div style={{ maxHeight: '80vh', overflowY: 'auto', paddingRight: '15px' }}>
-                    <h3>Edit Booking #{booking.id}</h3>
-                    
-                    <p><strong>Date:</strong> {formatDate(formData.date)}</p>
-                    <p><strong>Time Slot:</strong> {formData.time_slot}</p>
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="edit-booking-modal-content" onClick={e => e.stopPropagation()}>
+                <h3>Edit Booking #{booking.id}</h3>
+                <div className="modal-body">
+                    <div className="form-section">
+                        <h4>Timing & Price</h4>
+                        <p><strong>Date:</strong> {formatDate(formData.date)}</p>
+                        <p><strong>Time Slot:</strong> {formData.time_slot}</p>
 
-                    <div style={{ margin: '10px 0' }}>
-                        <label>Extend By: </label>
-                        <select value={extensionMinutes} onChange={handleExtensionChange}>
-                            <option value="0">0 mins</option>
-                            <option value="30">30 mins</option>
-                            <option value="60">60 mins</option>
-                            <option value="90">90 mins</option>
-                            <option value="120">120 mins</option>
-                        </select>
-                    </div>
-
-                    <p><strong>New End Time:</strong> {formData.endTime}</p>
-                    <p><strong>New Total Price:</strong> ₹{formData.total_price}</p>
-
-                    <hr style={{ margin: '20px 0' }}/>
-
-                    <h4>Customer Details</h4>
-                    <input name="customer_name" value={formData.customer_name || ''} readOnly placeholder="Customer Name" />
-                    <input name="customer_contact" value={formData.customer_contact || ''} readOnly placeholder="Customer Contact" />
-
-                    <hr style={{ margin: '20px 0' }}/>
-
-                    <h4>Reschedule</h4>
-                    <div>
-                        <label>
-                            <input type="checkbox" checked={showReschedule} onChange={(e) => setShowReschedule(e.target.checked)} />
-                            Reschedule Booking
-                        </label>
-                    </div>
-
-                    {showReschedule && (
-                        <>
-                            <div>
-                                <label>
-                                    <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
-                                    Mark as Rescheduled
-                                </label>
-                            </div>
-
-                            <div style={{ margin: '10px 0' }}>
-                                <label>New Date: </label>
-                                <input type="date" name="date" value={formData.date ? new Date(formData.date).toISOString().slice(0, 10) : ''} onChange={handleInputChange} min={new Date().toISOString().slice(0, 10)} />
-                            </div>
-                            <div style={{ margin: '10px 0' }}>
-                                <label>New Start Time: </label>
-                                <input type="time" name="startTime" value={formData.startTime || ''} onChange={handleInputChange} />
-                            </div>
-                            <div style={{ margin: '10px 0' }}>
-                                <label>New End Time: </label>
-                                <input type="time" name="endTime" value={formData.endTime || ''} onChange={handleInputChange} />
-                            </div>
-                            {timeError && <p style={{ color: 'red' }}>{timeError}</p>}
-                        </>
-                    )}
-                    {availabilityMessage && (
-                        <p style={{ color: availabilityMessage.includes('not') ? 'red' : 'green' }}>
-                            {availabilityMessage}
-                        </p>
-                    )}
-
-                    <hr style={{ margin: '20px 0' }}/>
-
-                    <h4>Payments</h4>
-                    <p><strong>Total Price:</strong> ₹{formData.total_price}</p>
-                    <p><strong>Amount Paid:</strong> ₹{formData.amount_paid}</p>
-                    <p><strong>Balance:</strong> ₹{formData.balance_amount}</p>
-                    <p><strong>Payment Status:</strong> {formData.payment_status}</p>
-
-                    {formData.payments && formData.payments.length > 0 && (
-                        <div>
-                            <h5>Payment History:</h5>
-                            <ul>
-                                {formData.payments.map(payment => (
-                                    <li key={payment.id}>
-                                        ₹{payment.amount} via {payment.payment_mode} on {new Date(payment.payment_date).toLocaleDateString()}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <div>
-                        <h5>Add Payment</h5>
-                        <input
-                            type="number"
-                            placeholder="Amount"
-                            value={newPaymentAmount}
-                            onChange={(e) => setNewPaymentAmount(e.target.value)}
-                            onWheel={(e) => e.currentTarget.blur()} // Blur to prevent scroll increment/decrement
-                        />
-                        <select value={newPaymentMode} onChange={(e) => setNewPaymentMode(e.target.value)}>
-                            <option value="cash">Cash</option>
-                            <option value="online">Online</option>
-                            <option value="cheque">Cheque</option>
-                        </select>
-
-                        {newPaymentMode === 'online' && (
-                            <select value={newOnlinePaymentType} onChange={(e) => setNewOnlinePaymentType(e.target.value)}>
-                                <option value="UPI">UPI</option>
-                                <option value="Card">Card</option>
-                                <option value="Net Banking">Net Banking</option>
+                        <div className="form-group">
+                            <label>Extend By:</label>
+                            <select value={extensionMinutes} onChange={handleExtensionChange}>
+                                <option value="0">0 mins</option>
+                                <option value="30">30 mins</option>
+                                <option value="60">60 mins</option>
+                                <option value="90">90 mins</option>
+                                <option value="120">120 mins</option>
                             </select>
-                        )}
+                        </div>
 
-                        {(newPaymentMode === 'online' || newPaymentMode === 'cheque') && (
-                            <input
-                                type="text"
-                                placeholder="Payment ID / Cheque ID"
-                                value={newPaymentId}
-                                onChange={(e) => setNewPaymentId(e.target.value)}
-                            />
-                        )}
-
-                        <button onClick={handleAddPayment}>Add Payment</button>
+                        <p><strong>New End Time:</strong> {formData.endTime}</p>
+                        <p><strong>New Total Price:</strong> ₹{formData.total_price}</p>
                     </div>
 
-                    <hr style={{ margin: '20px 0' }}/>
+                    <div className="form-section">
+                        <h4>Customer Details</h4>
+                        <div className="form-group">
+                            <label>Customer Name</label>
+                            <input name="customer_name" value={formData.customer_name || ''} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Customer Contact</label>
+                            <input name="customer_contact" value={formData.customer_contact || ''} readOnly />
+                        </div>
+                    </div>
+
+                    <div className="form-section">
+                        <h4>Accessories</h4>
+                        <div className="form-group">
+                            <label>Add Accessory</label>
+                            <select onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}>
+                                <option value="">Select an accessory</option>
+                                {accessories.map(acc => (
+                                    <option key={acc.id} value={acc.id}>{acc.name} - ₹{acc.price}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <ul>
+                            {selectedAccessories.map(acc => {
+                                const accessoryDetails = accessories.find(a => a.id === acc.id);
+                                return (
+                                    <li key={acc.id}>
+                                        {accessoryDetails?.name} (x{acc.quantity})
+                                        <button onClick={() => handleRemoveAccessory(acc.id)}>&times;</button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+
+                    <div className="form-section">
+                        <h4>Reschedule</h4>
+                        <div className="form-group">
+                            <label>
+                                <input type="checkbox" checked={showReschedule} onChange={(e) => setShowReschedule(e.target.checked)} />
+                                Reschedule Booking
+                            </label>
+                        </div>
+
+                        {showReschedule && (
+                            <>
+                                <div className="form-group">
+                                    <label>
+                                        <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
+                                        Mark as Rescheduled
+                                    </label>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>New Date:</label>
+                                    <input type="date" name="date" value={formData.date ? new Date(formData.date).toISOString().slice(0, 10) : ''} onChange={handleInputChange} min={new Date().toISOString().slice(0, 10)} />
+                                </div>
+                                <div className="form-group">
+                                    <label>New Start Time:</label>
+                                    <input type="time" name="startTime" value={formData.startTime || ''} onChange={handleInputChange} />
+                                </div>
+                                <div className="form-group">
+                                    <label>New End Time:</label>
+                                    <input type="time" name="endTime" value={formData.endTime || ''} onChange={handleInputChange} />
+                                </div>
+                                {timeError && <p style={{ color: 'red' }}>{timeError}</p>}
+                            </>
+                        )}
+                        {availabilityMessage && (
+                            <p style={{ color: availabilityMessage.includes('not') ? 'red' : 'green' }}>
+                                {availabilityMessage}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="form-section">
+                        <h4>Payments</h4>
+                        <p><strong>Total Price:</strong> ₹{formData.total_price}</p>
+                        <p><strong>Amount Paid:</strong> ₹{formData.amount_paid}</p>
+                        <p><strong>Balance:</strong> ₹{formData.balance_amount}</p>
+                        <p><strong>Payment Status:</strong> {formData.payment_status}</p>
+
+                        {formData.payments && formData.payments.length > 0 && (
+                            <div className="payment-history">
+                                <h5>Payment History:</h5>
+                                <ul>
+                                    {formData.payments.map(payment => (
+                                        <li key={payment.id}>
+                                            ₹{payment.amount} via {payment.payment_mode} on {new Date(payment.payment_date).toLocaleDateString()}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <div className="form-group">
+                            <h5>Add Payment</h5>
+                            <input
+                                type="number"
+                                placeholder="Amount"
+                                value={newPaymentAmount}
+                                onChange={(e) => setNewPaymentAmount(e.target.value)}
+                                onWheel={(e) => e.currentTarget.blur()}
+                            />
+                            <select value={newPaymentMode} onChange={(e) => setNewPaymentMode(e.target.value)}>
+                                <option value="cash">Cash</option>
+                                <option value="online">Online</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+
+                            {newPaymentMode === 'online' && (
+                                <select value={newOnlinePaymentType} onChange={(e) => setNewOnlinePaymentType(e.target.value)}>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Card">Card</option>
+                                    <option value="Net Banking">Net Banking</option>
+                                </select>
+                            )}
+
+                            {(newPaymentMode === 'online' || newPaymentMode === 'cheque') && (
+                                <input
+                                    type="text"
+                                    placeholder="Payment ID / Cheque ID"
+                                    value={newPaymentId}
+                                    onChange={(e) => setNewPaymentId(e.target.value)}
+                                />
+                            )}
+
+                            <button onClick={handleAddPayment}>Add Payment</button>
+                        </div>
+                    </div>
 
                     {error && <div style={{ color: 'red', marginTop: '10px' }}>{error}</div>}
                 </div>
 
-                <div style={{ marginTop: '20px' }}>
-                    <button onClick={handleSave} disabled={!!timeError}>Save Changes</button>
-                    <button onClick={handleSaveAsPaid} style={{ marginLeft: '10px' }} disabled={!!timeError}>Mark as Fully Paid & Save</button>
-                    <button onClick={onClose} style={{ marginLeft: '10px' }}>Cancel</button>
+                <div className="modal-actions">
+                    <button onClick={handleSave} className="btn-save" disabled={!!timeError}>Save Changes</button>
+                    <button onClick={handleSaveAsPaid} className="btn-save-paid" disabled={!!timeError}>Mark as Fully Paid & Save</button>
+                    <button onClick={onClose} className="btn-cancel">Cancel</button>
                 </div>
             </div>
-        </>
+        </div>
     );
-};
-
-const modalStyle = {
-    position: 'fixed',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: 'white',
-    padding: '20px',
-    zIndex: 1000,
-    border: '1px solid #ccc',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-    width: '400px'
-};
-
-const overlayStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    zIndex: 999
 };
 
 export default EditBookingModal;

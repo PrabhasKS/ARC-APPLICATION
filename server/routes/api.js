@@ -857,7 +857,8 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         endTime,
         total_price,
         is_rescheduled,
-        stagedPayments 
+        stagedPayments,
+        accessories
     } = req.body;
     const created_by_user_id = req.user.id;
 
@@ -924,7 +925,21 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             }
         }
 
-        // 4. Insert staged payments
+        // 4. Handle accessories
+        if (accessories) {
+            // a. Delete existing accessories for this booking
+            await connection.query('DELETE FROM booking_accessories WHERE booking_id = ?', [id]);
+
+            // b. Insert new accessories
+            for (const acc of accessories) {
+                const [[accessoryData]] = await connection.query('SELECT price FROM accessories WHERE id = ?', [acc.id]);
+                if (accessoryData) {
+                    await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking) VALUES (?, ?, ?, ?)', [id, acc.id, acc.quantity, accessoryData.price]);
+                }
+            }
+        }
+
+        // 5. Insert staged payments
         if (stagedPayments && stagedPayments.length > 0) {
             for (const payment of stagedPayments) {
                 await connection.query(
@@ -934,7 +949,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             }
         }
 
-        // 5. Recalculate payment totals from the database
+        // 6. Recalculate payment totals from the database
         const [payments] = await connection.query('SELECT SUM(amount) as total_paid FROM payments WHERE booking_id = ?', [id]);
         const total_paid = payments[0].total_paid || 0;
 
@@ -960,14 +975,14 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             is_rescheduled: is_rescheduled || existingBooking.is_rescheduled,
         };
 
-        // 6. Execute booking update
+        // 7. Execute booking update
         const sql = 'UPDATE bookings SET ? WHERE id = ?';
         await connection.query(sql, [updateFields, id]);
 
         await connection.commit();
         sendEventsToAll({ message: 'bookings_updated' });
 
-        // 7. Fetch and return the fully updated booking
+        // 8. Fetch and return the fully updated booking
         const [updatedBookingRows] = await connection.query(
             `SELECT 
                 b.*, 
