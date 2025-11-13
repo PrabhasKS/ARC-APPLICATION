@@ -774,7 +774,7 @@ const Dashboard = ({ user }) => {
 
     return (
         <div className="dashboard-container">
-            <h2 className="dashboard-header">Bookings Dashboard</h2>
+            <h2 className="dashboard-header">Bookings Dashboard <br></br>Hi, {user.username}</h2>
 
             {/* Heatmap Section - Button Removed */}
             <div className="dashboard-card heatmap-card">
