@@ -326,7 +326,9 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                         <h4>Accessories</h4>
                         <div className="form-group">
                             <label>Add Accessory</label>
-                            <select onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}>
+                            <select
+                                onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}
+                            >
                                 <option value="">Select an accessory</option>
                                 {accessories.map(acc => (
                                     <option key={acc.id} value={acc.id}>{acc.name} - ₹{acc.price}</option>
@@ -339,7 +341,12 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                                 return (
                                     <li key={acc.id}>
                                         {accessoryDetails?.name} (x{acc.quantity})
-                                        <button onClick={() => handleRemoveAccessory(acc.id)}>&times;</button>
+                                        <button
+                                            onClick={() => handleRemoveAccessory(acc.id)}
+                                            disabled={formData.payment_status === 'Completed'}
+                                        >
+                                            &times;
+                                        </button>
                                     </li>
                                 );
                             })}
@@ -359,8 +366,9 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                             <>
                                 <div className="form-group">
                                     <label>
-                                        <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
+
                                         Mark as Rescheduled
+                                        <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
                                     </label>
                                 </div>
 
@@ -438,7 +446,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                                 />
                             )}
 
-                            <button onClick={handleAddPayment}>Add Payment</button>
+                            <button onClick={handleAddPayment} className="btn-add-payment">Add Payment</button>
                         </div>
                     </div>
 
@@ -447,7 +455,6 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
 
                 <div className="modal-actions">
                     <button onClick={handleSave} className="btn-save" disabled={!!timeError}>Save Changes</button>
-                    <button onClick={handleSaveAsPaid} className="btn-save-paid" disabled={!!timeError}>Mark as Fully Paid & Save</button>
                     <button onClick={onClose} className="btn-cancel">Cancel</button>
                 </div>
             </div>

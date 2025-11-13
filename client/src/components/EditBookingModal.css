@@ -68,6 +68,16 @@
     color: white;
 }
 
+.btn-add-payment {
+    background-color: #6c757d; /* A neutral grey color */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
 .form-section {
     margin-bottom: 20px;
     border-bottom: 1px solid #eee;
@@ -122,4 +132,9 @@
     padding: 8px;
     border-radius: 4px;
     margin-bottom: 5px;
+}
+
+.form-group label input[type="checkbox"] {
+    margin-left: 10px;
+    vertical-align: middle;
 }
