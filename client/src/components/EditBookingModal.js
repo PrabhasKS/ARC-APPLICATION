@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import './EditBookingModal.css';
 
-const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) => {
+const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [formData, setFormData] = useState({});
     const [originalBookingData, setOriginalBookingData] = useState(null);
     const [extensionMinutes, setExtensionMinutes] = useState(0);
@@ -237,34 +237,6 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
         onSave(formData.id, { ...formData, is_rescheduled: isRescheduled, stagedPayments, accessories: selectedAccessories });
     };
 
-    const handleSaveAsPaid = async () => {
-        if (timeError) {
-            alert(timeError);
-            return;
-        }
-    
-        let updatedBooking = { ...formData };
-
-        const remainingBalance = formData.balance_amount;
-        if (remainingBalance > 0) {
-            try {
-                const response = await api.post(`/bookings/${booking.id}/payments`, {
-                    amount: remainingBalance,
-                    payment_mode: newPaymentMode, // Use the selected payment mode
-                });
-                updatedBooking = response.data.booking; // Get the latest booking data
-                setFormData(updatedBooking); // Update the UI immediately
-            } catch (error) {
-                console.error("Error adding final payment:", error);
-                alert('Failed to add final payment.');
-                return;
-            }
-        }
-    
-        // Now, save any other changes that might have been made in the modal
-        onSave(updatedBooking.id, { ...updatedBooking, is_rescheduled: isRescheduled, accessories: selectedAccessories });
-    };
-
     const handleAddSelectedAccessory = (accessoryId) => {
         if (!accessoryId) return;
         const existingAcc = selectedAccessories.find(a => a.id === accessoryId);
@@ -366,7 +338,6 @@ const EditBookingModal = ({ booking, onSave, onClose, error, onPaymentAdded }) =
                             <>
                                 <div className="form-group">
                                     <label>
-
                                         Mark as Rescheduled
                                         <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
                                     </label>
