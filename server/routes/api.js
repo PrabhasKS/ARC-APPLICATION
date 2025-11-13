@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
 
 const saltRounds = 10;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_default_secret_key'; // Use environment variable for secret
+const JWT_SECRET = process.env.JWT_SECRET; // Use environment variable for secret
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
