@@ -432,6 +432,10 @@ const Admin = ({ user }) => {
         newErrors.sportPrice = 'Price must be a positive number.';
         isValid = false;
       }
+      if (!newSportCapacity || parseInt(newSportCapacity, 10) <= 0) {
+        newErrors.sportCapacity = 'Capacity must be a positive number.';
+        isValid = false;
+      }
     }
     if (formType === 'court') {
       if (!newCourtName.trim()) { newErrors.courtName = 'Court name is required.'; isValid = false; }
@@ -677,6 +681,7 @@ const Admin = ({ user }) => {
               <div className="form-group">
                 <label>Capacity</label>
                 <input type="number" value={newSportCapacity} onChange={(e) => setNewSportCapacity(e.target.value)} required />
+                {errors.sportCapacity && <p className="form-error">{errors.sportCapacity}</p>}
               </div>
               <button type="submit" className="btn-primary">Add Sport</button>
             </form>

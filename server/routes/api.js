@@ -308,8 +308,8 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             SELECT 
                 b.*, 
                 b.time_slot, -- Explicitly select time_slot to ensure it's not lost
-                c.name as court_name, 
-                s.name as sport_name,
+                COALESCE(c.name, 'Deleted Court') as court_name, 
+                COALESCE(s.name, 'Deleted Sport') as sport_name,
                 (b.total_price + b.discount_amount) as original_price,
                 b.total_price as total_amount,
                 u.username as created_by_user,
@@ -327,8 +327,8 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
                     WHERE p.booking_id = b.id
                 ) as payments
             FROM bookings b 
-            JOIN courts c ON b.court_id = c.id
-            JOIN sports s ON b.sport_id = s.id
+            LEFT JOIN courts c ON b.court_id = c.id
+            LEFT JOIN sports s ON b.sport_id = s.id
             LEFT JOIN users u ON b.created_by_user_id = u.id
         `;
 
@@ -1290,6 +1290,9 @@ router.post('/sports', authenticateToken, isAdmin, async (req, res) => {
     if (parseFloat(price) < 0) {
         return res.status(400).json({ message: 'Price cannot be negative' });
     }
+    if (capacity !== undefined && parseInt(capacity) <= 0) {
+        return res.status(400).json({ message: 'Capacity must be a positive number' });
+    }
     try {
         const [result] = await db.query('INSERT INTO sports (name, price, capacity) VALUES (?, ?, ?)', [name, price, capacity || 1]);
         res.json({ success: true, sportId: result.insertId });
@@ -1307,6 +1310,9 @@ router.put('/sports/:id', authenticateToken, isAdmin, async (req, res) => {
     }
     if (parseFloat(price) < 0) {
         return res.status(400).json({ message: 'Price cannot be negative' });
+    }
+    if (capacity !== undefined && parseInt(capacity) <= 0) {
+        return res.status(400).json({ message: 'Capacity must be a positive number' });
     }
     try {
         await db.query('UPDATE sports SET price = ?, capacity = ? WHERE id = ?', [price, capacity || 1, id]);
