@@ -25,8 +25,8 @@ const DashboardCourtStatusToggle = ({ court, onStatusChange, user }) => {
         <select value={status} onChange={handleStatusChange} disabled={isLoading || !isEnabled}>
             <option value="Available">Available</option>
             <option value="Under Maintenance">Maintenance</option>
-            <option value="Membership">Membership</option>
-            <option value="Coaching">Coaching</option>
+            {/* <option value="Membership">Membership</option>
+            <option value="Coaching">Coaching</option> */}
         </select>
     );
 };
