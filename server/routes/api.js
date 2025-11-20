@@ -1459,6 +1459,47 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
     }
 });
 
+// Analytics: Desk Summary
+router.get('/analytics/desk-summary', authenticateToken, isPrivilegedUser, async (req, res) => {
+    try {
+        const { date } = req.query; // Optional: filter by date
+
+        let dateFilter = '';
+        let queryParams = [];
+        if (date) {
+            dateFilter = 'WHERE date = ?';
+            queryParams.push(date);
+        }
+
+        const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings ${dateFilter}`, queryParams);
+        const [[{ total_revenue }]] = await db.query(`SELECT COALESCE(SUM(amount_paid), 0) as total_revenue FROM bookings ${dateFilter}`, queryParams);
+        const [[{ pending_amount }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as pending_amount FROM bookings ${dateFilter}`, queryParams);
+        
+        const paymentModeQuery = `
+            SELECT p.payment_mode, SUM(p.amount) as total
+            FROM payments p
+            ${date ? 'JOIN bookings b ON p.booking_id = b.id WHERE b.date = ?' : ''}
+            GROUP BY p.payment_mode
+        `;
+        const paymentModeParams = date ? [date] : [];
+        const [revenue_by_mode_rows] = await db.query(paymentModeQuery, paymentModeParams);
+        const revenue_by_mode = revenue_by_mode_rows.map(row => ({
+            ...row,
+            total: parseFloat(row.total) || 0
+        }));
+
+        res.json({
+            total_bookings: total_bookings || 0,
+            total_revenue: parseFloat(total_revenue) || 0,
+            pending_amount: parseFloat(pending_amount) || 0,
+            revenue_by_mode: revenue_by_mode || [],
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Analytics: Bookings over time
 router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (req, res) => {
     try {

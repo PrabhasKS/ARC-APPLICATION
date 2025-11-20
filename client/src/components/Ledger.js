@@ -193,15 +193,22 @@ import EditBookingModal from './EditBookingModal';
 
 import ReceiptModal from './ReceiptModal';
 
+import DeskAnalytics from './DeskAnalytics'; // Import the new component
 import './Ledger.css';
 
 
 
 const Ledger = ({ user }) => {
+    const getTodayDateString = () => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const dd = String(today.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
 
     const [bookings, setBookings] = useState([]);
-
-    const [filters, setFilters] = useState({ date: '', sport: '', search: '', startTime: '', endTime: '' });
+    const [filters, setFilters] = useState({ date: getTodayDateString(), sport: '', search: '', startTime: '', endTime: '' });
 
     const [sortOrder, setSortOrder] = useState('desc');
 
@@ -499,6 +506,9 @@ const Ledger = ({ user }) => {
     return (
 
         <div className="ledger-container">
+            {user && (user.role === 'admin' || user.role === 'desk') && (
+                <DeskAnalytics date={filters.date} />
+            )}
 
             <header className="page-header">
 

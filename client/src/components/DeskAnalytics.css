@@ -1,0 +1,54 @@
+.desk-analytics-container {
+    display: flex;
+    justify-content: space-around;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border: 1px solid #eee;
+}
+
+.summary-card {
+    background-color: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+    flex-grow: 1;
+    margin: 0 0.5rem;
+}
+
+.summary-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: #333;
+    font-size: 1rem;
+}
+
+.summary-card p {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.summary-card ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+}
+
+.summary-card li {
+    font-size: 0.9rem;
+    color: #555;
+    padding: 0.2rem 0;
+}
+
+.error-message {
+    color: #d9534f;
+    padding: 1rem;
+    background-color: #f2dede;
+    border: 1px solid #ebccd1;
+    border-radius: 4px;
+    text-align: center;
+}

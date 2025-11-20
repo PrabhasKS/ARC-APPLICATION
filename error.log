@@ -1,0 +1,95 @@
+Fetching desk summary...
+Date: 2025-11-17
+Querying total bookings...
+Total bookings: 1
+Querying total revenue...
+Total revenue: 300.00
+Querying pending amount...
+Pending amount: 0.00
+Querying revenue by mode...
+Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
+    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
+    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_NON_UNIQ_ERROR',
+  errno: 1052,
+  sql: '\n' +
+    '            SELECT payment_mode, SUM(amount) as total\n' +
+    '            FROM payments p\n' +
+    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
+    '            GROUP BY payment_mode\n' +
+    '        ',
+  sqlState: '23000',
+  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
+}
+Fetching desk summary...
+Date: 2025-11-17
+Querying total bookings...
+Total bookings: 1
+Querying total revenue...
+Total revenue: 300.00
+Querying pending amount...
+Pending amount: 0.00
+Querying revenue by mode...
+Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
+    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
+    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_NON_UNIQ_ERROR',
+  errno: 1052,
+  sql: '\n' +
+    '            SELECT payment_mode, SUM(amount) as total\n' +
+    '            FROM payments p\n' +
+    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
+    '            GROUP BY payment_mode\n' +
+    '        ',
+  sqlState: '23000',
+  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
+}
+Fetching desk summary...
+Date: 2025-11-17
+Querying total bookings...
+Total bookings: 1
+Querying total revenue...
+Total revenue: 300.00
+Querying pending amount...
+Pending amount: 0.00
+Querying revenue by mode...
+Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
+    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
+    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_NON_UNIQ_ERROR',
+  errno: 1052,
+  sql: '\n' +
+    '            SELECT payment_mode, SUM(amount) as total\n' +
+    '            FROM payments p\n' +
+    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
+    '            GROUP BY payment_mode\n' +
+    '        ',
+  sqlState: '23000',
+  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
+}
+Fetching desk summary...
+Date: 2025-11-17
+Querying total bookings...
+Total bookings: 1
+Querying total revenue...
+Total revenue: 300.00
+Querying pending amount...
+Pending amount: 0.00
+Querying revenue by mode...
+Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
+    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
+    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_NON_UNIQ_ERROR',
+  errno: 1052,
+  sql: '\n' +
+    '            SELECT payment_mode, SUM(amount) as total\n' +
+    '            FROM payments p\n' +
+    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
+    '            GROUP BY payment_mode\n' +
+    '        ',
+  sqlState: '23000',
+  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
