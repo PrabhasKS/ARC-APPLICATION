@@ -858,7 +858,9 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         total_price,
         is_rescheduled,
         stagedPayments,
-        accessories
+        accessories,
+        discount_amount,
+        discount_reason
     } = req.body;
     const created_by_user_id = req.user.id;
 
@@ -973,6 +975,8 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             balance_amount: final_balance_amount, // Use server-calculated balance
             payment_status: final_payment_status,
             is_rescheduled: is_rescheduled || existingBooking.is_rescheduled,
+            discount_amount: discount_amount,
+            discount_reason: discount_reason
         };
 
         // 7. Execute booking update

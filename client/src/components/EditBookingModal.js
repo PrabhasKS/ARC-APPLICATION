@@ -17,6 +17,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [stagedPayments, setStagedPayments] = useState([]);
     const [accessories, setAccessories] = useState([]);
     const [selectedAccessories, setSelectedAccessories] = useState([]);
+    const [showDiscount, setShowDiscount] = useState(false);
+    const [showAccessories, setShowAccessories] = useState(false);
 
 
     useEffect(() => {
@@ -296,33 +298,85 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                     <div className="form-section">
                         <h4>Accessories</h4>
-                        <div className="form-group">
-                            <label>Add Accessory</label>
-                            <select
-                                onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}
-                            >
-                                <option value="">Select an accessory</option>
-                                {accessories.map(acc => (
-                                    <option key={acc.id} value={acc.id}>{acc.name} - ₹{acc.price}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <ul>
-                            {selectedAccessories.map(acc => {
-                                const accessoryDetails = accessories.find(a => a.id === acc.id);
-                                return (
-                                    <li key={acc.id}>
-                                        {accessoryDetails?.name} (x{acc.quantity})
-                                        <button
-                                            onClick={() => handleRemoveAccessory(acc.id)}
-                                            disabled={formData.payment_status === 'Completed'}
-                                        >
-                                            &times;
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
+                        {!showAccessories ? (
+                            <div className="form-group">
+                                <button
+                                    type="button"
+                                    className="btn-add-discount"
+                                    onClick={() => setShowAccessories(true)}
+                                >
+                                    + Add Accessories
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="form-group">
+                                    <label>Add Accessory</label>
+                                    <select
+                                        onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}
+                                    >
+                                        <option value="">Select an accessory</option>
+                                        {accessories.map(acc => (
+                                            <option key={acc.id} value={acc.id}>{acc.name} - ₹{acc.price}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <ul>
+                                    {selectedAccessories.map(acc => {
+                                        const accessoryDetails = accessories.find(a => a.id === acc.id);
+                                        return (
+                                            <li key={acc.id}>
+                                                {accessoryDetails?.name} (x{acc.quantity})
+                                                <button
+                                                    onClick={() => handleRemoveAccessory(acc.id)}
+                                                    disabled={formData.payment_status === 'Completed'}
+                                                >
+                                                    &times;
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <button type="button" className="btn-link" onClick={() => {
+                                    setShowAccessories(false);
+                                    setSelectedAccessories([]);
+                                }}>
+                                    - Clear Accessories
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="form-section">
+                        <h4>Discount</h4>
+                        {!showDiscount ? (
+                            <div className="form-group">
+                                <button
+                                    type="button"
+                                    className="btn-add-discount"
+                                    onClick={() => setShowDiscount(true)}
+                                >
+                                    + Add Discount
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="form-group">
+                                    <label>Discount Amount</label>
+                                    <input type="number" name="discount_amount" value={formData.discount_amount || ''} onChange={handleInputChange} onWheel={(e) => e.currentTarget.blur()} placeholder="0.00" />
+                                </div>
+                                <div className="form-group">
+                                    <label>Discount Reason</label>
+                                    <input type="text" name="discount_reason" value={formData.discount_reason || ''} onChange={handleInputChange} />
+                                </div>
+                                <button type="button" className="btn-link" onClick={() => {
+                                    setShowDiscount(false);
+                                    setFormData(prev => ({ ...prev, discount_amount: 0, discount_reason: '' }));
+                                }}>
+                                    - Clear Discount
+                                </button>
+                            </>
+                        )}
                     </div>
 
                     <div className="form-section">
