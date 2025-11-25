@@ -956,6 +956,14 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         const total_paid = payments[0].total_paid || 0;
 
         const final_total_price = parseFloat(total_price);
+
+        // SERVER-SIDE VALIDATION: Prevent total from being less than amount paid
+        if (final_total_price < total_paid) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ message: 'Cannot remove/update items where the total amount would be less than the amount already paid.' });
+        }
+        
         const final_balance_amount = final_total_price - total_paid;
 
         let final_payment_status = 'Pending';

@@ -225,6 +225,16 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             return;
         }
 
+        // Client-side validation to prevent negative balance
+        const total = parseFloat(formData.total_price);
+        const paid = parseFloat(formData.amount_paid || 0);
+
+        // Add a small tolerance for floating point inaccuracies
+        if (total < paid && Math.abs(total - paid) > 0.01) {
+            alert(`Cannot save changes. The new total price (₹${total.toFixed(2)}) is less than the amount already paid (₹${paid.toFixed(2)}).`);
+            return;
+        }
+
         if (showReschedule) {
             const hasDateChanged = originalBookingData.date !== formData.date;
             const hasStartTimeChanged = originalBookingData.startTime !== formData.startTime;
