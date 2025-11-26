@@ -15,13 +15,16 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                 return '#a3d9a5'; // Darker Green
             case 'partial':
                 return '#ffe082'; // Darker Yellow
+            case 'membership':
+                return '#ffd700'; // Gold for Membership
             case 'booked':
             case 'full':
                 return '#f0a1a8'; // Darker Red
             case 'maintenance':
+            case 'under-maintenance':
                 return '#c0c1c2'; // Darker Grey
             default:
-                return '#f7f7a8'; // Darker lightyellow
+                return '#f7f7a8'; // Darker lightyellow for other cases
         }
     };
 

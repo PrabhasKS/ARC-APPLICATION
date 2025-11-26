@@ -1,0 +1,189 @@
+.new-subscription-container {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.new-subscription-container h3 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+}
+
+.stepper-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.stepper-container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #e0e0e0;
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    background-color: #fff;
+    padding: 0 10px;
+}
+
+.step-counter {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.step-name {
+    margin-top: 0.5rem;
+    color: #888;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.step-item.active .step-counter {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.step-item.active .step-name {
+    color: #007bff;
+}
+
+.subscription-form {
+    padding: 2rem;
+    background-color: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 8px;
+}
+
+.form-step {
+    animation: fadeIn 0.4s;
+}
+
+.form-step h4 {
+    font-size: 1.3rem;
+    color: #333;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+}
+
+.form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+}
+
+.team-management {
+    /* Styles for the container of the team list and add button */
+}
+
+.team-member-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 1.5rem;
+}
+
+.team-member-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+}
+
+.team-member-list span {
+    font-weight: 500;
+}
+
+.remove-btn {
+    background: none;
+    border: none;
+    color: #dc3545;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.no-members-text {
+    color: #888;
+    text-align: center;
+    margin-top: 2rem;
+    font-style: italic;
+}
+
+/* Styles for Step 3: Summary and Payment */
+.summary-card, .payment-card {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card h5, .payment-card h5 {
+    font-size: 1.2rem;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5rem;
+}
+
+.summary-card p {
+    margin: 0.5rem 0;
+    color: #555;
+}
+
+.summary-card p strong {
+    color: #333;
+    margin-right: 0.5rem;
+}
+
+.summary-card .final-price strong {
+    font-size: 1.2rem;
+    color: #007bff;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group input, .form-group select {
+     width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}

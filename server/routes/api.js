@@ -5,6 +5,7 @@ const twilio = require('twilio');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
+const { authenticateToken, isAdmin, isPrivilegedUser } = require('../middleware/auth');
 
 const saltRounds = 10;
 const JWT_SECRET = process.env.JWT_SECRET; // Use environment variable for secret
@@ -18,8 +19,12 @@ const userSessions = {};
 let clients = [];
 
 const sendEventsToAll = (data) => {
-  clients.forEach(client => client.res.write(`data: ${JSON.stringify(data)}\n\n`))
-}
+  clients.forEach(client => {
+    if (!client.res.finished) {
+      client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+    }
+  });
+};
 
 router.get('/events', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -39,34 +44,6 @@ router.get('/events', (req, res) => {
     });
 });
 
-// Middleware to authenticate JWT
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token == null) return res.sendStatus(401); // if there isn't any token
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-};
-
-// Middleware to check if user is admin
-const isAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Admin access required' });
-    }
-    next();
-};
-
-const isPrivilegedUser = (req, res, next) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'desk') {
-        return res.status(403).json({ message: 'Access denied' });
-    }
-    next();
-};
 
 const toMinutes = (timeStr) => {
     if (!timeStr) return 0;
@@ -202,7 +179,7 @@ router.get('/sports', authenticateToken, async (req, res) => {
 // Get all courts
 router.get('/courts', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT c.id, c.name, c.status, s.name as sport_name, s.price FROM courts c JOIN sports s ON c.sport_id = s.id');
+        const [rows] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price FROM courts c JOIN sports s ON c.sport_id = s.id');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -214,56 +191,48 @@ router.get('/courts/availability', authenticateToken, async (req, res) => {
     const { date, startTime, endTime } = req.query;
     if (!date || !startTime || !endTime) {
         return res.status(400).json({
-            message: 'SERVER CODE IS UPDATED. Params are still missing.',
+            message: 'Date, startTime, and endTime are required.',
             received_query: req.query
         });
     }
 
-    // If end time is not after start time, return all courts as available
-    const start = new Date(`1970-01-01T${startTime}`);
-    const end = new Date(`1970-01-01T${endTime}`);
-    if (end <= start) {
-        try {
-            const [courts] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id');
-            const availability = courts.map(court => ({ ...court, is_available: true, available_slots: court.capacity }));
-            return res.json(availability);
-        } catch (err) {
-            return res.status(500).json({ error: err.message });
-        }
-    }
-
     try {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, c.sport_id, s.name as sport_name, s.price, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id');
-        const [bookings] = await db.query('SELECT court_id, time_slot, slots_booked FROM bookings WHERE date = ?', [date]);
-                const unavailableStatuses = ['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'];
+        const [bookings] = await db.query('SELECT court_id, time_slot, slots_booked FROM bookings WHERE date = ? AND status != "Cancelled"', [date]);
+        const [memberships] = await db.query('SELECT court_id, time_slot FROM active_memberships WHERE ? BETWEEN start_date AND current_end_date', [date]);
+
+        const unavailableStatuses = ['Under Maintenance', 'Event', 'Tournament', 'Coaching']; // 'Membership' is now handled dynamically
+
         const availability = courts.map(court => {
             if (unavailableStatuses.includes(court.status)) {
                 return { ...court, is_available: false };
             }
 
+            // Check for booking overlaps
             const courtBookings = bookings.filter(b => b.court_id === court.id);
+            const isOverlappingBooking = courtBookings.some(booking => {
+                const [existingStart, existingEnd] = booking.time_slot.split(' - ');
+                return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
+            });
 
-            if (court.capacity > 1) {
-                const overlappingBookings = courtBookings.filter(booking => {
-                    const [existingStart, existingEnd] = booking.time_slot.split(' - ');
-                    return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
-                });
-
-                if (overlappingBookings.length > 0) {
-                    const slotsBooked = overlappingBookings.reduce((total, booking) => total + booking.slots_booked, 0);
-                    const availableSlots = court.capacity - slotsBooked;
-                    return { ...court, is_available: availableSlots > 0, available_slots: availableSlots };
-                } else {
-                    return { ...court, is_available: true, available_slots: court.capacity };
-                }
-            } else {
-                const isOverlapping = courtBookings.some(booking => {
-                    const [existingStart, existingEnd] = booking.time_slot.split(' - ');
-                    return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
-                });
-    
-                return { ...court, is_available: !isOverlapping };
+            if (isOverlappingBooking) {
+                 // Complex logic for multi-capacity can go here if needed, for now, we simplify
+                 return { ...court, is_available: false, reason: 'Engaged' };
             }
+
+            // Check for membership overlaps
+            const courtMemberships = memberships.filter(m => m.court_id === court.id);
+            const isOverlappingMembership = courtMemberships.some(membership => {
+                 const [existingStart, existingEnd] = membership.time_slot.split(' - ');
+                 return checkOverlap(startTime, endTime, existingStart.trim(), existingEnd.trim());
+            });
+
+            if (isOverlappingMembership) {
+                return { ...court, is_available: false, reason: 'Membership' };
+            }
+            
+            // If no overlaps, it's available
+            return { ...court, is_available: true, available_slots: court.capacity };
         });
 
         res.json(availability);
@@ -427,6 +396,7 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
     try {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, s.name as sport_name, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id ORDER BY s.name, c.name');
         const [bookings] = await db.query('SELECT * FROM bookings WHERE date = ? AND status != ?', [date, 'Cancelled']);
+        const [memberships] = await db.query('SELECT * FROM active_memberships WHERE ? BETWEEN start_date AND current_end_date', [date]);
 
         const timeSlots = Array.from({ length: 18 }, (_, i) => {
             const hour = 5 + i;
@@ -435,6 +405,8 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
 
         const heatmap = courts.map(court => {
             const courtBookings = bookings.filter(b => b.court_id === court.id);
+            const courtMemberships = memberships.filter(m => m.court_id === court.id);
+
             const slots = timeSlots.map(slot => {
                 const slotStartHour = parseInt(slot.split(':')[0]);
                 
@@ -445,22 +417,15 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                     let availability = 'available';
                     let booking_details = null;
 
-                    const unavailableStatuses = ['Under Maintenance', 'Event', 'Tournament', 'Membership', 'Coaching'];
+                    const unavailableStatuses = ['Under Maintenance', 'Event', 'Tournament', 'Coaching'];
                     if (unavailableStatuses.includes(court.status)) {
-                        availability = court.status.toLowerCase();
+                        availability = court.status.toLowerCase().replace(' ', '-');
                     } else {
+                        // Check for bookings first
                         const overlappingBookings = courtBookings.filter(b => {
                             const [startStr, endStr] = b.time_slot.split(' - ');
-                            const toMinutes = (timeStr) => {
-                                const [time, modifier] = timeStr.split(' ');
-                                let [hours, minutes] = time.split(':').map(Number);
-                                if (modifier === 'PM' && hours < 12) hours += 12;
-                                if (modifier === 'AM' && hours === 12) hours = 0;
-                                return hours * 60 + minutes;
-                            };
                             const bookingStart = toMinutes(startStr);
                             const bookingEnd = toMinutes(endStr);
-
                             return subSlotStartMinutes < bookingEnd && subSlotEndMinutes > bookingStart;
                         });
 
@@ -468,19 +433,31 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                             booking_details = overlappingBookings.map(b => ({ id: b.id, customer_name: b.customer_name, time_slot: b.time_slot, slots_booked: b.slots_booked }));
                             if (court.capacity > 1) {
                                 const slots_booked = overlappingBookings.reduce((acc, curr) => acc + curr.slots_booked, 0);
-                                const available_slots = court.capacity - slots_booked;
                                 if (slots_booked >= court.capacity) {
                                     availability = 'full';
                                 } else {
                                     availability = 'partial';
                                 }
-                                booking_details.available_slots = available_slots;
                             } else {
                                 availability = 'booked';
                             }
                         }
+
+                        // If still available, check for memberships
+                        if (availability === 'available' || availability === 'partial') {
+                             const isOverlappingMembership = courtMemberships.some(m => {
+                                const [startStr, endStr] = m.time_slot.split(' - ');
+                                const membershipStart = toMinutes(startStr);
+                                const membershipEnd = toMinutes(endStr);
+                                return subSlotStartMinutes < membershipEnd && subSlotEndMinutes > membershipStart;
+                             });
+
+                             if (isOverlappingMembership) {
+                                 availability = 'membership';
+                             }
+                        }
                     }
-                    return { availability, booking: booking_details, available_slots: booking_details ? booking_details.available_slots : court.capacity };
+                    return { availability, booking: booking_details };
                 });
 
                 return { time: slot, subSlots };

@@ -1,22 +1,23 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom'; // Using NavLink for active styles
 import logo from '../assets/logo.jpg';
+import './Header.css'; // Assuming you have a CSS file for header styles
 
 const Header = ({ user, onLogout }) => {
     return (
-        <header>
+        <header className="app-header">
             <div className="header-title">
                 <img src={logo} alt="ARC SportZone Logo" className="header-logo" />
-                {/* <h1>ARC SportZone</h1> */}
             </div>
-            <nav>
+            <nav className="header-nav">
                 {user && (
                     <>
-                        {(user.role === 'admin' || user.role === 'desk' || user.role === 'staff') && <Link to="/">Bookings</Link>}
-                        {(user.role === 'admin' || user.role === 'desk' || user.role === 'staff') && <Link to="/ledger">History</Link>}
-                        {user.role === 'admin' && <Link to="/admin">Management</Link>}
-                        {user.role === 'admin' && <Link to="/analytics">Analytics</Link>}
-                        <button onClick={onLogout}>Logout</button>
+                        <NavLink to="/" end>Bookings</NavLink>
+                        <NavLink to="/ledger">History</NavLink>
+                        {(user.role === 'admin' || user.role === 'desk') && <NavLink to="/memberships">Memberships</NavLink>}
+                        {user.role === 'admin' && <NavLink to="/admin">Management</NavLink>}
+                        {user.role === 'admin' && <NavLink to="/analytics">Analytics</NavLink>}
+                        <button onClick={onLogout} className="logout-btn">Logout</button>
                     </>
                 )}
             </nav>

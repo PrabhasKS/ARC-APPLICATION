@@ -105,6 +105,7 @@ import Dashboard from './components/Dashboard';
 import Ledger from './components/Ledger';
 import Admin from './components/Admin';
 import Analytics from './components/Analytics';
+import MembershipDashboard from './components/memberships/MembershipDashboard';
 import './App.css';
 
 const ProtectedRoute = ({ user, allowedRoles, children }) => {
@@ -175,6 +176,11 @@ const AppContent = () => {
                     <Route path="/ledger" element={
                         <ProtectedRoute user={user} allowedRoles={['admin', 'desk']}>
                             <Ledger user={user} />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/memberships" element={
+                        <ProtectedRoute user={user} allowedRoles={['admin', 'desk']}>
+                            <MembershipDashboard user={user} />
                         </ProtectedRoute>
                     } />
                     <Route path="/admin" element={
