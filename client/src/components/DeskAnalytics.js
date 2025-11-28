@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getDeskSummary } from '../api';
 import './DeskAnalytics.css';
 
@@ -7,23 +7,42 @@ const DeskAnalytics = ({ date }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const fetchSummary = useCallback(async () => {
+        try {
+            setLoading(true);
+            const { data } = await getDeskSummary(date);
+            setSummary(data);
+            setError(null);
+        } catch (err) {
+            setError('Failed to fetch summary data.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [date]); // Dependency on date
+
     useEffect(() => {
-        const fetchSummary = async () => {
-            try {
-                setLoading(true);
-                const { data } = await getDeskSummary(date);
-                setSummary(data);
-                setError(null);
-            } catch (err) {
-                setError('Failed to fetch summary data.');
-                console.error(err);
-            } finally {
-                setLoading(false);
+        fetchSummary();
+
+        // Set up SSE
+        const eventSource = new EventSource('http://localhost:5000/api/events');
+
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.message === 'bookings_updated') {
+                fetchSummary();
             }
         };
 
-        fetchSummary();
-    }, [date]);
+        eventSource.onerror = (error) => {
+            console.error('SSE Error:', error);
+            eventSource.close();
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [fetchSummary]);
 
     if (loading) {
         return <div>Loading summary...</div>;

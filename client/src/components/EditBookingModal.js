@@ -174,6 +174,15 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+    
+        if (name === 'discount_amount') {
+            const amount = parseFloat(value);
+            if (amount < 0) {
+                alert("Discount amount cannot be negative.");
+                return; // Prevent state update for negative values
+            }
+        }
+    
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -373,7 +382,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                             <>
                                 <div className="form-group">
                                     <label>Discount Amount</label>
-                                    <input type="number" name="discount_amount" value={formData.discount_amount || ''} onChange={handleInputChange} onWheel={(e) => e.currentTarget.blur()} placeholder="0.00" />
+                                    <input type="number" name="discount_amount" value={formData.discount_amount === 0 ? '' : formData.discount_amount || ''} onChange={handleInputChange} onWheel={(e) => e.currentTarget.blur()} placeholder="Enter discount amount" />
                                 </div>
                                 <div className="form-group">
                                     <label>Discount Reason</label>

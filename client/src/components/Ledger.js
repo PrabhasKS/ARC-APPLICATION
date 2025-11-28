@@ -295,9 +295,26 @@ const Ledger = ({ user }) => {
 
 
     useEffect(() => {
-
         fetchBookings();
 
+        // Set up SSE
+        const eventSource = new EventSource('http://localhost:5000/api/events');
+
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.message === 'bookings_updated') {
+                fetchBookings();
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error('SSE Error:', error);
+            eventSource.close();
+        };
+
+        return () => {
+            eventSource.close();
+        };
     }, [fetchBookings]);
 
     useEffect(() => {
