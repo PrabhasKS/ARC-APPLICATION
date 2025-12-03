@@ -1476,16 +1476,24 @@ router.get('/analytics/desk-summary', authenticateToken, isPrivilegedUser, async
     try {
         const { date } = req.query; // Optional: filter by date
 
-        let dateFilter = '';
+        let whereClauses = ["status != 'Cancelled'"];
         let queryParams = [];
+
         if (date) {
-            dateFilter = 'WHERE date = ?';
+            whereClauses.push('date = ?');
             queryParams.push(date);
         }
 
-        const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings ${dateFilter}`, queryParams);
-        const [[{ total_revenue }]] = await db.query(`SELECT COALESCE(SUM(amount_paid), 0) as total_revenue FROM bookings ${dateFilter}`, queryParams);
-        const [[{ pending_amount }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as pending_amount FROM bookings ${dateFilter}`, queryParams);
+        const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings ${whereString}`, queryParams);
+        
+        // Total revenue should probably include revenue from cancelled bookings, so we query it separately.
+        const totalRevenueParams = date ? [date] : [];
+        const totalRevenueFilter = date ? 'WHERE date = ?' : '';
+        const [[{ total_revenue }]] = await db.query(`SELECT COALESCE(SUM(amount_paid), 0) as total_revenue FROM bookings ${totalRevenueFilter}`, totalRevenueParams);
+
+        const [[{ pending_amount }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as pending_amount FROM bookings ${whereString}`, queryParams);
         
         const paymentModeQuery = `
             SELECT p.payment_mode, SUM(p.amount) as total

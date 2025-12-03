@@ -234,6 +234,12 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             return;
         }
 
+        // Validate discount reason if discount amount is applied
+        if (parseFloat(formData.discount_amount) > 0 && (!formData.discount_reason || formData.discount_reason.trim() === '')) {
+            alert('Discount reason is mandatory when a discount is applied.');
+            return;
+        }
+
         // Client-side validation to prevent negative balance
         const total = parseFloat(formData.total_price);
         const paid = parseFloat(formData.amount_paid || 0);
