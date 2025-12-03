@@ -9,11 +9,9 @@
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.7);
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 0;
   overflow-y: auto;
   z-index: 1000;
+  padding: 40px 0;
 }
 
 /* ===========================
@@ -29,6 +27,7 @@
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
   font-family: 'Courier New', Courier, monospace;
   color: #222;
+  margin: auto;
 }
 
 /* ===========================
