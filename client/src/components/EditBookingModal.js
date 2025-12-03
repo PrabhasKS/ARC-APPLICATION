@@ -19,6 +19,8 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const [selectedAccessories, setSelectedAccessories] = useState([]);
     const [showDiscount, setShowDiscount] = useState(false);
     const [showAccessories, setShowAccessories] = useState(false);
+    const [errors, setErrors] = useState({}); // For validation errors
+    const [generalError, setGeneralError] = useState(''); // For general, non-field-specific errors
 
 
     useEffect(() => {
@@ -98,6 +100,9 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             setFormData(initialFormData);
             setOriginalBookingData(initialFormData);
             setSelectedAccessories(booking.accessories || []);
+            // Reset errors when a new booking is loaded
+            setErrors({});
+            setGeneralError('');
         }
     }, [booking]);
 
@@ -175,10 +180,16 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
     
+        // Clear previous errors for this field
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+        setGeneralError(''); // Clear general errors on any input change
+
         if (name === 'discount_amount') {
             const amount = parseFloat(value);
             if (amount < 0) {
-                alert("Discount amount cannot be negative.");
+                setErrors(prev => ({ ...prev, discount_amount: "Discount amount cannot be negative." }));
                 return; // Prevent state update for negative values
             }
         }
@@ -187,20 +198,24 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     };
 
     const handleAddPayment = () => {
+        setErrors({}); // Clear previous errors
+        let hasError = false;
+
         if (!newPaymentAmount || parseFloat(newPaymentAmount) <= 0) {
-            alert('Please enter a valid payment amount.');
-            return;
+            setErrors(prev => ({ ...prev, newPayment: 'Please enter a valid payment amount.' }));
+            hasError = true;
         }
 
         const paymentAmount = parseFloat(newPaymentAmount);
-
         const currentAmountPaid = parseFloat(formData.amount_paid || 0);
         const totalPrice = parseFloat(formData.total_price);
 
         if ((currentAmountPaid + paymentAmount) > totalPrice) {
-            alert(`Cannot pay more than the total amount. Remaining balance is ₹${totalPrice - currentAmountPaid}.`);
-            return;
+            setErrors(prev => ({ ...prev, newPayment: `Cannot pay more than the total. Balance is ₹${(totalPrice - currentAmountPaid).toFixed(2)}.` }));
+            hasError = true;
         }
+
+        if (hasError) return;
 
         const newPayment = {
             amount: paymentAmount,
@@ -228,40 +243,50 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
         setNewOnlinePaymentType('UPI');
     };
 
-    const handleSave = () => {
+    const validateForm = () => {
+        const newErrors = {};
+
         if (timeError) {
-            alert(timeError);
-            return;
+            newErrors.time = timeError;
         }
 
-        // Validate discount reason if discount amount is applied
         if (parseFloat(formData.discount_amount) > 0 && (!formData.discount_reason || formData.discount_reason.trim() === '')) {
-            alert('Discount reason is mandatory when a discount is applied.');
-            return;
+            newErrors.discount_reason = 'Discount reason is mandatory when a discount is applied.';
         }
 
-        // Client-side validation to prevent negative balance
         const total = parseFloat(formData.total_price);
         const paid = parseFloat(formData.amount_paid || 0);
-
-        // Add a small tolerance for floating point inaccuracies
         if (total < paid && Math.abs(total - paid) > 0.01) {
-            alert(`Cannot save changes. The new total price (₹${total.toFixed(2)}) is less than the amount already paid (₹${paid.toFixed(2)}).`);
-            return;
+            newErrors.balance = `The new total (₹${total.toFixed(2)}) is less than the amount paid (₹${paid.toFixed(2)}).`;
         }
 
         if (showReschedule) {
             const hasDateChanged = originalBookingData.date !== formData.date;
             const hasStartTimeChanged = originalBookingData.startTime !== formData.startTime;
             const hasEndTimeChanged = originalBookingData.endTime !== formData.endTime;
-    
             if ((hasDateChanged || hasStartTimeChanged || hasEndTimeChanged) && !isRescheduled) {
-                alert('Please check the "Mark as Rescheduled" box to save date or time changes.');
-                return;
+                newErrors.reschedule = 'Please check "Mark as Rescheduled" to save date/time changes.';
             }
         }
 
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    }
+
+    const handleSave = () => {
+        if (!validateForm()) {
+            setGeneralError("Please fix the errors before saving.");
+            return;
+        }
+        setGeneralError('');
+        setErrors({});
         onSave(formData.id, { ...formData, is_rescheduled: isRescheduled, stagedPayments, accessories: selectedAccessories });
+    };
+
+    const handleClose = () => {
+        setErrors({});
+        setGeneralError('');
+        onClose();
     };
 
     const handleAddSelectedAccessory = (accessoryId) => {
@@ -285,10 +310,12 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     if (!booking) return null;
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay" onClick={handleClose}>
             <div className="edit-booking-modal-content" onClick={e => e.stopPropagation()}>
                 <h3>Edit Booking #{booking.id}</h3>
                 <div className="modal-body">
+                    {generalError && <p style={{ color: 'red', fontSize: '14px', textAlign: 'center' }}>{generalError}</p>}
+                    
                     <div className="form-section">
                         <h4>Timing & Price</h4>
                         <p><strong>Date:</strong> {formatDate(formData.date)}</p>
@@ -307,6 +334,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                         <p><strong>New End Time:</strong> {formData.endTime}</p>
                         <p><strong>New Total Price:</strong> ₹{formData.total_price}</p>
+                        {errors.balance && <p style={{ color: 'red', fontSize: '12px' }}>{errors.balance}</p>}
                     </div>
 
                     <div className="form-section">
@@ -389,14 +417,17 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                                 <div className="form-group">
                                     <label>Discount Amount</label>
                                     <input type="number" name="discount_amount" value={formData.discount_amount === 0 ? '' : formData.discount_amount || ''} onChange={handleInputChange} onWheel={(e) => e.currentTarget.blur()} placeholder="Enter discount amount" />
+                                    {errors.discount_amount && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discount_amount}</p>}
                                 </div>
                                 <div className="form-group">
                                     <label>Discount Reason</label>
                                     <input type="text" name="discount_reason" value={formData.discount_reason || ''} onChange={handleInputChange} />
+                                    {errors.discount_reason && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discount_reason}</p>}
                                 </div>
                                 <button type="button" className="btn-link" onClick={() => {
                                     setShowDiscount(false);
                                     setFormData(prev => ({ ...prev, discount_amount: 0, discount_reason: '' }));
+                                    setErrors(prev => ({...prev, discount_amount: undefined, discount_reason: undefined}));
                                 }}>
                                     - Clear Discount
                                 </button>
@@ -420,6 +451,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                                         Mark as Rescheduled
                                         <input type="checkbox" checked={isRescheduled} onChange={(e) => setIsRescheduled(e.target.checked)} />
                                     </label>
+                                    {errors.reschedule && <p style={{ color: 'red', fontSize: '12px' }}>{errors.reschedule}</p>}
                                 </div>
 
                                 <div className="form-group">
@@ -435,6 +467,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                                     <input type="time" name="endTime" value={formData.endTime || ''} onChange={handleInputChange} />
                                 </div>
                                 {timeError && <p style={{ color: 'red' }}>{timeError}</p>}
+                                {errors.time && <p style={{ color: 'red', fontSize: '12px' }}>{errors.time}</p>}
                             </>
                         )}
                         {availabilityMessage && (
@@ -497,6 +530,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                             )}
 
                             <button onClick={handleAddPayment} className="btn-add-payment">Add Payment</button>
+                            {errors.newPayment && <p style={{ color: 'red', fontSize: '12px', marginTop: '5px' }}>{errors.newPayment}</p>}
                         </div>
                     </div>
 
@@ -505,7 +539,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
                 <div className="modal-actions">
                     <button onClick={handleSave} className="btn-save" disabled={!!timeError}>Save Changes</button>
-                    <button onClick={onClose} className="btn-cancel">Cancel</button>
+                    <button onClick={handleClose} className="btn-cancel">Cancel</button>
                 </div>
             </div>
         </div>
