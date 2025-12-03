@@ -633,7 +633,8 @@ const Dashboard = ({ user }) => {
     const fetchBookingsForDate = useCallback(async () => {
         try {
             const res = await api.get(`/bookings/all`, { params: { date: selectedDate, ...filters } });
-            setBookings(Array.isArray(res.data) ? res.data : []); // Ensure it's an array
+            // The API now returns an object { bookings, totalPages }, so we need to access the bookings property.
+            setBookings(Array.isArray(res.data.bookings) ? res.data.bookings : []);
         } catch (err) {
             console.error("Error fetching bookings for date:", err);
             setBookings([]); // Set to empty array on error

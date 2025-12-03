@@ -1,0 +1,35 @@
+/* client/src/components/Pagination.css */
+
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px; /* Space between elements */
+}
+
+.pagination-button {
+    background-color: #007bff; /* Primary blue color */
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.pagination-button:hover:not(:disabled) {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.pagination-button:disabled {
+    background-color: #cccccc; /* Gray for disabled buttons */
+    cursor: not-allowed;
+}
+
+.pagination-text {
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
+}

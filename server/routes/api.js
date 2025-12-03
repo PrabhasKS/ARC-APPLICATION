@@ -295,19 +295,75 @@ router.get('/bookings', authenticateToken, async (req, res) => {
     }
 });
 
-// Get all bookings (ledger)
+// Get all bookings (ledger) with pagination
 router.get('/bookings/all', authenticateToken, async (req, res) => {
     let connection;
     try {
         connection = await db.getConnection();
         await connection.query('SET SESSION group_concat_max_len = 1000000;');
 
-        let { date, sport, customer, startTime, endTime, search } = req.query;
+        let { date, sport, customer, startTime, endTime, search, page = 1, limit = 10, status } = req.query;
         let queryParams = [];
+        let whereClauses = [];
+
+        // Build WHERE clauses
+        if (date) {
+            whereClauses.push('b.date = ?');
+            queryParams.push(date);
+        }
+        if (sport) {
+            whereClauses.push('s.name LIKE ?');
+            queryParams.push(`%${sport}%`);
+        }
+        if (customer) {
+            whereClauses.push('b.customer_name LIKE ?');
+            queryParams.push(`%${customer}%`);
+        }
+        if (startTime) {
+            whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', 1), '%h:%i %p') >= STR_TO_DATE(?, '%H:%i')");
+            queryParams.push(startTime);
+        }
+        if (endTime) {
+            whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', -1), '%h:%i %p') <= STR_TO_DATE(?, '%H:%i')");
+            queryParams.push(endTime);
+        }
+        if (search) {
+            whereClauses.push('(b.id LIKE ? OR b.customer_name LIKE ? OR s.name LIKE ?)');
+            queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        // Base query for counting total records
+        let countQuery = `
+            SELECT COUNT(b.id) as total
+            FROM bookings b
+            LEFT JOIN courts c ON b.court_id = c.id
+            LEFT JOIN sports s ON b.sport_id = s.id
+        `;
+
+        if (status === 'closed') {
+             whereClauses.push('b.status != ?');
+             queryParams.push('Cancelled');
+             whereClauses.push('b.payment_status = ?');
+             queryParams.push('Completed');
+             // This logic assumes a booking is "closed" if it's in the past and completed.
+             // We'll check the end time against the current time.
+             whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW()`);
+        }
+
+
+        if (whereClauses.length > 0) {
+            countQuery += ' WHERE ' + whereClauses.join(' AND ');
+        }
+
+        const [countRows] = await connection.query(countQuery, queryParams);
+        const totalBookings = countRows[0].total;
+        const totalPages = Math.ceil(totalBookings / limit);
+
+        // Main query for fetching paginated data
         let query = `
             SELECT 
                 b.*, 
-                b.time_slot, -- Explicitly select time_slot to ensure it's not lost
+                b.time_slot,
                 COALESCE(c.name, 'Deleted Court') as court_name, 
                 COALESCE(s.name, 'Deleted Sport') as sport_name,
                 (b.total_price + b.discount_amount) as original_price,
@@ -332,48 +388,29 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             LEFT JOIN users u ON b.created_by_user_id = u.id
         `;
 
-        let whereClauses = [];
-        if (date) {
-            whereClauses.push('b.date = ?');
-            queryParams.push(date);
-        }
-        if (sport) {
-            whereClauses.push('s.name LIKE ?');
-            queryParams.push(`%${sport}%`);
-        }
-        if (customer) {
-            whereClauses.push('b.customer_name LIKE ?');
-            queryParams.push(`%${customer}%`);
-        }
-        if (startTime) {
-            whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', 1), '%h:%i %p') >= STR_TO_DATE(?, '%h:%i %p')");
-            queryParams.push(startTime);
-        }
-        if (endTime) {
-            whereClauses.push("STR_TO_DATE(SUBSTRING_INDEX(b.time_slot, ' - ', -1), '%h:%i %p') <= STR_TO_DATE(?, '%h:%i %p')");
-            queryParams.push(endTime);
-        }
-        if (search) {
-            whereClauses.push('(b.id LIKE ? OR b.customer_name LIKE ? OR s.name LIKE ?)');
-            queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-        }
-
         if (whereClauses.length > 0) {
             query += ' WHERE ' + whereClauses.join(' AND ');
         }
 
-        query += ' ORDER BY b.date DESC';
+        query += ' ORDER BY b.id DESC LIMIT ? OFFSET ?';
+        const offset = (page - 1) * limit;
+        queryParams.push(parseInt(limit, 10), parseInt(offset, 10));
 
         const [rows] = await connection.query(query, queryParams);
         
-        const bookings = rows.map(row => {
-            row.accessories = row.accessories ? JSON.parse(row.accessories) : [];
-            row.payments = row.payments ? JSON.parse(row.payments) : [];
-            return row;
+        const bookings = rows.map(row => ({
+            ...row,
+            accessories: row.accessories ? JSON.parse(row.accessories) : [],
+            payments: row.payments ? JSON.parse(row.payments) : []
+        }));
+
+        res.json({
+            bookings,
+            totalPages
         });
 
-        res.json(bookings);
     } catch (err) {
+        console.error("Error fetching bookings:", err);
         res.status(500).json({ error: err.message });
     } finally {
         if (connection) connection.release();
