@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDeskSummary } from '../api';
+import api from '../api';
 import './DeskAnalytics.css';
 
 const DeskAnalytics = ({ date }) => {
@@ -10,7 +10,7 @@ const DeskAnalytics = ({ date }) => {
     const fetchSummary = useCallback(async () => {
         try {
             setLoading(true);
-            const { data } = await getDeskSummary(date);
+            const { data } = await api.get('/analytics/desk-summary', { params: { date } });
             setSummary(data);
             setError(null);
         } catch (err) {
