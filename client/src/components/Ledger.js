@@ -18,7 +18,7 @@ const Ledger = ({ user }) => {
     };
 
     const [bookings, setBookings] = useState([]);
-    const [filters, setFilters] = useState({ date: getTodayDateString(), sport: '', search: '', startTime: '', endTime: '' });
+    const [filters, setFilters] = useState({ date: '', sport: '', search: '', startTime: '', endTime: '' });
     const [sortOrder, setSortOrder] = useState('desc');
     const [activeTab, setActiveTab] = useState('active');
     const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
@@ -58,9 +58,10 @@ const Ledger = ({ user }) => {
             let params = { ...filters, page, limit: bookingsPerPage };
             if (activeTab === 'closed') {
                 params.status = 'closed';
+            } else if (activeTab === 'cancelled') {
+                params.status = 'cancelled';
             }
-
-            console.log("Fetching bookings with params:", params); // Diagnostic log
+            
             const res = await api.get('/bookings/all', { params });
             
             // The backend now consistently returns an object with bookings and totalPages

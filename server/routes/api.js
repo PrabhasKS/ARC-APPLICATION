@@ -359,16 +359,6 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
         const totalBookings = countRows[0].total;
         const totalPages = Math.ceil(totalBookings / limit);
 
-        // ==== START DIAGNOSTIC LOGGING ====
-        const [[dbTime]] = await connection.query("SELECT NOW() as db_time;");
-        console.log('--- DIAGNOSTIC INFO ---');
-        console.log('App Server Time:', new Date().toISOString());
-        console.log('DB Server Time:', dbTime.db_time);
-        console.log('Generated SQL:', countQuery);
-        console.log('SQL Params:', queryParams);
-        console.log('-----------------------');
-        // ==== END DIAGNOSTIC LOGGING ====
-
         // Main query for fetching paginated data
         let query = `
             SELECT 
