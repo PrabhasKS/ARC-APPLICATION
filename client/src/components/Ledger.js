@@ -214,6 +214,7 @@ const Ledger = ({ user }) => {
 
     return (
         <div className="ledger-container">
+            <h2 style={{ color: 'red' }}>DEBUG: Version 2</h2>
             {user && (user.role === 'admin' || user.role === 'desk') && (
                 <DeskAnalytics date={filters.date} />
             )}
