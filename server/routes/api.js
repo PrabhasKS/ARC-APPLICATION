@@ -510,7 +510,7 @@ router.get('/bookings/active', authenticateToken, async (req, res) => {
             FROM bookings b 
             JOIN courts c ON b.court_id = c.id
             JOIN sports s ON b.sport_id = s.id
-            WHERE b.date = ?
+            WHERE b.date = ? OR (b.payment_status IN ('Pending', 'Received') AND b.status != 'Cancelled')
         `;
         const [bookings] = await db.query(query, [today]);
 
