@@ -60,6 +60,7 @@ const Ledger = ({ user }) => {
                 params.status = 'closed';
             }
 
+            console.log("Fetching bookings with params:", params); // Diagnostic log
             const res = await api.get('/bookings/all', { params });
             
             // The backend now consistently returns an object with bookings and totalPages
