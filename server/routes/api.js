@@ -1496,7 +1496,7 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
         const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
         const [[{ cancelled_revenue }]] = await db.query(`SELECT SUM(amount_paid) as cancelled_revenue FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
 
-        const [[{ amount_pending }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as amount_pending FROM bookings WHERE balance_amount > 0${dateFilter}`, [...queryParams]);
+        const [[{ amount_pending }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as amount_pending FROM bookings WHERE balance_amount > 0 AND status = 'Booked'${dateFilter}`, [...queryParams]);
 
         const total_amount = (parseFloat(active_total_amount) || 0) + (parseFloat(cancelled_revenue) || 0);
 
