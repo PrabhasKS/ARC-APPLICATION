@@ -9,14 +9,6 @@ import Pagination from './Pagination'; // Import the Pagination component
 import './Ledger.css';
 
 const Ledger = ({ user }) => {
-    const getTodayDateString = () => {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
-
     const [bookings, setBookings] = useState([]);
     const [filters, setFilters] = useState({ date: '', sport: '', search: '', startTime: '', endTime: '' });
     const [sortOrder, setSortOrder] = useState('desc');
@@ -55,30 +47,24 @@ const Ledger = ({ user }) => {
 
     const fetchBookings = useCallback(async (page = 1) => {
         try {
-            let params = { ...filters, page, limit: bookingsPerPage };
-            if (activeTab === 'closed') {
-                params.status = 'closed';
-            } else if (activeTab === 'cancelled') {
-                params.status = 'cancelled';
-            }
-            
+            const params = {
+                ...filters,
+                page,
+                limit: bookingsPerPage,
+                status: activeTab
+            };
+
             const res = await api.get('/bookings/all', { params });
-            
-            // The backend now consistently returns an object with bookings and totalPages
+
             setBookings(Array.isArray(res.data.bookings) ? res.data.bookings : []);
-            
-            if (activeTab === 'closed') {
-                setTotalPages(res.data.totalPages || 0);
-            } else {
-                setTotalPages(0); // No pagination for other tabs
-            }
+            setTotalPages(res.data.totalPages || 0); // Always set total pages for pagination
 
         } catch (error) {
             console.error("Error fetching bookings:", error);
             setBookings([]);
             setTotalPages(0);
         }
-    }, [filters, activeTab]);
+    }, [filters, activeTab, bookingsPerPage]);
 
     // Effect for handling SSE and initial fetch
     useEffect(() => {
@@ -129,55 +115,11 @@ const Ledger = ({ user }) => {
             setCurrentPage(page);
         }
     };
-    const isBookingExpired = (booking) => {
-        try {
-            if (!booking.date || !booking.time_slot) return false;
-
-            const now = new Date();
-            const [, endTimeStr] = booking.time_slot.split(' - ');
-            if (!endTimeStr) return false;
-
-            const [time, modifier] = endTimeStr.trim().split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-
-            if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
-            if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
-
-            const bookingEndDateTime = new Date(booking.date);
-            bookingEndDateTime.setHours(hours, minutes, 0, 0);
-
-            return now > bookingEndDateTime;
-        } catch (error) {
-            console.error("Error parsing booking time in isBookingExpired:", error);
-            return false;
-        }
-    };
 
     const filteredAndSortedBookings = useMemo(() => {
-        // For the 'closed' tab, the backend already filters. We just sort.
-        if (activeTab === 'closed') {
-            return [...bookings].sort((a, b) => (sortOrder === 'desc' ? b.id - a.id : a.id - b.id));
-        }
-
-        // For other tabs, continue with client-side filtering.
-        return bookings
-            .filter(booking => {
-                if (!booking || !booking.status) return false;
-
-                const isExpired = isBookingExpired(booking);
-                const isCompleted = (booking.payment_status || '').toLowerCase() === 'completed';
-                const isCancelled = (booking.status || '').toLowerCase() === 'cancelled';
-
-                if (activeTab === 'active') {
-                    return !isCancelled && !(isExpired && isCompleted);
-                }
-                if (activeTab === 'cancelled') {
-                    return isCancelled;
-                }
-                return true;
-            })
-            .sort((a, b) => (sortOrder === 'desc' ? b.id - a.id : a.id - b.id));
-    }, [bookings, sortOrder, activeTab]);
+        // The backend now handles all filtering. We just sort the results.
+        return [...bookings].sort((a, b) => (sortOrder === 'desc' ? b.id - a.id : a.id - b.id));
+    }, [bookings, sortOrder]);
 
     const handleEditClick = (booking) => { setSelectedBooking(booking); setIsEditModalOpen(true); setError(null); };
     const handleReceiptClick = (booking) => { setSelectedBooking(booking); setIsReceiptModalOpen(true); };
@@ -290,7 +232,7 @@ const Ledger = ({ user }) => {
                     columnVisibility={columnVisibility}
                 />
             </div>
-            {activeTab === 'closed' && totalPages > 0 && (
+            {totalPages > 0 && (
                 <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
