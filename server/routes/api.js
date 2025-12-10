@@ -340,22 +340,27 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             LEFT JOIN sports s ON b.sport_id = s.id
         `;
 
-        if (status === 'closed') {
-             whereClauses.push('b.status != ?');
-             queryParams.push('Cancelled');
-             whereClauses.push('b.payment_status = ?');
-             queryParams.push('Completed');
-             // This logic assumes a booking is "closed" if it's in the past and completed.
-             // We'll check the end time against the current time.
-             whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW()`);
-        } else if (status === 'cancelled') {
-            whereClauses.push('b.status = ?');
-            queryParams.push('Cancelled');
-        } else if (status === 'active') {
+        if (status) {
             whereClauses.push('b.status != ?');
             queryParams.push('Cancelled');
-            whereClauses.push(`NOT (b.payment_status = 'Completed' AND STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW())`);
+            if (status === 'closed') {
+                whereClauses.push('b.payment_status = ?');
+                queryParams.push('Completed');
+                whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW()`);
+            } else if (status === 'active') {
+                whereClauses.push(`NOT (b.payment_status = 'Completed' AND STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW())`);
+            }
+            // Note: No specific 'else' for 'cancelled' is needed if we assume the frontend sends 'cancelled' as a status.
+            // However, to be robust:
+            else if (status === 'cancelled') {
+                 // We need to remove the initial 'b.status != ?' for this case
+                whereClauses.pop(); 
+                queryParams.pop();
+                whereClauses.push('b.status = ?');
+                queryParams.push('Cancelled');
+            }
         }
+
 
 
         if (whereClauses.length > 0) {
