@@ -406,9 +406,11 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
 
         query += ' ORDER BY b.id DESC LIMIT ? OFFSET ?';
         const offset = (page - 1) * limit;
-        queryParams.push(parseInt(limit, 10), parseInt(offset, 10));
+        
+        // Create a separate params array for the main query to avoid mutation issues
+        const mainQueryParams = [...queryParams, parseInt(limit, 10), parseInt(offset, 10)];
 
-        const [rows] = await connection.query(query, queryParams);
+        const [rows] = await connection.query(query, mainQueryParams);
         
         const bookings = rows.map(row => ({
             ...row,
