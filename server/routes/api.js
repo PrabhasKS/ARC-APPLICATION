@@ -309,15 +309,27 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             LEFT JOIN sports s ON b.sport_id = s.id
         `;
 
-        if (status === 'closed') {
-             whereClauses.push('b.status != ?');
-             queryParams.push('Cancelled');
-             whereClauses.push('b.payment_status = ?');
-             queryParams.push('Completed');
-             // This logic assumes a booking is "closed" if it's in the past and completed.
-             // We'll check the end time against the current time.
-             whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW()`);
+        if (status) {
+            whereClauses.push('b.status != ?');
+            queryParams.push('Cancelled');
+            if (status === 'closed') {
+                whereClauses.push('b.payment_status = ?');
+                queryParams.push('Completed');
+                whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW()`);
+            } else if (status === 'active') {
+                whereClauses.push(`NOT (b.payment_status = 'Completed' AND STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW())`);
+            }
+            // Note: No specific 'else' for 'cancelled' is needed if we assume the frontend sends 'cancelled' as a status.
+            // However, to be robust:
+            else if (status === 'cancelled') {
+                 // We need to remove the initial 'b.status != ?' for this case
+                whereClauses.pop(); 
+                queryParams.pop();
+                whereClauses.push('b.status = ?');
+                queryParams.push('Cancelled');
+            }
         }
+
 
 
         if (whereClauses.length > 0) {
@@ -363,9 +375,11 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
 
         query += ' ORDER BY b.id DESC LIMIT ? OFFSET ?';
         const offset = (page - 1) * limit;
-        queryParams.push(parseInt(limit, 10), parseInt(offset, 10));
+        
+        // Create a separate params array for the main query to avoid mutation issues
+        const mainQueryParams = [...queryParams, parseInt(limit, 10), parseInt(offset, 10)];
 
-        const [rows] = await connection.query(query, queryParams);
+        const [rows] = await connection.query(query, mainQueryParams);
         
         const bookings = rows.map(row => ({
             ...row,
@@ -487,7 +501,7 @@ router.get('/bookings/active', authenticateToken, async (req, res) => {
             FROM bookings b 
             JOIN courts c ON b.court_id = c.id
             JOIN sports s ON b.sport_id = s.id
-            WHERE b.date = ?
+            WHERE b.date = ? OR (b.payment_status IN ('Pending', 'Received') AND b.status != 'Cancelled')
         `;
         const [bookings] = await db.query(query, [today]);
 
@@ -1466,14 +1480,15 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
         const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
         const [[{ cancelled_revenue }]] = await db.query(`SELECT SUM(amount_paid) as cancelled_revenue FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
 
+        const [[{ amount_pending }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as amount_pending FROM bookings WHERE balance_amount > 0 AND status = 'Booked'${dateFilter}`, [...queryParams]);
+
         const total_amount = (parseFloat(active_total_amount) || 0) + (parseFloat(cancelled_revenue) || 0);
-        const amount_pending = total_amount - (parseFloat(amount_received) || 0);
 
         res.json({
             total_bookings,
             total_amount,
             amount_received,
-            amount_pending,
+            amount_pending: parseFloat(amount_pending) || 0,
             total_cancellations,
             total_sports,
             total_courts,
@@ -1507,7 +1522,7 @@ router.get('/analytics/desk-summary', authenticateToken, isPrivilegedUser, async
         const totalRevenueFilter = date ? 'WHERE date = ?' : '';
         const [[{ total_revenue }]] = await db.query(`SELECT COALESCE(SUM(amount_paid), 0) as total_revenue FROM bookings ${totalRevenueFilter}`, totalRevenueParams);
 
-        const [[{ pending_amount }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as pending_amount FROM bookings ${whereString}`, queryParams);
+        const [[{ pending_amount }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as pending_amount FROM bookings ${whereString} AND balance_amount > 0`, queryParams);
         
         const paymentModeQuery = `
             SELECT p.payment_mode, SUM(p.amount) as total

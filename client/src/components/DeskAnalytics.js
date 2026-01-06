@@ -25,8 +25,7 @@ const DeskAnalytics = ({ date }) => {
         fetchSummary();
 
         // Set up SSE
-        const eventSource = new EventSource('http://localhost:5000/api/events');
-
+const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/events`); 
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.message === 'bookings_updated') {

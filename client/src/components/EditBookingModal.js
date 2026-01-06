@@ -365,7 +365,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                             <>
                                 <div className="form-group">
                                     <label>Add Accessory</label>
-                                    <select
+                                    <select value=""
                                         onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}
                                     >
                                         <option value="">Select an accessory</option>

@@ -27,7 +27,7 @@ export const useActiveBookings = () => {
     const fetchAllBookings = useCallback(async () => {
         try {
             const res = await api.get(`/bookings/all`);
-            setAllBookings(Array.isArray(res.data) ? res.data : []);
+            setAllBookings(Array.isArray(res.data.bookings) ? res.data.bookings : []);
         } catch (error) {
             console.error("Error fetching all bookings:", error);
             setAllBookings([]);
