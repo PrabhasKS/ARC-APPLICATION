@@ -88,8 +88,7 @@
 }
 
 .actions-cell {
-    display: flex;
-    gap: 0.5rem;
+    position: relative; /* To position the dropdown */
 }
 
 .error-message {
@@ -110,4 +109,61 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Styles for the 3-dot action menu */
+.actions-menu-container {
+    position: relative;
+    display: inline-block; /* To make sure the button only takes necessary width */
+}
+
+.three-dots-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem; /* Larger for visibility */
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0 0.5rem;
+    line-height: 1; /* Align text vertically */
+}
+
+.three-dots-btn:hover {
+    color: #343a40;
+}
+
+.actions-dropdown {
+    position: absolute;
+    right: 0; /* Align to the right of the button */
+    top: 100%; /* Position below the button */
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0;
+}
+
+.actions-dropdown .btn {
+    width: 100%;
+    text-align: left;
+    background: none;
+    color: #343a40;
+    border-radius: 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #eee; /* Separator for items */
+    text-transform: none; /* Keep normal casing for menu items */
+    letter-spacing: normal;
+    font-weight: normal;
+}
+
+.actions-dropdown .btn:last-child {
+    border-bottom: none;
+}
+
+.actions-dropdown .btn:hover {
+    background-color: #f8f9fa;
+    color: #007bff; /* Highlight color on hover */
 }

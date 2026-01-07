@@ -15,8 +15,10 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                 return '#a3d9a5'; // Darker Green
             case 'partial':
                 return '#ffe082'; // Darker Yellow
-            case 'membership':
-                return '#ffd700'; // Gold for Membership
+            // case 'membership':
+            //     return '#4e269eff'; // Gold for Membership
+            case 'attended':
+                return '#ffeb3b'; // Yellow for Attended Membership
             case 'booked':
             case 'full':
                 return '#f0a1a8'; // Darker Red

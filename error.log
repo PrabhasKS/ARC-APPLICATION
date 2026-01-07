@@ -1,95 +1,25 @@
-Fetching desk summary...
-Date: 2025-11-17
-Querying total bookings...
-Total bookings: 1
-Querying total revenue...
-Total revenue: 300.00
-Querying pending amount...
-Pending amount: 0.00
-Querying revenue by mode...
-Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
-    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
-    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
-  code: 'ER_NON_UNIQ_ERROR',
-  errno: 1052,
-  sql: '\n' +
-    '            SELECT payment_mode, SUM(amount) as total\n' +
-    '            FROM payments p\n' +
-    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
-    '            GROUP BY payment_mode\n' +
-    '        ',
-  sqlState: '23000',
-  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
-}
-Fetching desk summary...
-Date: 2025-11-17
-Querying total bookings...
-Total bookings: 1
-Querying total revenue...
-Total revenue: 300.00
-Querying pending amount...
-Pending amount: 0.00
-Querying revenue by mode...
-Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
-    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
-    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
-  code: 'ER_NON_UNIQ_ERROR',
-  errno: 1052,
-  sql: '\n' +
-    '            SELECT payment_mode, SUM(amount) as total\n' +
-    '            FROM payments p\n' +
-    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
-    '            GROUP BY payment_mode\n' +
-    '        ',
-  sqlState: '23000',
-  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
-}
-Fetching desk summary...
-Date: 2025-11-17
-Querying total bookings...
-Total bookings: 1
-Querying total revenue...
-Total revenue: 300.00
-Querying pending amount...
-Pending amount: 0.00
-Querying revenue by mode...
-Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
-    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
-    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
-  code: 'ER_NON_UNIQ_ERROR',
-  errno: 1052,
-  sql: '\n' +
-    '            SELECT payment_mode, SUM(amount) as total\n' +
-    '            FROM payments p\n' +
-    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
-    '            GROUP BY payment_mode\n' +
-    '        ',
-  sqlState: '23000',
-  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
-}
-Fetching desk summary...
-Date: 2025-11-17
-Querying total bookings...
-Total bookings: 1
-Querying total revenue...
-Total revenue: 300.00
-Querying pending amount...
-Pending amount: 0.00
-Querying revenue by mode...
-Error fetching desk summary: Error: Column 'payment_mode' in field list is ambiguous
-    at PromisePool.query (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\mysql2\lib\promise\pool.js:36:22)
-    at C:\Users\kspra\Desktop\ARC-APPLICATION\server\routes\api.js:1496:49
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
-  code: 'ER_NON_UNIQ_ERROR',
-  errno: 1052,
-  sql: '\n' +
-    '            SELECT payment_mode, SUM(amount) as total\n' +
-    '            FROM payments p\n' +
-    "            JOIN bookings b ON p.booking_id = b.id WHERE b.date = '2025-11-17'\n" +
-    '            GROUP BY payment_mode\n' +
-    '        ',
-  sqlState: '23000',
-  sqlMessage: "Column 'payment_mode' in field list is ambiguous"
+
+> server@1.0.0 start
+> node server.js
+
+[dotenv@17.2.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.2.1] injecting env (0) from .env -- tip: ⚙️  override  existing env vars with { override: true }
+[dotenv@17.2.1] injecting env (0) from .env -- tip: ⚙️  suppress  all logs with { quiet: true }
+C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\router\index.js:392
+      throw new TypeError('argument handler must be a function') 
+      ^
+
+TypeError: argument handler must be a function
+    at Function.use (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\router\index.js:392:13)
+    at Function.<anonymous> (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\express\lib\application.js:222:21)        
+    at Array.forEach (<anonymous>)
+    at Function.use (C:\Users\kspra\Desktop\ARC-APPLICATION\server\node_modules\express\lib\application.js:219:7)
+    at Object.<anonymous> (C:\Users\kspra\Desktop\ARC-APPLICATION\server\server.js:17:5)
+    at Module._compile (node:internal/modules/cjs/loader:1546:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1691:10)
+    at Module.load (node:internal/modules/cjs/loader:1317:32)    
+    at Module._load (node:internal/modules/cjs/loader:1127:12)   
+    at TracingChannel.traceSync (node:diagnostics_channel:315:14)
+
+Node.js v22.7.0
+PS C:\Users\kspra\Desktop\ARC-APPLICATION\server> 

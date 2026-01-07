@@ -51,6 +51,11 @@
     color: #666;
 }
 
+.new-member-actions {
+    margin-top: 1rem;
+    text-align: center;
+}
+
 .new-member-form {
     margin-top: 1rem;
     padding-top: 1rem;

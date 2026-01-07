@@ -56,10 +56,14 @@ const NewSubscription = () => {
         return packages.find(p => p.id === parseInt(selectedPackageId));
     }, [selectedPackageId, packages]);
 
-    const finalPrice = useMemo(() => {
-        if (!selectedPackage) return 0;
-        return selectedPackage.price - (discountAmount || 0);
-    }, [selectedPackage, discountAmount]);
+    const { basePrice, finalPrice } = useMemo(() => {
+        if (!selectedPackage || teamMembers.length === 0) {
+            return { basePrice: 0, finalPrice: 0 };
+        }
+        const base = (selectedPackage.per_person_price || 0) * teamMembers.length;
+        const final = base - (discountAmount || 0);
+        return { basePrice: base, finalPrice: final };
+    }, [selectedPackage, teamMembers, discountAmount]);
 
 
     const handleAddMember = (member) => {
@@ -94,7 +98,7 @@ const NewSubscription = () => {
             start_date: startDate,
             time_slot: timeSlot,
             team_members: teamMembers.map(m => ({ member_id: m.id })),
-            final_price: finalPrice,
+            discount_amount: discountAmount,
             discount_details: discountReason,
             initial_payment: {
                 amount: paymentAmount,
@@ -218,7 +222,7 @@ const NewSubscription = () => {
                             <p><strong>Time Slot:</strong> {timeSlot}</p>
                             <p><strong>Team Size:</strong> {teamMembers.length} member(s)</p>
                             <hr/>
-                            <p><strong>Base Price:</strong> Rs. {selectedPackage?.price || 0}</p>
+                            <p><strong>Base Price:</strong> Rs. {basePrice}</p>
                             <div className="form-group">
                                 <label>Discount Amount (Rs.)</label>
                                 <input type="number" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} />

@@ -7,7 +7,7 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
         name: '',
         sport_id: '',
         duration_days: 30,
-        price: '',
+        per_person_price: '',
         max_team_size: 1,
         details: ''
     });
@@ -20,7 +20,7 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
                 name: pkg.name || '',
                 sport_id: pkg.sport_id || '',
                 duration_days: pkg.duration_days || 30,
-                price: pkg.price || '',
+                per_person_price: pkg.per_person_price || '',
                 max_team_size: pkg.max_team_size || 1,
                 details: pkg.details || ''
             });
@@ -77,8 +77,8 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
                         <input type="number" name="duration_days" value={formData.duration_days} onChange={handleChange} required min="1" />
                     </div>
                     <div className="form-group">
-                        <label>Price (Rs.)</label>
-                        <input type="number" name="price" value={formData.price} onChange={handleChange} required min="0" />
+                        <label>Per Person Price (Rs.)</label>
+                        <input type="number" name="per_person_price" value={formData.per_person_price} onChange={handleChange} required min="0" />
                     </div>
                     <div className="form-group">
                         <label>Max Team Size</label>

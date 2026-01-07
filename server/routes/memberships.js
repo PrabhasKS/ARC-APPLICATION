@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 const { authenticateToken, isPrivilegedUser } = require('../middleware/auth');
+const sse = require('../sse');
 
 // Apply authentication middleware to all routes in this file
 router.use(authenticateToken);
@@ -42,13 +43,13 @@ router.get('/packages/:id', async (req, res) => {
 // POST a new membership package
 router.post('/packages', isPrivilegedUser, async (req, res) => {
   try {
-    const { name, sport_id, duration_days, price, max_team_size, details } = req.body;
-    if (!name || !sport_id || !duration_days || !price || !max_team_size) {
+    const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
+    if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
     const [result] = await db.query(
-      'INSERT INTO membership_packages (name, sport_id, duration_days, price, max_team_size, details) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, sport_id, duration_days, price, max_team_size, details]
+      'INSERT INTO membership_packages (name, sport_id, duration_days, per_person_price, max_team_size, details) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, sport_id, duration_days, per_person_price, max_team_size, details]
     );
     res.status(201).json({ id: result.insertId, message: 'Membership package created successfully' });
   } catch (error) {
@@ -61,13 +62,13 @@ router.post('/packages', isPrivilegedUser, async (req, res) => {
 router.put('/packages/:id', isPrivilegedUser, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, sport_id, duration_days, price, max_team_size, details } = req.body;
-    if (!name || !sport_id || !duration_days || !price || !max_team_size) {
+    const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
+    if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
     const [result] = await db.query(
-      'UPDATE membership_packages SET name = ?, sport_id = ?, duration_days = ?, price = ?, max_team_size = ?, details = ? WHERE id = ?',
-      [name, sport_id, duration_days, price, max_team_size, details, id]
+      'UPDATE membership_packages SET name = ?, sport_id = ?, duration_days = ?, per_person_price = ?, max_team_size = ?, details = ? WHERE id = ?',
+      [name, sport_id, duration_days, per_person_price, max_team_size, details, id]
     );
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Membership package not found or no changes made' });
@@ -192,14 +193,14 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         start_date,
         time_slot,
         team_members,
-        final_price,
+        discount_amount,
         discount_details,
         initial_payment
     } = req.body;
     
     const created_by_user_id = req.user.id;
 
-    if (!package_id || !court_id || !start_date || !time_slot || !team_members || team_members.length === 0 || final_price === undefined) {
+    if (!package_id || !court_id || !start_date || !time_slot || !team_members || team_members.length === 0) {
         return res.status(400).json({ message: 'Missing required subscription data.' });
     }
 
@@ -208,29 +209,43 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        const [packages] = await connection.query('SELECT duration_days, max_team_size FROM membership_packages WHERE id = ?', [package_id]);
+        const [packages] = await connection.query('SELECT duration_days, max_team_size, per_person_price FROM membership_packages WHERE id = ?', [package_id]);
         if (packages.length === 0) throw new Error('Membership package not found.');
-        if (team_members.length > packages[0].max_team_size) {
-            throw new Error(`Team size (${team_members.length}) exceeds the maximum allowed size (${packages[0].max_team_size}) for this package.`);
+        
+        const { duration_days, max_team_size, per_person_price } = packages[0];
+
+        if (team_members.length > max_team_size) {
+            throw new Error(`The number of members (${team_members.length}) exceeds the maximum allowed for this package (${max_team_size}).`);
+        }
+        
+        const base_price = parseFloat(per_person_price) * team_members.length;
+        const final_price = base_price - parseFloat(discount_amount || 0);
+        const amount_paid = parseFloat(initial_payment?.amount || 0);
+        const balance_amount = final_price - amount_paid;
+
+        let payment_status = 'Pending';
+        if (balance_amount <= 0) {
+            payment_status = 'Completed';
+        } else if (amount_paid > 0) {
+            payment_status = 'Received';
         }
 
-        const { duration_days } = packages[0];
         const startDateObj = new Date(start_date);
         const endDateObj = new Date(startDateObj);
         endDateObj.setDate(startDateObj.getDate() + duration_days);
         const original_end_date = endDateObj.toISOString().slice(0, 10);
         
         const [activeMembershipResult] = await connection.query(
-            `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [package_id, court_id, start_date, time_slot, original_end_date, original_end_date, final_price, discount_details]
+            `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [package_id, court_id, start_date, time_slot, original_end_date, original_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status]
         );
         const active_membership_id = activeMembershipResult.insertId;
 
         if (initial_payment && initial_payment.amount > 0) {
             await connection.query(
-                'INSERT INTO payments (membership_id, amount, payment_mode, created_by_user_id) VALUES (?, ?, ?, ?)',
-                [active_membership_id, initial_payment.amount, initial_payment.payment_mode, created_by_user_id]
+                'INSERT INTO payments (membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+                [active_membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
             );
         }
         
@@ -408,10 +423,11 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
         const { date } = req.query;
         let query = `
             SELECT 
-                am.id, am.start_date, am.current_end_date, am.time_slot,
-                mp.name as package_name, mp.price as package_price,
+                am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status,
+                mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
                 c.name as court_name,
-                GROUP_CONCAT(m.full_name SEPARATOR ', ') as team_members
+                GROUP_CONCAT(m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+                COUNT(mt.member_id) as current_members_count
             FROM active_memberships am
             JOIN membership_packages mp ON am.package_id = mp.id
             JOIN courts c ON am.court_id = c.id
@@ -423,7 +439,7 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
             query += ' WHERE ? BETWEEN am.start_date AND am.current_end_date';
             queryParams.push(date);
         }
-        query += ` GROUP BY am.id ORDER BY am.start_date DESC`;
+        query += ` GROUP BY am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status, mp.name, mp.per_person_price, mp.max_team_size, c.name ORDER BY am.start_date DESC`;
         const [memberships] = await db.query(query, queryParams);
         res.json(memberships);
     } catch (error) {
@@ -434,22 +450,32 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
 
 router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
     const { id } = req.params;
+    let connection;
     try {
-        const [result] = await db.query('DELETE FROM active_memberships WHERE id = ?', [id]);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Active membership not found.' });
-        }
-        await db.query('DELETE FROM payments WHERE membership_id = ?', [id]);
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Delete associated payments
+        await connection.query('DELETE FROM payments WHERE membership_id = ?', [id]);
+        
+        // Delete the active membership itself (team members are cascade deleted)
+        await connection.query('DELETE FROM active_memberships WHERE id = ?', [id]);
+
+        await connection.commit();
         res.json({ message: 'Membership terminated successfully.' });
+
     } catch (error) {
+        if (connection) await connection.rollback();
         console.error('Error terminating membership:', error);
         res.status(500).json({ message: 'Error terminating membership.' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
 router.post('/active/:id/renew', isPrivilegedUser, async (req, res) => {
     const { id: old_membership_id } = req.params;
-    const { start_date, final_price, discount_details, initial_payment } = req.body;
+    const { start_date, discount_details, initial_payment } = req.body;
     const created_by_user_id = req.user.id;
 
     let connection;
@@ -461,25 +487,33 @@ router.post('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         if (oldMemberships.length === 0) throw new Error('Membership to renew not found.');
         const oldMembership = oldMemberships[0];
 
-        const [packages] = await connection.query('SELECT duration_days FROM membership_packages WHERE id = ?', [oldMembership.package_id]);
+        const [packages] = await connection.query('SELECT duration_days, per_person_price FROM membership_packages WHERE id = ?', [oldMembership.package_id]);
         if (packages.length === 0) throw new Error('Original package not found.');
-        const { duration_days } = packages[0];
+        const { duration_days, per_person_price } = packages[0];
         
+        const [teamMembers] = await connection.query('SELECT COUNT(*) as member_count FROM membership_team WHERE membership_id = ?', [old_membership_id]);
+        const member_count = teamMembers[0].member_count;
+
+        const new_final_price = parseFloat(per_person_price) * member_count;
+        const amount_paid = parseFloat(initial_payment?.amount || 0);
+        const balance_amount = new_final_price - amount_paid;
+        let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
+
         const startDate = new Date(start_date);
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + duration_days);
 
         const [newMembershipResult] = await connection.query(
-          `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [oldMembership.package_id, oldMembership.court_id, start_date, oldMembership.time_slot, endDate.toISOString().slice(0,10), endDate.toISOString().slice(0,10), final_price, discount_details]
+          `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [oldMembership.package_id, oldMembership.court_id, start_date, oldMembership.time_slot, endDate.toISOString().slice(0,10), endDate.toISOString().slice(0,10), new_final_price, discount_details, amount_paid, balance_amount, payment_status]
         );
         const new_membership_id = newMembershipResult.insertId;
 
         if (initial_payment && initial_payment.amount > 0) {
             await connection.query(
-                'INSERT INTO payments (membership_id, amount, payment_mode, created_by_user_id) VALUES (?, ?, ?, ?)',
-                [new_membership_id, initial_payment.amount, initial_payment.payment_mode, created_by_user_id]
+                'INSERT INTO payments (membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+                [new_membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
             );
         }
 
@@ -499,6 +533,163 @@ router.post('/active/:id/renew', isPrivilegedUser, async (req, res) => {
     }
 });
 
+// NEW: Add a member to an existing active membership
+router.post('/active/:id/add-member', isPrivilegedUser, async (req, res) => {
+    const { id: active_membership_id } = req.params;
+    const { member_id, payment } = req.body; 
+    const created_by_user_id = req.user.id;
+
+    if (!member_id) {
+        return res.status(400).json({ message: 'Missing required field: member_id.' });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        const [activeMemberships] = await connection.query(
+            `SELECT am.*, mp.per_person_price, mp.max_team_size
+             FROM active_memberships am
+             JOIN membership_packages mp ON am.package_id = mp.id
+             WHERE am.id = ? FOR UPDATE`,
+            [active_membership_id]
+        );
+        if (activeMemberships.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Active membership not found.' });
+        }
+        const membership = activeMemberships[0];
+
+        const [currentTeam] = await connection.query('SELECT COUNT(*) as member_count FROM membership_team WHERE membership_id = ?', [active_membership_id]);
+        if (currentTeam[0].member_count >= membership.max_team_size) {
+            await connection.rollback();
+            return res.status(400).json({ message: `Team is already full. Max team size: ${membership.max_team_size}.` });
+        }
+
+        const [existingMember] = await connection.query('SELECT * FROM membership_team WHERE membership_id = ? AND member_id = ?', [active_membership_id, member_id]);
+        if (existingMember.length > 0) {
+            await connection.rollback();
+            return res.status(409).json({ message: 'Member is already part of this team.' });
+        }
+
+        await connection.query('INSERT INTO membership_team (membership_id, member_id) VALUES (?, ?)', [active_membership_id, member_id]);
+
+        const new_final_price = parseFloat(membership.final_price) + parseFloat(membership.per_person_price);
+        let new_amount_paid = parseFloat(membership.amount_paid);
+
+        if (payment && payment.amount > 0) {
+            new_amount_paid += parseFloat(payment.amount);
+            await connection.query(
+                'INSERT INTO payments (membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+                [active_membership_id, payment.amount, payment.payment_mode, payment.payment_id, created_by_user_id]
+            );
+        }
+        
+        const new_balance_amount = new_final_price - new_amount_paid;
+        const new_payment_status = new_balance_amount <= 0 ? 'Completed' : 'Received';
+
+        await connection.query(
+            'UPDATE active_memberships SET final_price = ?, amount_paid = ?, balance_amount = ?, payment_status = ? WHERE id = ?',
+            [new_final_price, new_amount_paid, new_balance_amount, new_payment_status, active_membership_id]
+        );
+
+        await connection.commit();
+
+        const [updatedMembershipRows] = await connection.query(
+            `SELECT 
+                am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status,
+                mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
+                c.name as court_name,
+                GROUP_CONCAT(m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+                COUNT(mt.member_id) as current_members_count
+            FROM active_memberships am
+            JOIN membership_packages mp ON am.package_id = mp.id
+            JOIN courts c ON am.court_id = c.id
+            LEFT JOIN membership_team mt ON am.id = mt.membership_id
+            LEFT JOIN members m ON mt.member_id = m.id
+            WHERE am.id = ?
+            GROUP BY am.id`,
+            [active_membership_id]
+        );
+        res.status(200).json({ message: 'Member added and membership updated successfully.', membership: updatedMembershipRows[0] });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error adding member to active membership:', error);
+        res.status(500).json({ message: `Failed to add member: ${error.message}` });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// NEW: Add a partial payment to an existing active membership
+router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {
+    const { id: active_membership_id } = req.params;
+    const { amount, payment_mode, payment_id } = req.body;
+    const created_by_user_id = req.user.id;
+
+    if (!amount || !payment_mode) {
+        return res.status(400).json({ message: 'Amount and payment mode are required' });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        const [memberships] = await connection.query('SELECT * FROM active_memberships WHERE id = ? FOR UPDATE', [active_membership_id]);
+        if (memberships.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Active membership not found.' });
+        }
+        const membership = memberships[0];
+
+        await connection.query(
+            'INSERT INTO payments (membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+            [active_membership_id, amount, payment_mode, payment_id, created_by_user_id]
+        );
+
+        const new_amount_paid = parseFloat(membership.amount_paid) + parseFloat(amount);
+        const new_balance_amount = parseFloat(membership.final_price) - new_amount_paid;
+        const new_payment_status = new_balance_amount <= 0 ? 'Completed' : 'Received';
+
+        await connection.query(
+            'UPDATE active_memberships SET amount_paid = ?, balance_amount = ?, payment_status = ? WHERE id = ?',
+            [new_amount_paid, new_balance_amount, new_payment_status, active_membership_id]
+        );
+
+        await connection.commit();
+
+        const [updatedMembershipRows] = await connection.query(
+            `SELECT 
+                am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status,
+                mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
+                c.name as court_name,
+                GROUP_CONCAT(m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+                COUNT(mt.member_id) as current_members_count
+            FROM active_memberships am
+            JOIN membership_packages mp ON am.package_id = mp.id
+            JOIN courts c ON am.court_id = c.id
+            LEFT JOIN membership_team mt ON am.id = mt.membership_id
+            LEFT JOIN members m ON mt.member_id = m.id
+            WHERE am.id = ?
+            GROUP BY am.id`,
+            [active_membership_id]
+        );
+
+        res.status(200).json({ message: 'Payment added successfully.', membership: updatedMembershipRows[0] });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error adding payment to membership:', error);
+        res.status(500).json({ message: `Failed to add payment: ${error.message}` });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+
 // ------------------- Team Attendance -------------------
 
 router.post('/team-attendance', isPrivilegedUser, async (req, res) => {
@@ -512,6 +703,7 @@ router.post('/team-attendance', isPrivilegedUser, async (req, res) => {
             'INSERT INTO team_attendance (membership_id, attendance_date, marked_by_user_id) VALUES (?, ?, ?)',
             [membership_id, attendance_date, marked_by_user_id]
         );
+        sse.sendEventsToAll({ message: 'bookings_updated' });
         res.status(201).json({ message: 'Attendance marked successfully.' });
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {

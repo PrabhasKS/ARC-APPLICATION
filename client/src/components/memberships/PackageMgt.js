@@ -89,9 +89,8 @@ const PackageMgt = () => {
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Sport ID</th>
                         <th>Duration (Days)</th>
-                        <th>Price (Rs.)</th>
+                        <th>Per Person Price (Rs.)</th>
                         <th>Max Team Size</th>
                         <th>Actions</th>
                     </tr>
@@ -101,9 +100,8 @@ const PackageMgt = () => {
                         packages.map(pkg => (
                             <tr key={pkg.id}>
                                 <td>{pkg.name}</td>
-                                <td>{pkg.sport_id}</td>
                                 <td>{pkg.duration_days}</td>
-                                <td>{pkg.price}</td>
+                                <td>{pkg.per_person_price}</td>
                                 <td>{pkg.max_team_size}</td>
                                 <td className="actions-cell">
                                     <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal(pkg)}>Edit</button>
@@ -113,7 +111,7 @@ const PackageMgt = () => {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="6">No membership packages found.</td>
+                            <td colSpan="5">No membership packages found.</td>
                         </tr>
                     )}
                 </tbody>

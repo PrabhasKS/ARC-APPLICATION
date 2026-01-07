@@ -109,12 +109,16 @@ const AddMemberModal = ({ onAddMember, onClose }) => {
                         ))}
                     </ul>
                     {searchResults.length === 0 && searchQuery.length > 2 && !isLoading && (
-                         <div className="no-results">
-                            <p>No members found.</p>
-                            <button className="btn btn-primary" onClick={() => setShowNewMemberForm(true)}>Create New Member</button>
-                         </div>
+                         <p>No members found for "{searchQuery}".</p>
                     )}
-                    {showNewMemberForm && renderNewMemberForm()}
+                    
+                    {!showNewMemberForm ? (
+                        <div className="new-member-actions">
+                            <button className="btn btn-secondary" onClick={() => setShowNewMemberForm(true)}>+ New Member</button>
+                        </div>
+                    ) : (
+                        renderNewMemberForm()
+                    )}
                 </div>
             </div>
         </div>

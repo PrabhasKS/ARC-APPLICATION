@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
 const { authenticateToken, isAdmin, isPrivilegedUser } = require('../middleware/auth');
+const sse = require('../sse');
 
 const saltRounds = 10;
 const JWT_SECRET = process.env.JWT_SECRET; // Use environment variable for secret
@@ -15,16 +16,6 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = new twilio(accountSid, authToken);
 
 const userSessions = {};
-
-let clients = [];
-
-const sendEventsToAll = (data) => {
-  clients.forEach(client => {
-    if (!client.res.finished) {
-      client.res.write(`data: ${JSON.stringify(data)}\n\n`);
-    }
-  });
-};
 
 router.get('/events', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -37,10 +28,10 @@ router.get('/events', (req, res) => {
         id: clientId,
         res
     };
-    clients.push(newClient);
+    sse.addClient(newClient);
 
     req.on('close', () => {
-        clients = clients.filter(client => client.id !== clientId);
+        sse.removeClient(clientId);
     });
 });
 
@@ -408,9 +399,13 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
     }
 
     try {
+        console.log(`\n--- Heatmap Debug for ${date} ---`);
         const [courts] = await db.query('SELECT c.id, c.name, c.status, s.name as sport_name, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id ORDER BY s.name, c.name');
         const [bookings] = await db.query('SELECT * FROM bookings WHERE date = ? AND status != ?', [date, 'Cancelled']);
         const [memberships] = await db.query('SELECT * FROM active_memberships WHERE ? BETWEEN start_date AND current_end_date', [date]);
+        const [attendances] = await db.query('SELECT membership_id FROM team_attendance WHERE attendance_date = ?', [date]);
+        const attendedMembershipIds = attendances.map(a => a.membership_id);
+        console.log('Attended Membership IDs:', attendedMembershipIds);
 
         const timeSlots = Array.from({ length: 18 }, (_, i) => {
             const hour = 5 + i;
@@ -459,15 +454,20 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
 
                         // If still available, check for memberships
                         if (availability === 'available' || availability === 'partial') {
-                             const isOverlappingMembership = courtMemberships.some(m => {
+                             const overlappingMembership = courtMemberships.find(m => {
                                 const [startStr, endStr] = m.time_slot.split(' - ');
                                 const membershipStart = toMinutes(startStr);
                                 const membershipEnd = toMinutes(endStr);
                                 return subSlotStartMinutes < membershipEnd && subSlotEndMinutes > membershipStart;
                              });
 
-                             if (isOverlappingMembership) {
-                                 availability = 'membership';
+                             if (overlappingMembership) {
+                                 const isAttended = attendedMembershipIds.includes(overlappingMembership.id);
+                                 console.log(`Checking Membership ID: ${overlappingMembership.id}, Is Attended: ${isAttended}`);
+                                 if (isAttended) {
+                                     availability = 'attended'; // This will be colored yellow on the frontend
+                                 }
+                                 // If not attended, do nothing, so it remains 'available' (green)
                              }
                         }
                     }

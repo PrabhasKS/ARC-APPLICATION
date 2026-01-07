@@ -157,3 +157,14 @@ DROP TABLE membership_attendance;
     FOREIGN KEY (membership_id) REFERENCES active_memberships(id) ON DELETE CASCADE,
     FOREIGN KEY (marked_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- ALTER TABLE statements for membership_packages based on new requirements
+ALTER TABLE membership_packages
+RENAME COLUMN price TO per_person_price;
+
+
+-- Add payment tracking columns to active_memberships
+ALTER TABLE active_memberships
+ADD COLUMN amount_paid DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+ADD COLUMN balance_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+ADD COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'Pending';

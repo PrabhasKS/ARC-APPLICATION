@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api';
 import RenewModal from './RenewModal';
+import AddTeamMemberModal from './AddTeamMemberModal';
+import AddMembershipPaymentModal from './AddMembershipPaymentModal';
 import './PackageMgt.css'; 
 
 const ActiveMembershipsMgt = () => {
@@ -11,6 +13,14 @@ const ActiveMembershipsMgt = () => {
 
     const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
     const [selectedMembership, setSelectedMembership] = useState(null);
+
+    const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+    const [membershipToAddMemberTo, setMembershipToAddMemberTo] = useState(null);
+
+    const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
+    const [selectedMembershipForPayment, setSelectedMembershipForPayment] = useState(null);
+
+    const [openMenuId, setOpenMenuId] = useState(null);
 
     const fetchActiveMemberships = useCallback(async () => {
         try {
@@ -30,10 +40,21 @@ const ActiveMembershipsMgt = () => {
         fetchActiveMemberships();
     }, [fetchActiveMemberships]);
 
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setOpenMenuId(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
+
     const handleOpenRenewModal = (membership) => {
         setSelectedMembership(membership);
         setIsRenewModalOpen(true);
         setModalError(null);
+        setOpenMenuId(null);
     };
 
     const handleCloseRenewModal = () => {
@@ -41,7 +62,7 @@ const ActiveMembershipsMgt = () => {
         setSelectedMembership(null);
         setModalError(null);
     };
-    
+
     const handleRenewSubmit = async (membershipId, renewalData) => {
         try {
             await api.post(`/memberships/active/${membershipId}/renew`, renewalData);
@@ -52,7 +73,41 @@ const ActiveMembershipsMgt = () => {
             console.error(err);
         }
     };
-    
+
+    const handleOpenAddMemberModal = (membership) => {
+        setMembershipToAddMemberTo(membership);
+        setIsAddMemberModalOpen(true);
+        setModalError(null);
+        setOpenMenuId(null);
+    };
+
+    const handleCloseAddMemberModal = () => {
+        setIsAddMemberModalOpen(false);
+        setMembershipToAddMemberTo(null);
+        setModalError(null);
+    };
+
+    const handleOpenAddPaymentModal = (membership) => {
+        setSelectedMembershipForPayment(membership);
+        setIsAddPaymentModalOpen(true);
+        setModalError(null);
+        setOpenMenuId(null);
+    };
+
+    const handleCloseAddPaymentModal = () => {
+        setIsAddPaymentModalOpen(false);
+        setSelectedMembershipForPayment(null);
+        setModalError(null);
+    };
+
+    const handlePaymentAdded = (updatedMembership) => {
+        setActiveMemberships(prevMemberships =>
+            prevMemberships.map(mem =>
+                mem.id === updatedMembership.id ? updatedMembership : mem
+            )
+        );
+    };
+
     const handleTerminate = async (id) => {
         if (window.confirm('Are you sure you want to terminate this membership? This action cannot be undone.')) {
             try {
@@ -60,8 +115,15 @@ const ActiveMembershipsMgt = () => {
                 fetchActiveMemberships();
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to terminate membership.');
+            } finally {
+                setOpenMenuId(null);
             }
         }
+    };
+
+    const handleToggleMenu = (membershipId, event) => {
+        event.stopPropagation();
+        setOpenMenuId(openMenuId === membershipId ? null : membershipId);
     };
 
     if (loading) {
@@ -80,12 +142,16 @@ const ActiveMembershipsMgt = () => {
             <table className="dashboard-table">
                 <thead>
                     <tr>
+                        <th>Team ID</th>
                         <th>Package</th>
                         <th>Court</th>
-                        <th>Team</th>
+                        <th>Team (Current/Max)</th>
                         <th>Time Slot</th>
                         <th>Start Date</th>
                         <th>End Date</th>
+                        <th>Total Price</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -93,21 +159,36 @@ const ActiveMembershipsMgt = () => {
                     {activeMemberships.length > 0 ? (
                         activeMemberships.map(mem => (
                             <tr key={mem.id}>
+                                <td>{mem.id}</td>
                                 <td>{mem.package_name}</td>
                                 <td>{mem.court_name}</td>
-                                <td className="team-cell">{mem.team_members}</td>
+                                <td className="team-cell">{mem.current_members_count || 0} / {mem.max_team_size || 'N/A'}</td>
                                 <td>{mem.time_slot}</td>
                                 <td>{new Date(mem.start_date).toLocaleDateString()}</td>
                                 <td>{new Date(mem.current_end_date).toLocaleDateString()}</td>
+                                <td>Rs. {mem.final_price}</td>
+                                <td>Rs. {mem.amount_paid}</td>
+                                <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount}</td>
                                 <td className="actions-cell">
-                                    <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
-                                    <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+                                    <div className="actions-menu-container">
+                                        <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                            &#8285;
+                                        </button>
+                                        {openMenuId === mem.id && (
+                                            <div className="actions-dropdown">
+                                                {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
+                                                <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
+                                                <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7">No active memberships found.</td>
+                            <td colSpan="11">No active memberships found.</td>
                         </tr>
                     )}
                 </tbody>
@@ -120,8 +201,27 @@ const ActiveMembershipsMgt = () => {
                     error={modalError}
                 />
             )}
+            {isAddMemberModalOpen && membershipToAddMemberTo && (
+                <AddTeamMemberModal
+                    activeMembershipId={membershipToAddMemberTo.id}
+                    maxTeamSize={membershipToAddMemberTo.max_team_size}
+                    currentTeamSize={membershipToAddMemberTo.current_members_count}
+                    onMemberAdded={fetchActiveMemberships}
+                    onClose={handleCloseAddMemberModal}
+                    error={modalError}
+                />
+            )}
+            {isAddPaymentModalOpen && selectedMembershipForPayment && (
+                <AddMembershipPaymentModal
+                    membership={selectedMembershipForPayment}
+                    onPaymentAdded={handlePaymentAdded}
+                    onClose={handleCloseAddPaymentModal}
+                    error={modalError}
+                />
+            )}
         </div>
     );
 };
 
 export default ActiveMembershipsMgt;
+
