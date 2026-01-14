@@ -45,46 +45,43 @@ const LeaveRequests = () => {
 
     return (
         <div className="leave-requests-container">
-            <h3>Membership Leave Requests</h3>
+            <h3>Membership Leave Records</h3>
             <table className="dashboard-table">
                 <thead>
                     <tr>
-                        <th>Package Name</th>
+                        <th>Team ID</th>
+                        <th>Package</th>
                         <th>Team</th>
-                        <th>Leave Days</th>
+                        <th>Leave Period</th>
+                        <th>Days</th>
                         <th>Reason</th>
-                        <th>Requested On</th>
                         <th>Status</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {requests.length > 0 ? (
                         requests.map(req => (
                             <tr key={req.id}>
+                                <td>{req.membership_id}</td>
                                 <td>{req.package_name}</td>
                                 <td className="team-cell">{req.team_members}</td>
+                                <td>
+                                    {req.start_date && req.end_date ? 
+                                        `${new Date(req.start_date).toLocaleDateString()} - ${new Date(req.end_date).toLocaleDateString()}` : 
+                                        'N/A'}
+                                </td>
                                 <td>{req.leave_days}</td>
                                 <td>{req.reason || '-'}</td>
-                                <td>{new Date(req.requested_at).toLocaleDateString()}</td>
                                 <td>
                                     <span className={`status-badge status-${req.status.toLowerCase()}`}>
                                         {req.status}
                                     </span>
                                 </td>
-                                <td className="actions-cell">
-                                    {req.status === 'PENDING' && (
-                                        <>
-                                            <button className="btn btn-success btn-sm" onClick={() => handleUpdateRequest(req.id, 'APPROVED')}>Approve</button>
-                                            <button className="btn btn-danger btn-sm" onClick={() => handleUpdateRequest(req.id, 'REJECTED')}>Reject</button>
-                                        </>
-                                    )}
-                                </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7">No leave requests found.</td>
+                            <td colSpan="7">No leave records found.</td>
                         </tr>
                     )}
                 </tbody>

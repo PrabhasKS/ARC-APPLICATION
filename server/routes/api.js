@@ -394,18 +394,12 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
 // New endpoint for availability heatmap
 router.get('/availability/heatmap', authenticateToken, async (req, res) => {
     const { date } = req.query;
-    if (!date) {
-        return res.status(400).json({ message: 'Date parameter is required' });
-    }
-
     try {
-        console.log(`\n--- Heatmap Debug for ${date} ---`);
         const [courts] = await db.query('SELECT c.id, c.name, c.status, s.name as sport_name, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id ORDER BY s.name, c.name');
         const [bookings] = await db.query('SELECT * FROM bookings WHERE date = ? AND status != ?', [date, 'Cancelled']);
         const [memberships] = await db.query('SELECT * FROM active_memberships WHERE ? BETWEEN start_date AND current_end_date', [date]);
         const [attendances] = await db.query('SELECT membership_id FROM team_attendance WHERE attendance_date = ?', [date]);
         const attendedMembershipIds = attendances.map(a => a.membership_id);
-        console.log('Attended Membership IDs:', attendedMembershipIds);
 
         const timeSlots = Array.from({ length: 18 }, (_, i) => {
             const hour = 5 + i;
@@ -463,7 +457,6 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
 
                              if (overlappingMembership) {
                                  const isAttended = attendedMembershipIds.includes(overlappingMembership.id);
-                                 console.log(`Checking Membership ID: ${overlappingMembership.id}, Is Attended: ${isAttended}`);
                                  if (isAttended) {
                                      availability = 'attended'; // This will be colored yellow on the frontend
                                  }
@@ -862,7 +855,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         }
 
         await connection.commit();
-        sendEventsToAll({ message: 'bookings_updated' });
+        sse.sendEventsToAll({ message: 'bookings_updated' });
         res.json({ success: true, bookingId: bookingId });
 
     } catch (err) {
@@ -1020,7 +1013,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         await connection.query(sql, [updateFields, id]);
 
         await connection.commit();
-        sendEventsToAll({ message: 'bookings_updated' });
+        sse.sendEventsToAll({ message: 'bookings_updated' });
 
         // 8. Fetch and return the fully updated booking
         const [updatedBookingRows] = await connection.query(
@@ -1151,7 +1144,7 @@ router.post('/bookings/:id/extend', authenticateToken, async (req, res) => {
         );
 
         await connection.commit();
-        sendEventsToAll({ message: 'bookings_updated' });
+        sse.sendEventsToAll({ message: 'bookings_updated' });
         res.json({ success: true, message: 'Booking extended successfully' });
 
     } catch (err) {
@@ -1182,7 +1175,7 @@ router.put('/bookings/:id/payment', authenticateToken, async (req, res) => {
             'UPDATE bookings SET amount_paid = ?, balance_amount = ?, payment_status = ? WHERE id = ?',
             [amount_paid, new_balance, payment_status, id]
         );
-        sendEventsToAll({ message: 'bookings_updated' });
+        sse.sendEventsToAll({ message: 'bookings_updated' });
         res.json({ success: true, message: 'Payment updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1284,7 +1277,7 @@ router.post('/bookings/:id/payments', authenticateToken, async (req, res) => {
         updatedBooking.accessories = updatedBooking.accessories ? JSON.parse(updatedBooking.accessories) : [];
         updatedBooking.payments = updatedBooking.payments ? JSON.parse(updatedBooking.payments) : [];
 
-        sendEventsToAll({ message: 'bookings_updated' });
+        sse.sendEventsToAll({ message: 'bookings_updated' });
         res.json({ success: true, message: 'Payment added successfully', booking: updatedBooking });
 
     } catch (err) {
@@ -1301,7 +1294,7 @@ router.put('/bookings/:id/cancel', authenticateToken, isAdmin, async (req, res) 
     const { id } = req.params;
     try {
         await db.query("UPDATE bookings SET status = 'Cancelled' WHERE id = ?", [id]);
-        sendEventsToAll({ message: 'bookings_updated' });
+        sse.sendEventsToAll({ message: 'bookings_updated' });
         res.json({ success: true, message: 'Booking cancelled successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1314,7 +1307,7 @@ router.put('/courts/:id/status', authenticateToken, isPrivilegedUser, async (req
     const { status } = req.body;
     try {
         await db.query('UPDATE courts SET status = ? WHERE id = ?', [status, id]);
-        sendEventsToAll({ message: 'courts_updated' });
+        sse.sendEventsToAll({ message: 'courts_updated' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1422,7 +1415,7 @@ router.post('/accessories', authenticateToken, isAdmin, async (req, res) => {
 
     try {
         const [result] = await db.query('INSERT INTO accessories (name, price) VALUES (?, ?)', [name, price]);
-        sendEventsToAll({ message: 'accessories_updated' });
+        sse.sendEventsToAll({ message: 'accessories_updated' });
         res.json({ success: true, accessoryId: result.insertId });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1440,7 +1433,7 @@ router.put('/accessories/:id', authenticateToken, isAdmin, async (req, res) => {
     }
     try {
         await db.query('UPDATE accessories SET name = ?, price = ? WHERE id = ?', [name, price, id]);
-        sendEventsToAll({ message: 'accessories_updated' });
+        sse.sendEventsToAll({ message: 'accessories_updated' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1451,7 +1444,7 @@ router.delete('/accessories/:id', authenticateToken, isAdmin, async (req, res) =
     const { id } = req.params;
     try {
         await db.query('DELETE FROM accessories WHERE id = ?', [id]);
-        sendEventsToAll({ message: 'accessories_updated' });
+        sse.sendEventsToAll({ message: 'accessories_updated' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

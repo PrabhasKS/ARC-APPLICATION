@@ -3,6 +3,7 @@ import api from '../../api';
 import RenewModal from './RenewModal';
 import AddTeamMemberModal from './AddTeamMemberModal';
 import AddMembershipPaymentModal from './AddMembershipPaymentModal';
+import MarkLeaveModal from './MarkLeaveModal';
 import './PackageMgt.css'; 
 
 const ActiveMembershipsMgt = () => {
@@ -19,6 +20,9 @@ const ActiveMembershipsMgt = () => {
 
     const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
     const [selectedMembershipForPayment, setSelectedMembershipForPayment] = useState(null);
+
+    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+    const [selectedMembershipForLeave, setSelectedMembershipForLeave] = useState(null);
 
     const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -100,6 +104,30 @@ const ActiveMembershipsMgt = () => {
         setModalError(null);
     };
 
+    const handleOpenLeaveModal = (membership) => {
+        setSelectedMembershipForLeave(membership);
+        setIsLeaveModalOpen(true);
+        setModalError(null);
+        setOpenMenuId(null);
+    };
+
+    const handleCloseLeaveModal = () => {
+        setIsLeaveModalOpen(false);
+        setSelectedMembershipForLeave(null);
+        setModalError(null);
+    };
+
+    const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
+        try {
+            await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
+            fetchActiveMemberships();
+            handleCloseLeaveModal();
+        } catch (err) {
+            setModalError(err.response?.data?.message || 'Failed to grant leave.');
+            console.error(err);
+        }
+    };
+
     const handlePaymentAdded = (updatedMembership) => {
         setActiveMemberships(prevMemberships =>
             prevMemberships.map(mem =>
@@ -179,6 +207,7 @@ const ActiveMembershipsMgt = () => {
                                                 {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
                                                 <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
                                                 <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
+                                                <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
                                                 <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
                                             </div>
                                         )}
@@ -216,6 +245,14 @@ const ActiveMembershipsMgt = () => {
                     membership={selectedMembershipForPayment}
                     onPaymentAdded={handlePaymentAdded}
                     onClose={handleCloseAddPaymentModal}
+                    error={modalError}
+                />
+            )}
+            {isLeaveModalOpen && selectedMembershipForLeave && (
+                <MarkLeaveModal
+                    membership={selectedMembershipForLeave}
+                    onGrantLeave={handleGrantLeaveSubmit}
+                    onClose={handleCloseLeaveModal}
                     error={modalError}
                 />
             )}

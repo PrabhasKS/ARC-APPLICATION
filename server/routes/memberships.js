@@ -277,8 +277,8 @@ router.get('/leave-requests', isPrivilegedUser, async (req, res) => {
     try {
         const query = `
             SELECT 
-                ml.id, ml.membership_id, ml.leave_days, ml.reason, ml.status, ml.requested_at,
-                am.start_date, am.current_end_date, mp.name as package_name,
+                ml.id, ml.membership_id, ml.leave_days, ml.start_date, ml.end_date, ml.reason, ml.status, ml.requested_at,
+                am.start_date as membership_start_date, am.current_end_date, mp.name as package_name,
                 GROUP_CONCAT(m.full_name SEPARATOR ', ') as team_members
             FROM membership_leave ml
             JOIN active_memberships am ON ml.membership_id = am.id
@@ -309,6 +309,58 @@ router.post('/request-leave', isPrivilegedUser, async (req, res) => {
     } catch (error) {
         console.error('Error submitting leave request:', error);
         res.status(500).json({ message: 'Error submitting leave request.' });
+    }
+});
+
+router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
+    const { membership_id, start_date, end_date, reason } = req.body;
+
+    if (!membership_id || !start_date || !end_date) {
+        return res.status(400).json({ message: 'Membership ID, start date, and end date are required.' });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Calculate leave days
+        const start = new Date(start_date);
+        const end = new Date(end_date);
+        const diffTime = Math.abs(end - start);
+        const leave_days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
+
+        if (leave_days <= 0) {
+            throw new Error('End date must be after or same as start date.');
+        }
+
+        // 1. Insert into membership_leave as APPROVED
+        await connection.query(
+            'INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status, compensation_applied) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [membership_id, start_date, end_date, leave_days, reason, 'APPROVED', true]
+        );
+
+        // 2. Get current membership end date
+        const [memberships] = await connection.query('SELECT current_end_date FROM active_memberships WHERE id = ? FOR UPDATE', [membership_id]);
+        if (memberships.length === 0) throw new Error('Active membership not found.');
+
+        const current_end_date = new Date(memberships[0].current_end_date);
+        
+        // 3. Extend membership end date
+        current_end_date.setDate(current_end_date.getDate() + leave_days);
+        const new_end_date = current_end_date.toISOString().slice(0, 10);
+
+        await connection.query('UPDATE active_memberships SET current_end_date = ? WHERE id = ?', [new_end_date, membership_id]);
+
+        await connection.commit();
+        res.status(201).json({ message: `Leave granted successfully. Membership extended by ${leave_days} days. New end date: ${new_end_date}` });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error granting leave:', error);
+        res.status(500).json({ message: error.message || 'Failed to grant leave.' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
@@ -727,5 +779,65 @@ router.get('/team-attendance', isPrivilegedUser, async (req, res) => {
         res.status(500).json({ message: 'Error fetching attendance history.' });
     }
 });
+
+// GET attendance history for a specific membership (for calendar view)
+
+router.get('/active/:id/attendance-history', isPrivilegedUser, async (req, res) => {
+
+    const { id } = req.params;
+
+    try {
+
+        const [rows] = await db.query('SELECT attendance_date FROM team_attendance WHERE membership_id = ? ORDER BY attendance_date ASC', [id]);
+
+        // Return array of date strings
+
+        const dates = rows.map(row => {
+
+             // Handle timezone issues by treating the date string directly if possible, or ensuring strict YYYY-MM-DD format
+
+             const d = new Date(row.attendance_date);
+
+             return d.toISOString().slice(0, 10);
+
+        });
+
+        res.json(dates);
+
+    } catch (error) {
+
+        console.error('Error fetching membership attendance history:', error);
+
+        res.status(500).json({ message: 'Error fetching membership attendance history.' });
+
+    }
+
+});
+
+
+
+// GET approved leave history for a specific membership
+
+router.get('/active/:id/leave-history', isPrivilegedUser, async (req, res) => {
+
+    const { id } = req.params;
+
+    try {
+
+        const [rows] = await db.query('SELECT start_date, end_date FROM membership_leave WHERE membership_id = ? AND status = "APPROVED"', [id]);
+
+        res.json(rows);
+
+    } catch (error) {
+
+        console.error('Error fetching membership leave history:', error);
+
+        res.status(500).json({ message: 'Error fetching membership leave history.' });
+
+    }
+
+});
+
+
 
 module.exports = router;

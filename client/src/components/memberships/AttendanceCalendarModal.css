@@ -1,0 +1,186 @@
+.attendance-calendar-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.attendance-calendar-modal {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 800px; /* Wider for calendar view */
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.calendar-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.calendar-grid-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.calendar-month {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    width: 220px;
+}
+
+.month-title {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #555;
+    background-color: #f9f9f9;
+    padding: 5px;
+}
+
+.days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.day-cell {
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+    border: 1px solid #eee;
+    cursor: default;
+    position: relative;
+}
+
+.day-cell.header {
+    font-weight: bold;
+    background-color: transparent;
+    border: none;
+    font-size: 0.7rem;
+    color: #777;
+}
+
+/* Status Colors */
+.day-cell.present {
+    background-color: #d4edda; /* Green */
+    color: #155724;
+    font-weight: bold;
+}
+
+.day-cell.leave {
+    background-color: #fff3cd; /* Yellow */
+    color: #856404;
+    font-weight: bold;
+}
+
+.day-cell.absent {
+    background-color: #f8d7da; /* Red */
+    color: #721c24;
+}
+
+.day-cell.future {
+    background-color: #fff; /* White */
+    color: #333;
+}
+
+.day-cell.today {
+    border: 2px solid #007bff; /* Highlight today */
+}
+
+/* Legend */
+.calendar-legend {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 0.9rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+/* Print Styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .attendance-calendar-modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        z-index: 9999;
+        display: block;
+    }
+    .attendance-calendar-modal {
+        box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        position: static;
+        overflow: visible;
+        visibility: visible;
+    }
+    .attendance-calendar-modal * {
+        visibility: visible;
+    }
+    
+    .calendar-controls button {
+        display: none !important;
+    }
+    
+    .calendar-header {
+        margin-bottom: 30px;
+        text-align: center;
+        display: block;
+    }
+    
+    .calendar-grid-container {
+        gap: 30px;
+    }
+    
+    .calendar-month {
+        page-break-inside: avoid;
+    }
+}

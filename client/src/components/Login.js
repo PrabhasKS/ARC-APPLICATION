@@ -118,7 +118,9 @@ const Login = ({ onLogin }) => {
                     <button type="submit" className="login-btn">Login</button>
                     {error && <p className="login-error">{error}</p>}
                 </form>
+                <h6>Powered by ARC SportZone</h6>
             </div>
+            
         </div>
     );
 };

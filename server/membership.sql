@@ -168,3 +168,8 @@ ALTER TABLE active_memberships
 ADD COLUMN amount_paid DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
 ADD COLUMN balance_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
 ADD COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'Pending';
+
+-- Add date range columns to membership_leave
+ALTER TABLE membership_leave
+ADD COLUMN start_date DATE NULL,
+ADD COLUMN end_date DATE NULL;
