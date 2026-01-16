@@ -18,6 +18,21 @@ const TeamAttendance = () => {
 
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [selectedMembershipForLeave, setSelectedMembershipForLeave] = useState(null);
+    const [openMenuId, setOpenMenuId] = useState(null);
+
+    const [filterText, setFilterText] = useState('');
+    const [showColumnMenu, setShowColumnMenu] = useState(false);
+    const [visibleColumns, setVisibleColumns] = useState({
+        package: true,
+        court: true,
+        team: true,
+        time_slot: true,
+        status: true,
+        created_by: false,
+        payment_info: false,
+        discount_details: false,
+        action: true
+    });
 
     const fetchData = useCallback(async () => {
         try {
@@ -41,6 +56,24 @@ const TeamAttendance = () => {
         fetchData();
     }, [fetchData]);
 
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setShowColumnMenu(false);
+            setOpenMenuId(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    const toggleColumn = (key) => {
+        setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const handleToggleMenu = (membershipId, event) => {
+        event.stopPropagation();
+        setOpenMenuId(openMenuId === membershipId ? null : membershipId);
+    };
+
     const handleMarkAttendance = async (membership_id) => {
         try {
             await api.post('/memberships/team-attendance', {
@@ -63,6 +96,7 @@ const TeamAttendance = () => {
             setAttendanceHistory(attRes.data);
             setLeaveHistory(leaveRes.data);
             setSelectedMembership(membership);
+            setOpenMenuId(null);
         } catch (err) {
             console.error(err);
             alert('Failed to fetch history.');
@@ -73,6 +107,7 @@ const TeamAttendance = () => {
         setSelectedMembershipForLeave(membership);
         setIsLeaveModalOpen(true);
         setModalError(null);
+        setOpenMenuId(null);
     };
 
     const handleCloseLeaveModal = () => {
@@ -92,73 +127,126 @@ const TeamAttendance = () => {
         }
     };
 
+    const filteredMemberships = memberships.filter(mem => {
+        const search = filterText.toLowerCase();
+        return (
+            mem.id.toString().includes(search) ||
+            mem.package_name?.toLowerCase().includes(search) ||
+            mem.court_name?.toLowerCase().includes(search) ||
+            mem.team_members?.toLowerCase().includes(search) ||
+            mem.created_by?.toLowerCase().includes(search)
+        );
+    });
+
     return (
         <div className="attendance-container">
             <h3>Mark Team Attendance</h3>
-            <div className="form-group attendance-datepicker">
-                <label>Select Date</label>
-                <input 
-                    type="date" 
-                    value={date} 
-                    onChange={e => setDate(e.target.value)}
-                />
+            <div className="attendance-header-controls">
+                <div className="form-group attendance-datepicker">
+                    <label>Select Date</label>
+                    <input 
+                        type="date" 
+                        value={date} 
+                        onChange={e => setDate(e.target.value)}
+                    />
+                </div>
+                 <div className="controls-container">
+                    <input 
+                        type="text" 
+                        placeholder="Search..." 
+                        value={filterText}
+                        onChange={e => setFilterText(e.target.value)}
+                        className="search-input"
+                    />
+                    <div className="column-menu-wrapper" onClick={e => e.stopPropagation()}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setShowColumnMenu(!showColumnMenu)}>
+                            Columns &#9662;
+                        </button>
+                        {showColumnMenu && (
+                            <div className="column-menu-dropdown">
+                                {Object.keys(visibleColumns).map(key => (
+                                    <label key={key} className="column-option">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={visibleColumns[key]} 
+                                            onChange={() => toggleColumn(key)} 
+                                        />
+                                        {key.replace('_', ' ').toUpperCase()}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
+
             {loading && !selectedMembership && !isLeaveModalOpen && <p>Loading...</p>}
             {error && <p className="error-message">{error}</p>}
             
             <table className="dashboard-table">
                 <thead>
                     <tr>
-                        <th>Package</th>
-                        <th>Court</th>
-                        <th>Team</th>
-                        <th>Time Slot</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        {visibleColumns.package && <th>Package</th>}
+                        {visibleColumns.court && <th>Court</th>}
+                        {visibleColumns.team && <th>Team</th>}
+                        {visibleColumns.time_slot && <th>Time Slot</th>}
+                        {visibleColumns.status && <th>Status</th>}
+                        {visibleColumns.created_by && <th>Created By</th>}
+                        {visibleColumns.payment_info && <th>Payment Info</th>}
+                        {visibleColumns.discount_details && <th>Discount Reason</th>}
+                        {visibleColumns.action && <th>Action</th>}
                     </tr>
                 </thead>
                 <tbody>
-                    {!loading && memberships.length > 0 ? (
-                        memberships.map(mem => (
+                    {!loading && filteredMemberships.length > 0 ? (
+                        filteredMemberships.map(mem => (
                             <tr key={mem.id}>
-                                <td>{mem.package_name}</td>
-                                <td>{mem.court_name}</td>
-                                <td className="team-cell">{mem.team_members}</td>
-                                <td>{mem.time_slot}</td>
-                                <td>
-                                    {attended.has(mem.id) ? (
-                                        <span className="status-badge status-present">PRESENT</span>
-                                    ) : (
-                                        <button 
-                                            className="btn btn-success btn-sm"
-                                            onClick={() => handleMarkAttendance(mem.id)}
-                                        >
-                                            Mark Present
-                                        </button>
-                                    )}
-                                </td>
-                                <td>
-                                    <div style={{ display: 'flex', gap: '5px' }}>
-                                        <button 
-                                            className="btn btn-info btn-sm"
-                                            onClick={() => handleViewCalendar(mem)}
-                                        >
-                                            View Calendar
-                                        </button>
-                                        <button 
-                                            className="btn btn-warning btn-sm"
-                                            onClick={() => handleOpenLeaveModal(mem)}
-                                        >
-                                            Mark Leave
-                                        </button>
-                                    </div>
-                                </td>
+                                {visibleColumns.package && <td>{mem.package_name}</td>}
+                                {visibleColumns.court && <td>{mem.court_name}</td>}
+                                {visibleColumns.team && <td className="team-cell">{mem.team_members}</td>}
+                                {visibleColumns.time_slot && <td>{mem.time_slot}</td>}
+                                {visibleColumns.status && (
+                                    <td>
+                                        {attended.has(mem.id) ? (
+                                            <span className="status-badge status-present">PRESENT</span>
+                                        ) : (
+                                            <button 
+                                                className="btn btn-success btn-sm"
+                                                onClick={() => handleMarkAttendance(mem.id)}
+                                            >
+                                                Mark Present
+                                            </button>
+                                        )}
+                                    </td>
+                                )}
+                                {visibleColumns.created_by && <td>{mem.created_by || '-'}</td>}
+                                {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
+                                {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
+                                {visibleColumns.action && (
+                                    <td className="actions-cell">
+                                        <div className="actions-menu-container">
+                                            <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                                &#8285;
+                                            </button>
+                                            {openMenuId === mem.id && (
+                                                <div className="actions-dropdown">
+                                                    <button onClick={() => handleViewCalendar(mem)}>
+                                                        View Calendar
+                                                    </button>
+                                                    <button onClick={() => handleOpenLeaveModal(mem)}>
+                                                        Mark Leave
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     ) : (
                         !loading && (
                             <tr>
-                                <td colSpan="6">No active memberships for the selected date.</td>
+                                <td colSpan={Object.values(visibleColumns).filter(Boolean).length}>No active memberships for the selected date.</td>
                             </tr>
                         )
                     )}

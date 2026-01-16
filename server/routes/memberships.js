@@ -578,8 +578,21 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
                 am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status,
                 mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
                 c.name as court_name,
-                GROUP_CONCAT(m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
-                COUNT(mt.member_id) as current_members_count
+                GROUP_CONCAT(DISTINCT m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+                COUNT(DISTINCT mt.member_id) as current_members_count,
+                (
+                    SELECT u.username 
+                    FROM payments p 
+                    JOIN users u ON p.created_by_user_id = u.id 
+                    WHERE p.membership_id = am.id 
+                    ORDER BY p.payment_date ASC 
+                    LIMIT 1
+                ) as created_by,
+                (
+                     SELECT GROUP_CONCAT(CONCAT(p.amount, ': ', p.payment_mode, IF(p.payment_id IS NOT NULL, CONCAT(' (', p.payment_id, ')'), '')) SEPARATOR '; ')
+                     FROM payments p
+                     WHERE p.membership_id = am.id
+                ) as payment_info
             FROM active_memberships am
             JOIN membership_packages mp ON am.package_id = mp.id
             JOIN courts c ON am.court_id = c.id

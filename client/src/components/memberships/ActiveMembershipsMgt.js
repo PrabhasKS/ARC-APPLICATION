@@ -25,6 +25,24 @@ const ActiveMembershipsMgt = () => {
     const [selectedMembershipForLeave, setSelectedMembershipForLeave] = useState(null);
 
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [filterText, setFilterText] = useState('');
+    const [showColumnMenu, setShowColumnMenu] = useState(false);
+    const [visibleColumns, setVisibleColumns] = useState({
+        id: true,
+        package: true,
+        court: true,
+        team: true,
+        time_slot: true,
+        start_date: true,
+        end_date: true,
+        price: true,
+        paid: true,
+        balance: true,
+        created_by: true,
+        payment_info: false,
+        discount_details: false,
+        actions: true
+    });
 
     const fetchActiveMemberships = useCallback(async () => {
         try {
@@ -47,6 +65,7 @@ const ActiveMembershipsMgt = () => {
     useEffect(() => {
         const handleClickOutside = () => {
             setOpenMenuId(null);
+            setShowColumnMenu(false);
         };
         document.addEventListener('click', handleClickOutside);
         return () => {
@@ -154,6 +173,21 @@ const ActiveMembershipsMgt = () => {
         setOpenMenuId(openMenuId === membershipId ? null : membershipId);
     };
 
+    const toggleColumn = (key) => {
+        setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const filteredMemberships = activeMemberships.filter(mem => {
+        const search = filterText.toLowerCase();
+        return (
+            mem.id.toString().includes(search) ||
+            mem.package_name?.toLowerCase().includes(search) ||
+            mem.court_name?.toLowerCase().includes(search) ||
+            mem.team_members?.toLowerCase().includes(search) ||
+            mem.created_by?.toLowerCase().includes(search)
+        );
+    });
+
     if (loading) {
         return <div>Loading active memberships...</div>;
     }
@@ -166,58 +200,94 @@ const ActiveMembershipsMgt = () => {
         <div className="package-mgt-container">
             <div className="package-mgt-header">
                 <h3>Active Memberships</h3>
+                <div className="controls-container">
+                    <input 
+                        type="text" 
+                        placeholder="Search memberships..." 
+                        value={filterText}
+                        onChange={e => setFilterText(e.target.value)}
+                        className="search-input"
+                    />
+                    <div className="column-menu-wrapper" onClick={e => e.stopPropagation()}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setShowColumnMenu(!showColumnMenu)}>
+                            Columns &#9662;
+                        </button>
+                        {showColumnMenu && (
+                            <div className="column-menu-dropdown">
+                                {Object.keys(visibleColumns).map(key => (
+                                    <label key={key} className="column-option">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={visibleColumns[key]} 
+                                            onChange={() => toggleColumn(key)} 
+                                        />
+                                        {key.replace('_', ' ').toUpperCase()}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
             <table className="dashboard-table">
                 <thead>
                     <tr>
-                        <th>Team ID</th>
-                        <th>Package</th>
-                        <th>Court</th>
-                        <th>Team (Current/Max)</th>
-                        <th>Time Slot</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Total Price</th>
-                        <th>Paid</th>
-                        <th>Balance</th>
-                        <th>Actions</th>
+                        {visibleColumns.id && <th>ID</th>}
+                        {visibleColumns.package && <th>Package</th>}
+                        {visibleColumns.court && <th>Court</th>}
+                        {visibleColumns.team && <th>Team</th>}
+                        {visibleColumns.time_slot && <th>Time Slot</th>}
+                        {visibleColumns.start_date && <th>Start Date</th>}
+                        {visibleColumns.end_date && <th>End Date</th>}
+                        {visibleColumns.price && <th>Total Price</th>}
+                        {visibleColumns.paid && <th>Paid</th>}
+                        {visibleColumns.balance && <th>Balance</th>}
+                        {visibleColumns.created_by && <th>Created By</th>}
+                        {visibleColumns.payment_info && <th>Payment Info</th>}
+                        {visibleColumns.discount_details && <th>Discount Reason</th>}
+                        {visibleColumns.actions && <th>Actions</th>}
                     </tr>
                 </thead>
                 <tbody>
-                    {activeMemberships.length > 0 ? (
-                        activeMemberships.map(mem => (
+                    {filteredMemberships.length > 0 ? (
+                        filteredMemberships.map(mem => (
                             <tr key={mem.id}>
-                                <td>{mem.id}</td>
-                                <td>{mem.package_name}</td>
-                                <td>{mem.court_name}</td>
-                                <td className="team-cell">{mem.current_members_count || 0} / {mem.max_team_size || 'N/A'}</td>
-                                <td>{mem.time_slot}</td>
-                                <td>{new Date(mem.start_date).toLocaleDateString()}</td>
-                                <td>{new Date(mem.current_end_date).toLocaleDateString()}</td>
-                                <td>Rs. {mem.final_price}</td>
-                                <td>Rs. {mem.amount_paid}</td>
-                                <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount}</td>
-                                <td className="actions-cell">
-                                    <div className="actions-menu-container">
-                                        <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
-                                            &#8285;
-                                        </button>
-                                        {openMenuId === mem.id && (
-                                            <div className="actions-dropdown">
-                                                {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
-                                                <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
-                                                <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
-                                                <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
+                                {visibleColumns.id && <td>{mem.id}</td>}
+                                {visibleColumns.package && <td>{mem.package_name}</td>}
+                                {visibleColumns.court && <td>{mem.court_name}</td>}
+                                {visibleColumns.team && <td className="team-cell">{mem.current_members_count || 0} / {mem.max_team_size || 'N/A'}</td>}
+                                {visibleColumns.time_slot && <td>{mem.time_slot}</td>}
+                                {visibleColumns.start_date && <td>{new Date(mem.start_date).toLocaleDateString()}</td>}
+                                {visibleColumns.end_date && <td>{new Date(mem.current_end_date).toLocaleDateString()}</td>}
+                                {visibleColumns.price && <td>Rs. {mem.final_price}</td>}
+                                {visibleColumns.paid && <td>Rs. {mem.amount_paid}</td>}
+                                {visibleColumns.balance && <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount}</td>}
+                                {visibleColumns.created_by && <td>{mem.created_by || '-'}</td>}
+                                {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
+                                {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
+                                {visibleColumns.actions && (
+                                    <td className="actions-cell">
+                                        <div className="actions-menu-container">
+                                            <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                                &#8285;
+                                            </button>
+                                            {openMenuId === mem.id && (
+                                                <div className="actions-dropdown">
+                                                    {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                    <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
+                                                    <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
+                                                    <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
+                                                    <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="11">No active memberships found.</td>
+                            <td colSpan="14">No active memberships found.</td>
                         </tr>
                     )}
                 </tbody>
