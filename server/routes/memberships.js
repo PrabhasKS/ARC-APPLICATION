@@ -7,6 +7,33 @@ const sse = require('../sse');
 // Apply authentication middleware to all routes in this file
 router.use(authenticateToken);
 
+// Helper functions for time overlap
+const toMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const parts = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!parts) return 0;
+
+    let hours = parseInt(parts[1], 10);
+    const minutes = parseInt(parts[2], 10);
+    const modifier = parts[3] ? parts[3].toUpperCase() : null;
+
+    if (modifier === 'PM' && hours < 12) {
+        hours += 12;
+    } else if (modifier === 'AM' && hours === 12) {
+        hours = 0;
+    }
+    return hours * 60 + minutes;
+};
+
+const checkOverlap = (startA, endA, startB, endB) => {
+    const startAMin = toMinutes(startA);
+    const endAMin = toMinutes(endA);
+    const startBMin = toMinutes(startB);
+    const endBMin = toMinutes(endB);
+
+    return startAMin < endBMin && endAMin > startBMin;
+};
+
 // Test route
 router.get('/test', (req, res) => {
   res.json({ message: 'Membership route is working!' });
@@ -185,6 +212,56 @@ router.delete('/members/:id', isPrivilegedUser, async (req, res) => {
 
 // ------------------- Active Memberships -------------------
 
+// Check for membership conflicts (Frontend Helper)
+router.post('/check-clash', isPrivilegedUser, async (req, res) => {
+    const { package_id, court_id, start_date, time_slot } = req.body;
+
+    if (!package_id || !court_id || !start_date || !time_slot) {
+        return res.status(400).json({ message: 'Missing required fields for conflict check.' });
+    }
+
+    try {
+        // Get package duration to calculate end date
+        const [packages] = await db.query('SELECT duration_days FROM membership_packages WHERE id = ?', [package_id]);
+        if (packages.length === 0) {
+            return res.status(404).json({ message: 'Package not found.' });
+        }
+        const { duration_days } = packages[0];
+
+        const startDateObj = new Date(start_date);
+        const endDateObj = new Date(startDateObj);
+        endDateObj.setDate(startDateObj.getDate() + duration_days);
+        const end_date = endDateObj.toISOString().slice(0, 10);
+
+        // Check for date overlap
+        const [conflictingMemberships] = await db.query(
+            `SELECT time_slot 
+             FROM active_memberships 
+             WHERE court_id = ? 
+             AND start_date <= ? 
+             AND current_end_date >= ?`,
+            [court_id, end_date, start_date]
+        );
+
+        // Check for time overlap
+        const [newStart, newEnd] = time_slot.split(' - ');
+        const isClashing = conflictingMemberships.some(m => {
+            const [existingStart, existingEnd] = m.time_slot.split(' - ');
+            return checkOverlap(newStart.trim(), newEnd.trim(), existingStart.trim(), existingEnd.trim());
+        });
+
+        if (isClashing) {
+            res.json({ is_clashing: true, message: 'This time slot overlaps with an existing membership.' });
+        } else {
+            res.json({ is_clashing: false, message: 'Slot is available.' });
+        }
+
+    } catch (error) {
+        console.error('Error checking membership clash:', error);
+        res.status(500).json({ message: 'Error checking conflict.' });
+    }
+});
+
 // POST a new membership subscription
 router.post('/subscribe', isPrivilegedUser, async (req, res) => {
     const {
@@ -234,6 +311,29 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         const endDateObj = new Date(startDateObj);
         endDateObj.setDate(startDateObj.getDate() + duration_days);
         const original_end_date = endDateObj.toISOString().slice(0, 10);
+
+        // --- Conflict Check ---
+        // 1. Check for overlapping dates on the same court
+        const [conflictingMemberships] = await connection.query(
+            `SELECT time_slot, start_date, current_end_date 
+             FROM active_memberships 
+             WHERE court_id = ? 
+             AND start_date <= ? 
+             AND current_end_date >= ?`,
+            [court_id, original_end_date, start_date]
+        );
+
+        // 2. Check for overlapping time slots
+        const [newStart, newEnd] = time_slot.split(' - ');
+        const isClashing = conflictingMemberships.some(m => {
+            const [existingStart, existingEnd] = m.time_slot.split(' - ');
+            return checkOverlap(newStart.trim(), newEnd.trim(), existingStart.trim(), existingEnd.trim());
+        });
+
+        if (isClashing) {
+            throw new Error('This time slot overlaps with an existing membership on the selected dates.');
+        }
+        // ----------------------
         
         const [activeMembershipResult] = await connection.query(
             `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status)

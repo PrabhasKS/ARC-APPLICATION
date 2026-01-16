@@ -76,6 +76,30 @@ const NewSubscription = () => {
     const handleRemoveMember = (memberId) => {
         setTeamMembers(teamMembers.filter(m => m.id !== memberId));
     };
+
+    const handleStep1Next = async () => {
+        setError('');
+        setLoading(true);
+        try {
+            const res = await api.post('/memberships/check-clash', {
+                package_id: selectedPackageId,
+                court_id: selectedCourt,
+                start_date: startDate,
+                time_slot: timeSlot
+            });
+
+            if (res.data.is_clashing) {
+                setError(res.data.message);
+            } else {
+                setStep(2);
+            }
+        } catch (err) {
+            console.error("Conflict check failed", err);
+            setError("Failed to check for scheduling conflicts. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
     
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -279,7 +303,7 @@ const NewSubscription = () => {
                 {renderStepContent()}
                 <div className="form-navigation">
                     {step > 1 && <button type="button" className="btn btn-secondary" onClick={() => setStep(step - 1)} disabled={loading}>Back</button>}
-                    {step === 1 && <button type="button" className="btn btn-primary" onClick={() => setStep(2)} disabled={!isStep1Complete || loading}>Next</button>}
+                    {step === 1 && <button type="button" className="btn btn-primary" onClick={handleStep1Next} disabled={!isStep1Complete || loading}>Next</button>}
                     {step === 2 && <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!isStep2Complete || loading}>Next</button>}
                     {step === 3 && <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Submitting...' : 'Create Subscription'}</button>}
                 </div>
