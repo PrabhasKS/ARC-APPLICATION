@@ -4,7 +4,7 @@ import PackageMgt from './PackageMgt';
 import NewSubscription from './NewSubscription';
 import LeaveRequests from './LeaveRequests';
 import HolidayMgt from './HolidayMgt';
-import ActiveMembershipsMgt from './ActiveMembershipsMgt';
+import MembershipView from './MembershipView';
 import TeamAttendance from './TeamAttendance';
 
 const MembershipDashboard = ({ user }) => {
@@ -16,12 +16,8 @@ const MembershipDashboard = ({ user }) => {
                 return <NewSubscription />;
             case 'packages':
                 return <PackageMgt />;
-            case 'active':
-                return <ActiveMembershipsMgt status="active" />;
-            case 'ended':
-                return <ActiveMembershipsMgt status="ended" />;
-            case 'terminated':
-                return <ActiveMembershipsMgt status="terminated" />;
+            case 'memberships':
+                return <MembershipView />;
             case 'attendance':
                 return <TeamAttendance />;
             case 'leave':
@@ -43,19 +39,9 @@ const MembershipDashboard = ({ user }) => {
                     New Subscription
                 </button>
                  <button 
-                    className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('active')}>
-                    Active Memberships
-                </button>
-                <button 
-                    className={`tab-btn ${activeTab === 'ended' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('ended')}>
-                    Ended Memberships
-                </button>
-                <button 
-                    className={`tab-btn ${activeTab === 'terminated' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('terminated')}>
-                    Terminated Memberships
+                    className={`tab-btn ${activeTab === 'memberships' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('memberships')}>
+                    Memberships
                 </button>
                  <button 
                     className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`}
