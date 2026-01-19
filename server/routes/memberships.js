@@ -221,19 +221,20 @@ router.post('/check-clash', isPrivilegedUser, async (req, res) => {
     }
 
     try {
-        // Get package duration to calculate end date
-        const [packages] = await db.query('SELECT duration_days FROM membership_packages WHERE id = ?', [package_id]);
+        const [packages] = await db.query('SELECT duration_days, sport_id FROM membership_packages WHERE id = ?', [package_id]);
         if (packages.length === 0) {
             return res.status(404).json({ message: 'Package not found.' });
         }
-        const { duration_days } = packages[0];
+        const { duration_days, sport_id } = packages[0];
+
+        const [sports] = await db.query('SELECT capacity FROM sports WHERE id = ?', [sport_id]);
+        const capacity = sports.length > 0 ? sports[0].capacity : 1;
 
         const startDateObj = new Date(start_date);
         const endDateObj = new Date(startDateObj);
         endDateObj.setDate(startDateObj.getDate() + duration_days);
         const end_date = endDateObj.toISOString().slice(0, 10);
 
-        // Check for date overlap
         const [conflictingMemberships] = await db.query(
             `SELECT time_slot 
              FROM active_memberships 
@@ -243,15 +244,14 @@ router.post('/check-clash', isPrivilegedUser, async (req, res) => {
             [court_id, end_date, start_date]
         );
 
-        // Check for time overlap
         const [newStart, newEnd] = time_slot.split(' - ');
-        const isClashing = conflictingMemberships.some(m => {
+        const clashingCount = conflictingMemberships.filter(m => {
             const [existingStart, existingEnd] = m.time_slot.split(' - ');
             return checkOverlap(newStart.trim(), newEnd.trim(), existingStart.trim(), existingEnd.trim());
-        });
+        }).length;
 
-        if (isClashing) {
-            res.json({ is_clashing: true, message: 'This time slot overlaps with an existing membership.' });
+        if (clashingCount >= capacity) {
+            res.json({ is_clashing: true, message: 'This time slot is full and overlaps with an existing membership.' });
         } else {
             res.json({ is_clashing: false, message: 'Slot is available.' });
         }
@@ -286,10 +286,10 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        const [packages] = await connection.query('SELECT duration_days, max_team_size, per_person_price FROM membership_packages WHERE id = ?', [package_id]);
+        const [packages] = await connection.query('SELECT duration_days, max_team_size, per_person_price, sport_id FROM membership_packages WHERE id = ?', [package_id]);
         if (packages.length === 0) throw new Error('Membership package not found.');
         
-        const { duration_days, max_team_size, per_person_price } = packages[0];
+        const { duration_days, max_team_size, per_person_price, sport_id } = packages[0];
 
         if (team_members.length > max_team_size) {
             throw new Error(`The number of members (${team_members.length}) exceeds the maximum allowed for this package (${max_team_size}).`);
@@ -313,9 +313,11 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         const original_end_date = endDateObj.toISOString().slice(0, 10);
 
         // --- Conflict Check ---
-        // 1. Check for overlapping dates on the same court
+        const [sports] = await connection.query('SELECT capacity FROM sports WHERE id = ?', [sport_id]);
+        const capacity = sports.length > 0 ? sports[0].capacity : 1;
+
         const [conflictingMemberships] = await connection.query(
-            `SELECT time_slot, start_date, current_end_date 
+            `SELECT time_slot 
              FROM active_memberships 
              WHERE court_id = ? 
              AND start_date <= ? 
@@ -323,15 +325,14 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
             [court_id, original_end_date, start_date]
         );
 
-        // 2. Check for overlapping time slots
         const [newStart, newEnd] = time_slot.split(' - ');
-        const isClashing = conflictingMemberships.some(m => {
+        const clashingCount = conflictingMemberships.filter(m => {
             const [existingStart, existingEnd] = m.time_slot.split(' - ');
             return checkOverlap(newStart.trim(), newEnd.trim(), existingStart.trim(), existingEnd.trim());
-        });
+        }).length;
 
-        if (isClashing) {
-            throw new Error('This time slot overlaps with an existing membership on the selected dates.');
+        if (clashingCount >= capacity) {
+            throw new Error('This time slot is full and overlaps with an existing membership on the selected dates.');
         }
         // ----------------------
         

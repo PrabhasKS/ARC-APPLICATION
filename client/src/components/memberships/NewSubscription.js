@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../../api';
 import AddMemberModal from './AddMemberModal';
 import './NewSubscription.css';
+import { format } from 'date-fns';
 
 const NewSubscription = () => {
     const [step, setStep] = useState(1);
@@ -17,7 +18,9 @@ const NewSubscription = () => {
     const [selectedPackageId, setSelectedPackageId] = useState('');
     const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
     const [selectedCourt, setSelectedCourt] = useState('');
-    const [timeSlot, setTimeSlot] = useState('09:00 AM - 10:00 AM');
+    const [timeSlot, setTimeSlot] = useState('');
+    const [customStartTime, setCustomStartTime] = useState('09:00');
+    const [customEndTime, setCustomEndTime] = useState('10:00');
     const [teamMembers, setTeamMembers] = useState([]);
 
     // Step 3 state
@@ -76,6 +79,23 @@ const NewSubscription = () => {
     const handleRemoveMember = (memberId) => {
         setTeamMembers(teamMembers.filter(m => m.id !== memberId));
     };
+   const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hour, minute] = timeString.split(':');
+    const date = new Date();
+    date.setHours(hour, minute);
+    return format(date, 'hh:mm a');
+};
+
+    const effectiveTimeSlot = useMemo(() => {
+        if (timeSlot === 'custom') {
+            const formattedStart = formatTime(customStartTime);
+            const formattedEnd = formatTime(customEndTime);
+            return `${formattedStart} - ${formattedEnd}`;
+        }
+        return timeSlot;
+    }, [timeSlot, customStartTime, customEndTime]);
+
 
     const handleStep1Next = async () => {
         setError('');
@@ -85,7 +105,7 @@ const NewSubscription = () => {
                 package_id: selectedPackageId,
                 court_id: selectedCourt,
                 start_date: startDate,
-                time_slot: timeSlot
+                time_slot: effectiveTimeSlot
             });
 
             if (res.data.is_clashing) {
@@ -120,7 +140,7 @@ const NewSubscription = () => {
             package_id: selectedPackage.id,
             court_id: selectedCourt,
             start_date: startDate,
-            time_slot: timeSlot,
+            time_slot: effectiveTimeSlot,
             team_members: teamMembers.map(m => ({ member_id: m.id })),
             discount_amount: discountAmount,
             discount_details: discountReason,
@@ -144,7 +164,7 @@ const NewSubscription = () => {
             setDiscountAmount(0);
             setPaymentAmount(0);
             setStartDate(new Date().toISOString().slice(0, 10));
-            setTimeSlot('09:00 AM - 10:00 AM');
+            setTimeSlot('');
         } catch (err) {
             console.error("Subscription Error:", err);
             setError(err.response?.data?.message || 'An error occurred during subscription. Check the console for more details.');
@@ -192,6 +212,7 @@ const NewSubscription = () => {
                         <div className="form-group">
                             <label>Daily Time Slot</label>
                             <select value={timeSlot} onChange={e => setTimeSlot(e.target.value)} required>
+                                <option value="" disabled>Select a time slot</option>
                                 {Array.from({ length: 17 }, (_, i) => {
                                     const hour = i + 6; // 6 AM to 10 PM (22:00)
                                     const start = `${hour % 12 === 0 ? 12 : hour % 12}:00 ${hour < 12 ? 'AM' : 'PM'}`;
@@ -199,8 +220,21 @@ const NewSubscription = () => {
                                     const end = `${endHour % 12 === 0 ? 12 : endHour % 12}:00 ${endHour < 12 || endHour === 24 ? 'AM' : 'PM'}`;
                                     return <option key={hour} value={`${start} - ${end}`}>{`${start} - ${end}`}</option>
                                 })}
+                                <option value="custom">Custom Time</option>
                             </select>
                         </div>
+                        {timeSlot === 'custom' && (
+                            <div className="custom-time-inputs">
+                                <div className="form-group">
+                                    <label>Start Time</label>
+                                    <input type="time" value={customStartTime} onChange={e => setCustomStartTime(e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label>End Time</label>
+                                    <input type="time" value={customEndTime} onChange={e => setCustomEndTime(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
                         <div className="form-group">
                             <label>Start Date</label>
                             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} min={new Date().toISOString().slice(0, 10)} required />
@@ -243,7 +277,7 @@ const NewSubscription = () => {
                             <h5>Subscription Summary</h5>
                             <p><strong>Package:</strong> {selectedPackage?.name || 'N/A'}</p>
                             <p><strong>Duration:</strong> {selectedPackage?.duration_days || 'N/A'} days</p>
-                            <p><strong>Time Slot:</strong> {timeSlot}</p>
+                            <p><strong>Time Slot:</strong> {effectiveTimeSlot}</p>
                             <p><strong>Team Size:</strong> {teamMembers.length} member(s)</p>
                             <hr/>
                             <p><strong>Base Price:</strong> Rs. {basePrice}</p>
