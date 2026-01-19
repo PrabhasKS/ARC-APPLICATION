@@ -1707,6 +1707,99 @@ router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (re
     }
 });
 
+// --- Membership Analytics ---
+
+// Analytics: Membership Summary
+router.get('/analytics/membership/summary', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let paymentDateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND am.start_date BETWEEN ? AND ?';
+            paymentDateFilter = ' AND p.payment_date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        // 1. Total Active Memberships (snapshot: currently active, regardless of date range)
+        const [[{ total_active }]] = await db.query('SELECT COUNT(*) as total_active FROM active_memberships WHERE current_end_date >= CURDATE()');
+
+        // 2. New Memberships (Started in range)
+        const [[{ new_memberships }]] = await db.query(`SELECT COUNT(*) as new_memberships FROM active_memberships am WHERE 1=1 ${dateFilter}`, queryParams);
+
+        // 3. Total Revenue (Payments made in range)
+        // Note: queryParams is reused here, so we need to be careful if we have multiple filters.
+        // Creating a fresh param array for the revenue query.
+        const revenueParams = (startDate && endDate) ? [startDate, endDate] : [];
+        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments p WHERE p.membership_id IS NOT NULL ${paymentDateFilter}`, revenueParams);
+
+        res.json({
+            total_active,
+            new_memberships,
+            total_revenue: parseFloat(total_revenue) || 0
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Analytics: Membership Revenue by Sport
+router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND p.payment_date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        const [rows] = await db.query(`
+            SELECT s.name, SUM(p.amount) as revenue
+            FROM payments p
+            JOIN active_memberships am ON p.membership_id = am.id
+            JOIN membership_packages mp ON am.package_id = mp.id
+            JOIN sports s ON mp.sport_id = s.id
+            WHERE p.membership_id IS NOT NULL
+            ${dateFilter}
+            GROUP BY s.name
+            ORDER BY revenue DESC
+        `, queryParams);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Analytics: Membership Revenue by Payment Mode
+router.get('/analytics/membership/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND payment_date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        const [rows] = await db.query(`
+            SELECT payment_mode, SUM(amount) as revenue
+            FROM payments
+            WHERE membership_id IS NOT NULL
+            ${dateFilter}
+            GROUP BY payment_mode
+            ORDER BY revenue DESC
+        `, queryParams);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Ledger Download
 router.get('/ledger/download', authenticateToken, async (req, res) => {
     try {
@@ -1740,6 +1833,145 @@ router.get('/ledger/download', authenticateToken, async (req, res) => {
         res.header('Content-Type', 'text/csv');
         res.attachment('ledger.csv');
         res.send(csv);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Overall Analytics ---
+
+// Analytics: Overall Summary
+router.get('/analytics/overall/summary', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let paymentDateFilter = '';
+        let bookingDateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            paymentDateFilter = ' AND payment_date BETWEEN ? AND ?';
+            bookingDateFilter = ' AND date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        // 1. Total Revenue (All payments)
+        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments WHERE 1=1 ${paymentDateFilter}`, queryParams);
+
+        // 2. Total Discount (Currently only tracked explicitly in bookings)
+        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != 'Cancelled' ${bookingDateFilter}`, queryParams);
+
+        res.json({
+            total_revenue: parseFloat(total_revenue) || 0,
+            total_discount: parseFloat(total_discount) || 0
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Analytics: Overall Revenue by Sport
+router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND p.payment_date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        // Combine revenue from Bookings and Memberships linked to sports
+        const query = `
+            SELECT sport_name, SUM(revenue) as revenue FROM (
+                -- Booking Revenue
+                SELECT s.name as sport_name, SUM(p.amount) as revenue
+                FROM payments p
+                JOIN bookings b ON p.booking_id = b.id
+                JOIN sports s ON b.sport_id = s.id
+                WHERE p.booking_id IS NOT NULL
+                ${dateFilter}
+                GROUP BY s.name
+
+                UNION ALL
+
+                -- Membership Revenue
+                SELECT s.name as sport_name, SUM(p.amount) as revenue
+                FROM payments p
+                JOIN active_memberships am ON p.membership_id = am.id
+                JOIN membership_packages mp ON am.package_id = mp.id
+                JOIN sports s ON mp.sport_id = s.id
+                WHERE p.membership_id IS NOT NULL
+                ${dateFilter}
+                GROUP BY s.name
+            ) as combined
+            GROUP BY sport_name
+            ORDER BY revenue DESC
+        `;
+
+        // We need to pass parameters twice because of the UNION
+        const fullParams = [...queryParams, ...queryParams];
+        
+        const [rows] = await db.query(query, fullParams);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Analytics: Overall Revenue by Payment Mode
+router.get('/analytics/overall/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND payment_date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        const [rows] = await db.query(`
+            SELECT payment_mode, SUM(amount) as revenue
+            FROM payments
+            WHERE 1=1
+            ${dateFilter}
+            GROUP BY payment_mode
+            ORDER BY revenue DESC
+        `, queryParams);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Analytics: Revenue Distribution (Bookings vs Memberships)
+router.get('/analytics/overall/revenue-distribution', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = '';
+        let queryParams = [];
+
+        if (startDate && endDate) {
+            dateFilter = ' AND payment_date BETWEEN ? AND ?';
+            queryParams.push(startDate, endDate);
+        }
+
+        const [rows] = await db.query(`
+            SELECT 
+                CASE 
+                    WHEN booking_id IS NOT NULL THEN 'Daily Bookings'
+                    WHEN membership_id IS NOT NULL THEN 'Memberships'
+                    ELSE 'Terminated Memberships (Unlinked)'
+                END as source,
+                SUM(amount) as revenue
+            FROM payments
+            WHERE 1=1
+            ${dateFilter}
+            GROUP BY source
+            ORDER BY revenue DESC
+        `, queryParams);
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

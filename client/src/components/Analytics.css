@@ -160,3 +160,33 @@
   color: #374151; /* Gray-700 */
   margin-bottom: 16px;
 }
+
+/* --- TABS (Matches Ledger Design) --- */
+.tabs-container {
+    display: flex;
+    gap: 20px;
+    border-bottom: 2px solid #e5e7eb; /* Gray-200 */
+    margin-bottom: 24px;
+}
+
+.tab-button {
+    padding: 12px 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #6b7280; /* Gray-500 */
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    margin-bottom: -2px;
+}
+
+.tab-button:hover {
+    color: #374151; /* Gray-700 */
+}
+
+.tab-button.active {
+    color: #1d4ed8; /* Blue-700 */
+    border-bottom-color: #1d4ed8;
+}
