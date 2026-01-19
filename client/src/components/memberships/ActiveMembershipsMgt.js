@@ -6,8 +6,8 @@ import AddMembershipPaymentModal from './AddMembershipPaymentModal';
 import MarkLeaveModal from './MarkLeaveModal';
 import './PackageMgt.css'; 
 
-const ActiveMembershipsMgt = () => {
-    const [activeMemberships, setActiveMemberships] = useState([]);
+const ActiveMembershipsMgt = ({ status = 'active' }) => {
+    const [memberships, setMemberships] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [modalError, setModalError] = useState(null);
@@ -44,23 +44,23 @@ const ActiveMembershipsMgt = () => {
         actions: true
     });
 
-    const fetchActiveMemberships = useCallback(async () => {
+    const fetchMemberships = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get('/memberships/active');
-            setActiveMemberships(response.data);
+            const response = await api.get(`/memberships/${status}`);
+            setMemberships(response.data);
             setError(null);
         } catch (err) {
-            setError('Failed to fetch active memberships.');
+            setError(`Failed to fetch ${status} memberships.`);
             console.error(err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [status]);
 
     useEffect(() => {
-        fetchActiveMemberships();
-    }, [fetchActiveMemberships]);
+        fetchMemberships();
+    }, [fetchMemberships]);
 
     useEffect(() => {
         const handleClickOutside = () => {
@@ -89,7 +89,7 @@ const ActiveMembershipsMgt = () => {
     const handleRenewSubmit = async (membershipId, renewalData) => {
         try {
             await api.post(`/memberships/active/${membershipId}/renew`, renewalData);
-            fetchActiveMemberships();
+            fetchMemberships();
             handleCloseRenewModal();
         } catch (err) {
             setModalError(err.response?.data?.message || 'Failed to renew membership.');
@@ -139,7 +139,7 @@ const ActiveMembershipsMgt = () => {
     const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
         try {
             await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
-            fetchActiveMemberships();
+            fetchMemberships();
             handleCloseLeaveModal();
         } catch (err) {
             setModalError(err.response?.data?.message || 'Failed to grant leave.');
@@ -148,7 +148,7 @@ const ActiveMembershipsMgt = () => {
     };
 
     const handlePaymentAdded = (updatedMembership) => {
-        setActiveMemberships(prevMemberships =>
+        setMemberships(prevMemberships =>
             prevMemberships.map(mem =>
                 mem.id === updatedMembership.id ? updatedMembership : mem
             )
@@ -159,7 +159,7 @@ const ActiveMembershipsMgt = () => {
         if (window.confirm('Are you sure you want to terminate this membership? This action cannot be undone.')) {
             try {
                 await api.delete(`/memberships/active/${id}`);
-                fetchActiveMemberships();
+                fetchMemberships();
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to terminate membership.');
             } finally {
@@ -177,7 +177,7 @@ const ActiveMembershipsMgt = () => {
         setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    const filteredMemberships = activeMemberships.filter(mem => {
+    const filteredMemberships = memberships.filter(mem => {
         const search = filterText.toLowerCase();
         return (
             mem.id.toString().includes(search) ||
@@ -188,8 +188,10 @@ const ActiveMembershipsMgt = () => {
         );
     });
 
+    const pageTitle = `${status.charAt(0).toUpperCase() + status.slice(1)} Memberships`;
+
     if (loading) {
-        return <div>Loading active memberships...</div>;
+        return <div>Loading {status} memberships...</div>;
     }
 
     if (error) {
@@ -199,7 +201,7 @@ const ActiveMembershipsMgt = () => {
     return (
         <div className="package-mgt-container">
             <div className="package-mgt-header">
-                <h3>Active Memberships</h3>
+                <h3>{pageTitle}</h3>
                 <div className="controls-container">
                     <input 
                         type="text" 
@@ -267,27 +269,32 @@ const ActiveMembershipsMgt = () => {
                                 {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
                                 {visibleColumns.actions && (
                                     <td className="actions-cell">
-                                        <div className="actions-menu-container">
-                                            <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
-                                                &#8285;
-                                            </button>
-                                            {openMenuId === mem.id && (
-                                                <div className="actions-dropdown">
-                                                    {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                    <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
-                                                    <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
-                                                    <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
-                                                    <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        {status === 'active' && (
+                                            <div className="actions-menu-container">
+                                                <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                                    &#8285;
+                                                </button>
+                                                {openMenuId === mem.id && (
+                                                    <div className="actions-dropdown">
+                                                        {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
+                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
+                                                        <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
+                                                        <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {(status === 'ended' || status === 'terminated') && (
+                                            <button className="btn btn-secondary btn-sm" disabled>Receipt</button>
+                                        )}
                                     </td>
                                 )}
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="14">No active memberships found.</td>
+                            <td colSpan={Object.values(visibleColumns).filter(Boolean).length}>No {status} memberships found.</td>
                         </tr>
                     )}
                 </tbody>
@@ -305,7 +312,7 @@ const ActiveMembershipsMgt = () => {
                     activeMembershipId={membershipToAddMemberTo.id}
                     maxTeamSize={membershipToAddMemberTo.max_team_size}
                     currentTeamSize={membershipToAddMemberTo.current_members_count}
-                    onMemberAdded={fetchActiveMemberships}
+                    onMemberAdded={fetchMemberships}
                     onClose={handleCloseAddMemberModal}
                     error={modalError}
                 />
@@ -331,4 +338,3 @@ const ActiveMembershipsMgt = () => {
 };
 
 export default ActiveMembershipsMgt;
-

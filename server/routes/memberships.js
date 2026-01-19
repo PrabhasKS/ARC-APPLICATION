@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../database');
 const { authenticateToken, isPrivilegedUser } = require('../middleware/auth');
 const sse = require('../sse');
+const cron = require('node-cron');
 
 // Apply authentication middleware to all routes in this file
 router.use(authenticateToken);
@@ -571,41 +572,52 @@ router.delete('/holidays/:id', isPrivilegedUser, async (req, res) => {
 
 // ------------------- Active Membership Management -------------------
 
+const baseMembershipQuery = `
+    SELECT 
+        am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, 
+        am.amount_paid, am.balance_amount, am.payment_status, am.status,
+        mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
+        c.name as court_name,
+        GROUP_CONCAT(DISTINCT m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+        COUNT(DISTINCT mt.member_id) as current_members_count,
+        (
+            SELECT u.username 
+            FROM payments p 
+            JOIN users u ON p.created_by_user_id = u.id 
+            WHERE p.membership_id = am.id 
+            ORDER BY p.payment_date ASC 
+            LIMIT 1
+        ) as created_by,
+        (
+             SELECT GROUP_CONCAT(CONCAT(p.amount, ': ', p.payment_mode, IF(p.payment_id IS NOT NULL, CONCAT(' (', p.payment_id, ')'), '')) SEPARATOR '; ')
+             FROM payments p
+             WHERE p.membership_id = am.id
+        ) as payment_info
+    FROM active_memberships am
+    JOIN membership_packages mp ON am.package_id = mp.id
+    JOIN courts c ON am.court_id = c.id
+    LEFT JOIN membership_team mt ON am.id = mt.membership_id
+    LEFT JOIN members m ON mt.member_id = m.id
+`;
+
 router.get('/active', isPrivilegedUser, async (req, res) => {
     try {
         const { date } = req.query;
-        let query = `
-            SELECT 
-                am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status,
-                mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
-                c.name as court_name,
-                GROUP_CONCAT(DISTINCT m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
-                COUNT(DISTINCT mt.member_id) as current_members_count,
-                (
-                    SELECT u.username 
-                    FROM payments p 
-                    JOIN users u ON p.created_by_user_id = u.id 
-                    WHERE p.membership_id = am.id 
-                    ORDER BY p.payment_date ASC 
-                    LIMIT 1
-                ) as created_by,
-                (
-                     SELECT GROUP_CONCAT(CONCAT(p.amount, ': ', p.payment_mode, IF(p.payment_id IS NOT NULL, CONCAT(' (', p.payment_id, ')'), '')) SEPARATOR '; ')
-                     FROM payments p
-                     WHERE p.membership_id = am.id
-                ) as payment_info
-            FROM active_memberships am
-            JOIN membership_packages mp ON am.package_id = mp.id
-            JOIN courts c ON am.court_id = c.id
-            LEFT JOIN membership_team mt ON am.id = mt.membership_id
-            LEFT JOIN members m ON mt.member_id = m.id
-        `;
+        let whereClause = ` WHERE am.status = 'active' `;
         const queryParams = [];
+        
         if (date) {
-            query += ' WHERE ? BETWEEN am.start_date AND am.current_end_date';
+            whereClause += ' AND ? BETWEEN am.start_date AND am.current_end_date';
             queryParams.push(date);
         }
-        query += ` GROUP BY am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, am.amount_paid, am.balance_amount, am.payment_status, mp.name, mp.per_person_price, mp.max_team_size, c.name ORDER BY am.start_date DESC`;
+
+        const query = `
+            ${baseMembershipQuery}
+            ${whereClause}
+            GROUP BY am.id
+            ORDER BY am.start_date DESC
+        `;
+        
         const [memberships] = await db.query(query, queryParams);
         res.json(memberships);
     } catch (error) {
@@ -614,28 +626,69 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
     }
 });
 
+router.get('/terminated', isPrivilegedUser, async (req, res) => {
+    try {
+        const query = `
+            ${baseMembershipQuery}
+            WHERE am.status = 'terminated'
+            GROUP BY am.id
+            ORDER BY am.updated_at DESC
+        `;
+        const [memberships] = await db.query(query);
+        res.json(memberships);
+    } catch (error) {
+        console.error('Error fetching terminated memberships:', error);
+        res.status(500).json({ message: 'Error fetching terminated memberships.' });
+    }
+});
+
+router.get('/ended', isPrivilegedUser, async (req, res) => {
+    try {
+        const query = `
+            ${baseMembershipQuery}
+            WHERE am.status = 'ended' OR (am.status = 'active' AND am.current_end_date < CURDATE())
+            GROUP BY am.id
+            ORDER BY am.current_end_date DESC
+        `;
+        const [memberships] = await db.query(query);
+        res.json(memberships);
+    } catch (error) {
+        console.error('Error fetching ended memberships:', error);
+        res.status(500).json({ message: 'Error fetching ended memberships.' });
+    }
+});
+
+// Cron job to automatically mark memberships as 'ended'
+cron.schedule('0 1 * * *', async () => { // Runs every day at 1:00 AM
+  console.log('Running daily cron job to update ended memberships...');
+  try {
+    const [result] = await db.query(
+      "UPDATE active_memberships SET status = 'ended' WHERE current_end_date < CURDATE() AND status = 'active'"
+    );
+    console.log(`Updated ${result.affectedRows} memberships to 'ended' status.`);
+  } catch (error) {
+    console.error('Error in daily membership status update cron job:', error);
+  }
+});
+
 router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
     const { id } = req.params;
-    let connection;
+    
     try {
-        connection = await db.getConnection();
-        await connection.beginTransaction();
+        const [result] = await db.query(
+            "UPDATE active_memberships SET status = 'terminated' WHERE id = ?",
+            [id]
+        );
 
-        // Delete associated payments
-        await connection.query('DELETE FROM payments WHERE membership_id = ?', [id]);
-        
-        // Delete the active membership itself (team members are cascade deleted)
-        await connection.query('DELETE FROM active_memberships WHERE id = ?', [id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Active membership not found.' });
+        }
 
-        await connection.commit();
-        res.json({ message: 'Membership terminated successfully.' });
+        res.json({ message: 'Membership terminated successfully. It has been moved to the terminated list.' });
 
     } catch (error) {
-        if (connection) await connection.rollback();
         console.error('Error terminating membership:', error);
         res.status(500).json({ message: 'Error terminating membership.' });
-    } finally {
-        if (connection) connection.release();
     }
 });
 

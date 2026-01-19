@@ -17,7 +17,11 @@ const MembershipDashboard = ({ user }) => {
             case 'packages':
                 return <PackageMgt />;
             case 'active':
-                return <ActiveMembershipsMgt />;
+                return <ActiveMembershipsMgt status="active" />;
+            case 'ended':
+                return <ActiveMembershipsMgt status="ended" />;
+            case 'terminated':
+                return <ActiveMembershipsMgt status="terminated" />;
             case 'attendance':
                 return <TeamAttendance />;
             case 'leave':
@@ -42,6 +46,16 @@ const MembershipDashboard = ({ user }) => {
                     className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
                     onClick={() => setActiveTab('active')}>
                     Active Memberships
+                </button>
+                <button 
+                    className={`tab-btn ${activeTab === 'ended' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('ended')}>
+                    Ended Memberships
+                </button>
+                <button 
+                    className={`tab-btn ${activeTab === 'terminated' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('terminated')}>
+                    Terminated Memberships
                 </button>
                  <button 
                     className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`}

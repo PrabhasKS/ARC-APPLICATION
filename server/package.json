@@ -19,6 +19,7 @@
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.3",
+    "node-cron": "^4.2.1",
     "nodemon": "^3.1.10",
     "pdfkit": "^0.17.2",
     "socket.io": "^4.8.1",

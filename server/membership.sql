@@ -173,3 +173,7 @@ ADD COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'Pending';
 ALTER TABLE membership_leave
 ADD COLUMN start_date DATE NULL,
 ADD COLUMN end_date DATE NULL;
+
+
+ALTER TABLE active_memberships
+ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active';
