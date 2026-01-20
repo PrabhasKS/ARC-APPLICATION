@@ -64,6 +64,7 @@
 
 .modal-form input[type="text"],
 .modal-form input[type="number"],
+.modal-form input[type="date"], /* Added date type */
 .modal-form select,
 .modal-form textarea {
     width: 100%;
@@ -95,6 +96,42 @@
     padding-top: 1rem;
     border-top: 1px solid #e0e0e0;
 }
+
+/* Specific styling for buttons within modals to match overall UI */
+.modal-footer .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent; /* Ensure consistent border size */
+}
+
+.modal-footer .btn-primary {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.modal-footer .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Specific styling for cancel/secondary buttons */
+.modal-footer .btn-secondary,
+.modal-footer .btn-cancel { /* Using btn-cancel for explicit clarity */
+    background-color: #6c757d; /* Muted grey */
+    color: white;
+    border-color: #6c757d;
+}
+
+.modal-footer .btn-secondary:hover,
+.modal-footer .btn-cancel:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
 
 @keyframes slideIn {
     from {

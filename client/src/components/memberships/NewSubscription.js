@@ -28,6 +28,9 @@ const NewSubscription = () => {
     const [discountReason, setDiscountReason] = useState('');
     const [paymentAmount, setPaymentAmount] = useState(0);
     const [paymentMode, setPaymentMode] = useState('Cash');
+    const [onlinePaymentType, setOnlinePaymentType] = useState('UPI'); // New state
+    const [paymentId, setPaymentId] = useState(''); // New state
+    const [errors, setErrors] = useState({}); // New state
 
     const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
 
@@ -99,6 +102,7 @@ const NewSubscription = () => {
 
     const handleStep1Next = async () => {
         setError('');
+        setErrors({}); // Reset errors on step change
         setLoading(true);
         try {
             const res = await api.post('/memberships/check-clash', {
@@ -121,14 +125,71 @@ const NewSubscription = () => {
         }
     };
     
+    // Validation function
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (paymentAmount === '' || paymentAmount === null) {
+            newErrors.paymentAmount = 'Amount received is required.';
+        } else if (isNaN(paymentAmount) || parseFloat(paymentAmount) < 0) {
+            newErrors.paymentAmount = 'Amount received must be a non-negative number.';
+        } else if (parseFloat(paymentAmount) > finalPrice) {
+            newErrors.paymentAmount = 'Amount received cannot exceed final price.';
+        }
+
+        if (isNaN(discountAmount) || parseFloat(discountAmount) < 0) {
+            newErrors.discountAmount = 'Discount must be a non-negative number.';
+        } else if (parseFloat(discountAmount) > basePrice) {
+             newErrors.discountAmount = 'Discount cannot exceed base price.';
+        }
+        
+        if ((parseFloat(discountAmount) > 0) && !discountReason.trim()) {
+            newErrors.discountReason = 'Discount reason is required when a discount is applied.';
+        }
+
+        if ((paymentMode === 'Online' || paymentMode === 'Cheque') && !paymentId.trim()) {
+            newErrors.paymentId = 'Payment ID is required for online/cheque payments.';
+        } else if (paymentId && !/^[a-zA-Z0-9]+$/.test(paymentId)) {
+            newErrors.paymentId = 'Payment ID must be alphanumeric.';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const resetForm = () => {
+        setStep(1);
+        setSelectedSport('');
+        setSelectedPackageId('');
+        setSelectedCourt('');
+        setTeamMembers([]);
+        setDiscountAmount(0);
+        setDiscountReason(''); // Reset discount reason
+        setPaymentAmount(0);
+        setStartDate(new Date().toISOString().slice(0, 10));
+        setTimeSlot('');
+        setOnlinePaymentType('UPI'); // Reset online payment type
+        setPaymentId(''); // Reset payment ID
+        setPaymentMode('Cash');
+        setErrors({});
+        setError('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setErrors({}); // Reset errors at the start of submission
 
         if (!isStep1Complete || !isStep2Complete) {
             setError("Please ensure all steps are complete and valid before submitting.");
             return;
         }
+
+        if (!validateForm()) {
+            setError("Please fix the validation errors in Step 3.");
+            return;
+        }
+
         if (!selectedPackage) {
             setError("The selected package is invalid. Please go back and re-select a package.");
             return;
@@ -136,17 +197,21 @@ const NewSubscription = () => {
 
         setLoading(true);
 
+        const finalPaymentMode = paymentMode === 'Online' ? onlinePaymentType : paymentMode;
+        const finalPaymentId = (paymentMode === 'Online' || paymentMode === 'Cheque') ? paymentId : null;
+
         const subscriptionData = {
             package_id: selectedPackage.id,
             court_id: selectedCourt,
             start_date: startDate,
             time_slot: effectiveTimeSlot,
             team_members: teamMembers.map(m => ({ member_id: m.id })),
-            discount_amount: discountAmount,
+            discount_amount: parseFloat(discountAmount) || 0,
             discount_details: discountReason,
             initial_payment: {
-                amount: paymentAmount,
-                payment_mode: paymentMode
+                amount: parseFloat(paymentAmount) || 0,
+                payment_mode: finalPaymentMode,
+                payment_id: finalPaymentId
             }
         };
 
@@ -155,16 +220,7 @@ const NewSubscription = () => {
         try {
             await api.post('/memberships/subscribe', subscriptionData);
             alert('Membership created successfully!');
-            // Reset form
-            setStep(1);
-            setSelectedSport('');
-            setSelectedPackageId('');
-            setSelectedCourt(''); // Moved here
-            setTeamMembers([]);
-            setDiscountAmount(0);
-            setPaymentAmount(0);
-            setStartDate(new Date().toISOString().slice(0, 10));
-            setTimeSlot('');
+            resetForm();
         } catch (err) {
             console.error("Subscription Error:", err);
             setError(err.response?.data?.message || 'An error occurred during subscription. Check the console for more details.');
@@ -289,24 +345,45 @@ const NewSubscription = () => {
                                 <div className="form-group">
                                     <label>Discount Amount (Rs.)</label>
                                     <input type="number" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} />
+                                    {errors.discountAmount && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discountAmount}</p>}
                                 </div>
                                 <div className="form-group">
                                     <label>Discount Reason</label>
                                     <input type="text" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
+                                    {errors.discountReason && <p style={{ color: 'red', fontSize: '12px' }}>{errors.discountReason}</p>}
                                 </div>
                                 <div className="form-group">
                                     <label>Amount Received</label>
                                     <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(parseFloat(e.target.value) || 0)} max={finalPrice} />
+                                    {errors.paymentAmount && <p style={{ color: 'red', fontSize: '12px' }}>{errors.paymentAmount}</p>}
                                 </div>
                                 <div className="form-group">
                                     <label>Payment Mode</label>
                                     <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)}>
-                                        <option>Cash</option>
-                                        <option>Card</option>
-                                        <option>Online</option>
-                                        <option>Cheque</option>
+                                        <option value="Cash">Cash</option>
+                                        <option value="Online">Online</option>
+                                        <option value="Cheque">Cheque</option>
                                     </select>
                                 </div>
+                                {(paymentMode === 'Online' || paymentMode === 'Cheque') && (
+                                    <>
+                                        {paymentMode === 'Online' && (
+                                            <div className="form-group">
+                                                <label>Online Payment Type</label>
+                                                <select value={onlinePaymentType} onChange={e => setOnlinePaymentType(e.target.value)}>
+                                                    <option value="UPI">UPI</option>
+                                                    <option value="Card">Card</option>
+                                                    <option value="Net Banking">Net Banking</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div className="form-group">
+                                            <label>Payment ID</label>
+                                            <input type="text" value={paymentId} onChange={e => setPaymentId(e.target.value)} />
+                                            {errors.paymentId && <p style={{ color: 'red', fontSize: '12px' }}>{errors.paymentId}</p>}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
