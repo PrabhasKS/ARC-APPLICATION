@@ -316,32 +316,34 @@ const NewSubscription = () => {
 
     return (
         <div className="new-subscription-container">
-            <h3>Create New Membership</h3>
-            {error && <p className="error-message">{error}</p>}
-            <div className="stepper-container">
-                <div className={`step-item ${step >= 1 ? 'active' : ''}`}>
-                    <div className="step-counter">1</div>
-                    <div className="step-name">Package</div>
+            <div className="subscription-form-content">
+                <h3>Create New Membership</h3>
+                {error && <p className="error-message">{error}</p>}
+                <div className="stepper-container">
+                    <div className={`step-item ${step >= 1 ? 'active' : ''}`}>
+                        <div className="step-counter">1</div>
+                        <div className="step-name">Package</div>
+                    </div>
+                    <div className={`step-item ${step >= 2 ? 'active' : ''}`}>
+                        <div className="step-counter">2</div>
+                        <div className="step-name">Team</div>
+                    </div>
+                    <div className={`step-item ${step >= 3 ? 'active' : ''}`}>
+                        <div className="step-counter">3</div>
+                        <div className="step-name">Payment</div>
+                    </div>
                 </div>
-                <div className={`step-item ${step >= 2 ? 'active' : ''}`}>
-                    <div className="step-counter">2</div>
-                    <div className="step-name">Team</div>
-                </div>
-                <div className={`step-item ${step >= 3 ? 'active' : ''}`}>
-                    <div className="step-counter">3</div>
-                    <div className="step-name">Payment</div>
-                </div>
-            </div>
 
-            <form onSubmit={handleSubmit}>
-                {renderStepContent()}
-                <div className="form-navigation">
-                    {step > 1 && <button type="button" className="btn btn-secondary" onClick={() => setStep(step - 1)} disabled={loading}>Back</button>}
-                    {step === 1 && <button type="button" className="btn btn-primary" onClick={handleStep1Next} disabled={!isStep1Complete || loading}>Next</button>}
-                    {step === 2 && <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!isStep2Complete || loading}>Next</button>}
-                    {step === 3 && <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Submitting...' : 'Create Subscription'}</button>}
-                </div>
-            </form>
+                <form onSubmit={handleSubmit}>
+                    {renderStepContent()}
+                    <div className="form-navigation">
+                        {step > 1 && <button type="button" className="btn btn-secondary" onClick={() => setStep(step - 1)} disabled={loading}>Back</button>}
+                        {step === 1 && <button type="button" className="btn btn-primary" onClick={handleStep1Next} disabled={!isStep1Complete || loading}>Next</button>}
+                        {step === 2 && <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!isStep2Complete || loading}>Next</button>}
+                        {step === 3 && <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Submitting...' : 'Create Subscription'}</button>}
+                    </div>
+                </form>
+            </div>
 
             {isAddMemberModalOpen && (
                 <AddMemberModal 

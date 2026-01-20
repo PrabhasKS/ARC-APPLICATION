@@ -2,6 +2,8 @@
     padding: 2rem;
     background-color: #f9f9f9;
     min-height: calc(100vh - 70px); /* Adjust based on header height */
+    max-width: 1600px;
+    margin: 0 auto;
 }
 
 .membership-header {
@@ -15,6 +17,7 @@
 
 .tab-navigation {
     display: flex;
+    flex-wrap: wrap; /* Allow tabs to wrap on smaller screens */
     gap: 0.5rem;
     border-bottom: 1px solid #ddd;
     margin-bottom: 1.5rem;
@@ -30,6 +33,7 @@
     color: #555;
     border-bottom: 3px solid transparent;
     transition: all 0.2s ease-in-out;
+    text-align: center;
 }
 
 .tab-btn:hover {
