@@ -154,11 +154,26 @@
 }
 
 /* Styles for Step 3: Summary and Payment */
+.step3-cards-container {
+    display: flex;
+    flex-direction: row; /* Explicitly set to row */
+    gap: 2rem;
+    align-items: stretch; /* Make both cards stretch to the same height */
+}
+
+.step3-cards-container > .summary-card,
+.step3-cards-container > .payment-card {
+    flex: 1;
+    min-width: 0; /* Prevents flex items from overflowing */
+    margin-bottom: 0; /* Remove bottom margin as gap is now used */
+}
+
+
 .summary-card, .payment-card {
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 1px solid #e0e0e0;
     margin-bottom: 1.5rem;
 }
 
@@ -200,4 +215,3 @@
     border-radius: 5px;
     font-size: 1rem;
 }
-

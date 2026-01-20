@@ -273,38 +273,40 @@ const NewSubscription = () => {
                 return (
                     <div className="form-step">
                         <h4>Step 3: Finalize and Pay</h4>
-                        <div className="summary-card">
-                            <h5>Subscription Summary</h5>
-                            <p><strong>Package:</strong> {selectedPackage?.name || 'N/A'}</p>
-                            <p><strong>Duration:</strong> {selectedPackage?.duration_days || 'N/A'} days</p>
-                            <p><strong>Time Slot:</strong> {effectiveTimeSlot}</p>
-                            <p><strong>Team Size:</strong> {teamMembers.length} member(s)</p>
-                            <hr/>
-                            <p><strong>Base Price:</strong> Rs. {basePrice}</p>
-                            <div className="form-group">
-                                <label>Discount Amount (Rs.)</label>
-                                <input type="number" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} />
+                        <div className="step3-cards-container">
+                            <div className="summary-card">
+                                <h5>Subscription Summary</h5>
+                                <p><strong>Package:</strong> {selectedPackage?.name || 'N/A'}</p>
+                                <p><strong>Duration:</strong> {selectedPackage?.duration_days || 'N/A'} days</p>
+                                <p><strong>Time Slot:</strong> {effectiveTimeSlot}</p>
+                                <p><strong>Team Size:</strong> {teamMembers.length} member(s)</p>
+                                <hr/>
+                                <p><strong>Base Price:</strong> Rs. {basePrice}</p>
+                                <p className="final-price"><strong>Final Price:</strong> Rs. {finalPrice}</p>
                             </div>
-                             <div className="form-group">
-                                <label>Discount Reason</label>
-                                <input type="text" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
-                            </div>
-                            <p className="final-price"><strong>Final Price:</strong> Rs. {finalPrice}</p>
-                        </div>
-                        <div className="payment-card">
-                             <h5>Initial Payment</h5>
-                             <div className="form-group">
-                                <label>Amount Received</label>
-                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(parseFloat(e.target.value) || 0)} max={finalPrice} />
-                            </div>
-                             <div className="form-group">
-                                <label>Payment Mode</label>
-                                <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)}>
-                                    <option>Cash</option>
-                                    <option>Card</option>
-                                    <option>Online</option>
-                                    <option>Cheque</option>
-                                </select>
+                            <div className="payment-card">
+                                <h5>Initial Payment</h5>
+                                <div className="form-group">
+                                    <label>Discount Amount (Rs.)</label>
+                                    <input type="number" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Discount Reason</label>
+                                    <input type="text" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Amount Received</label>
+                                    <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(parseFloat(e.target.value) || 0)} max={finalPrice} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Payment Mode</label>
+                                    <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)}>
+                                        <option>Cash</option>
+                                        <option>Card</option>
+                                        <option>Online</option>
+                                        <option>Cheque</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
