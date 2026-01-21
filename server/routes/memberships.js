@@ -436,30 +436,108 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
             throw new Error('End date must be after or same as start date.');
         }
 
-        // 1. Insert into membership_leave as APPROVED
-        await connection.query(
-            'INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status, compensation_applied) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [membership_id, start_date, end_date, leave_days, reason, 'APPROVED', true]
+        // --- CONFLICT CHECK START ---
+        // Get membership's current details and designated court_id and time_slot
+        const [membershipData] = await connection.query(
+            `SELECT court_id, time_slot, current_end_date FROM active_memberships WHERE id = ? FOR UPDATE`,
+            [membership_id]
+        );
+        if (membershipData.length === 0) throw new Error('Active membership not found.');
+        const { court_id, time_slot, current_end_date: old_current_end_date_str } = membershipData[0];
+        const old_current_end_date = new Date(old_current_end_date_str);
+
+        // Calculate new end date based on leave
+        const new_end_date_obj = new Date(old_current_end_date);
+        new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days);
+        const new_end_date_str = new_end_date_obj.toISOString().slice(0, 10);
+
+        // --- CONFLICT CHECKS ---
+
+        // 1. Check for overlapping APPROVED leaves for this membership (within the requested leave period)
+        const [overlappingLeaves] = await connection.query(
+            `SELECT start_date, end_date FROM membership_leave 
+             WHERE membership_id = ? AND status = 'APPROVED'
+             AND (
+                 (? BETWEEN start_date AND end_date) OR
+                 (? BETWEEN start_date AND end_date) OR
+                 (start_date BETWEEN ? AND ?) OR
+                 (end_date BETWEEN ? AND ?)
+             )`,
+            [membership_id, start_date, end_date, start_date, end_date, start_date, end_date]
         );
 
-        // 2. Get current membership end date
-        const [memberships] = await connection.query('SELECT current_end_date FROM active_memberships WHERE id = ? FOR UPDATE', [membership_id]);
-        if (memberships.length === 0) throw new Error('Active membership not found.');
-
-        const current_end_date = new Date(memberships[0].current_end_date);
+        if (overlappingLeaves.length > 0) {
+            throw new Error(`Conflict: This member already has an approved leave from ${overlappingLeaves[0].start_date} to ${overlappingLeaves[0].end_date}.`);
+        }
         
-        // 3. Extend membership end date
-        current_end_date.setDate(current_end_date.getDate() + leave_days);
-        const new_end_date = current_end_date.toISOString().slice(0, 10);
+        // 2. Check for overlapping bookings in the EXTENDED period.
+        const conflict_check_start_date_obj = new Date(old_current_end_date);
+        conflict_check_start_date_obj.setDate(conflict_check_start_date_obj.getDate() + 1);
+        const conflict_check_start_date_str = conflict_check_start_date_obj.toISOString().slice(0, 10);
+        
+        // Only check for conflicts if the extension period is valid
+        if (new_end_date_str >= conflict_check_start_date_str) {
+            // 2a. Check for overlapping one-off bookings in the EXTENDED period.
+            const [overlappingBookings] = await connection.query(
+                `SELECT id, customer_name, date FROM bookings
+                 WHERE court_id = ? AND time_slot = ? AND status != 'Cancelled'
+                 AND date BETWEEN ? AND ?`,
+                [court_id, time_slot, conflict_check_start_date_str, new_end_date_str]
+            );
 
-        await connection.query('UPDATE active_memberships SET current_end_date = ? WHERE id = ?', [new_end_date, membership_id]);
+            if (overlappingBookings.length > 0) {
+                const firstConflict = overlappingBookings[0];
+                throw new Error(`Conflict on extension: The court/slot is already booked on ${firstConflict.date}.`);
+            }
+
+            // 2b. Check for overlapping MEMBERSHIPS in the EXTENDED period.
+            const [conflictingMemberships] = await connection.query(
+                `SELECT id, time_slot FROM active_memberships
+                 WHERE court_id = ?
+                   AND id != ?
+                   AND status = 'active'
+                   AND start_date <= ? 
+                   AND current_end_date >= ?`,
+                [court_id, membership_id, new_end_date_str, conflict_check_start_date_str]
+            );
+
+            const [leaveSlotStart, leaveSlotEnd] = time_slot.split(' - ');
+            const clashingMembership = conflictingMemberships.find(m => {
+                const [existingStart, existingEnd] = m.time_slot.split(' - ');
+                return checkOverlap(leaveSlotStart.trim(), leaveSlotEnd.trim(), existingStart.trim(), existingEnd.trim());
+            });
+
+            if (clashingMembership) {
+                throw new Error(`Conflict on extension: Another membership (ID: ${clashingMembership.id}) occupies this court and time slot during the proposed extension period.`);
+            }
+        }
+        
+        // --- ALL CHECKS PASSED ---
+        // Grant the leave and extend the membership
+
+        // 1. Insert the leave record
+        await connection.query(
+            `INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status) 
+             VALUES (?, ?, ?, ?, ?, 'APPROVED')`,
+            [membership_id, start_date, end_date, leave_days, reason]
+        );
+        
+        // 2. Update the active_memberships table
+        await connection.query(
+            'UPDATE active_memberships SET current_end_date = ? WHERE id = ?',
+            [new_end_date_str, membership_id]
+        );
 
         await connection.commit();
-        res.status(201).json({ message: `Leave granted successfully. Membership extended by ${leave_days} days. New end date: ${new_end_date}` });
+        res.status(200).json({ message: `Leave granted successfully for ${leave_days} days. Membership extended to ${new_end_date_str}.` });
 
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Error granting leave:', error);
+        // Distinguish conflict errors for frontend
+        if (error.message.startsWith('Conflict:')) {
+            return res.status(409).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message || 'Failed to grant leave.' });
     } finally {
         if (connection) connection.release();
@@ -692,8 +770,8 @@ router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
     }
 });
 
-router.post('/active/:id/renew', isPrivilegedUser, async (req, res) => {
-    const { id: old_membership_id } = req.params;
+router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
+    const { id: membership_id } = req.params; // Renamed for clarity
     const { start_date, discount_details, initial_payment } = req.body;
     const created_by_user_id = req.user.id;
 
@@ -702,15 +780,20 @@ router.post('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        const [oldMemberships] = await connection.query('SELECT * FROM active_memberships WHERE id = ?', [old_membership_id]);
-        if (oldMemberships.length === 0) throw new Error('Membership to renew not found.');
-        const oldMembership = oldMemberships[0];
+        const [memberships] = await connection.query('SELECT * FROM active_memberships WHERE id = ? FOR UPDATE', [membership_id]);
+        if (memberships.length === 0) throw new Error('Membership to renew not found.');
+        const oldMembership = memberships[0];
+
+        // Ensure membership is 'ended' or 'active' and past its current_end_date to be renewed
+        if (oldMembership.status !== 'ended' && !(oldMembership.status === 'active' && new Date(oldMembership.current_end_date) < new Date())) {
+            throw new Error('Membership cannot be renewed unless it is ended or active and past its end date.');
+        }
 
         const [packages] = await connection.query('SELECT duration_days, per_person_price FROM membership_packages WHERE id = ?', [oldMembership.package_id]);
         if (packages.length === 0) throw new Error('Original package not found.');
         const { duration_days, per_person_price } = packages[0];
         
-        const [teamMembers] = await connection.query('SELECT COUNT(*) as member_count FROM membership_team WHERE membership_id = ?', [old_membership_id]);
+        const [teamMembers] = await connection.query('SELECT COUNT(*) as member_count FROM membership_team WHERE membership_id = ?', [membership_id]);
         const member_count = teamMembers[0].member_count;
 
         const new_final_price = parseFloat(per_person_price) * member_count;
@@ -722,27 +805,33 @@ router.post('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + duration_days);
 
-        const [newMembershipResult] = await connection.query(
-          `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [oldMembership.package_id, oldMembership.court_id, start_date, oldMembership.time_slot, endDate.toISOString().slice(0,10), endDate.toISOString().slice(0,10), new_final_price, discount_details, amount_paid, balance_amount, payment_status]
+        // --- UPDATE existing active_memberships record ---
+        await connection.query(
+          `UPDATE active_memberships 
+           SET start_date = ?, 
+               original_end_date = ?, 
+               current_end_date = ?, 
+               final_price = ?, 
+               discount_details = ?, 
+               amount_paid = ?, 
+               balance_amount = ?, 
+               payment_status = ?,
+               status = 'active'
+           WHERE id = ?`,
+          [start_date, endDate.toISOString().slice(0,10), endDate.toISOString().slice(0,10), new_final_price, discount_details, amount_paid, balance_amount, payment_status, membership_id]
         );
-        const new_membership_id = newMembershipResult.insertId;
 
         if (initial_payment && initial_payment.amount > 0) {
             await connection.query(
                 'INSERT INTO payments (membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
-                [new_membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
+                [membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
             );
         }
 
-        const [team] = await connection.query('SELECT member_id FROM membership_team WHERE membership_id = ?', [old_membership_id]);
-        for (const member of team) {
-            await connection.query('INSERT INTO membership_team (membership_id, member_id) VALUES (?, ?)', [new_membership_id, member.member_id]);
-        }
+        // No changes to membership_team as renewal applies to existing team members.
         
         await connection.commit();
-        res.status(201).json({ id: new_membership_id, message: 'Membership renewed successfully.' });
+        res.status(200).json({ id: membership_id, message: 'Membership renewed successfully.' }); // Changed status to 200
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Error renewing membership:', error);
@@ -837,6 +926,43 @@ router.post('/active/:id/add-member', isPrivilegedUser, async (req, res) => {
         if (connection) await connection.rollback();
         console.error('Error adding member to active membership:', error);
         res.status(500).json({ message: `Failed to add member: ${error.message}` });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+router.put('/ended/:id/terminate', isPrivilegedUser, async (req, res) => {
+    const { id } = req.params;
+    
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Check if membership exists and is in 'ended' status
+        const [memberships] = await connection.query(
+            "SELECT id FROM active_memberships WHERE id = ? AND status = 'ended' FOR UPDATE",
+            [id]
+        );
+
+        if (memberships.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Ended membership not found.' });
+        }
+
+        // Update status to 'terminated'
+        await connection.query(
+            "UPDATE active_memberships SET status = 'terminated' WHERE id = ?",
+            [id]
+        );
+
+        await connection.commit();
+        res.json({ message: 'Membership successfully terminated from ended status.' });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error terminating ended membership:', error);
+        res.status(500).json({ message: 'Failed to terminate ended membership.' });
     } finally {
         if (connection) connection.release();
     }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'; // Added useCallback
+import React, { useState, useCallback, useEffect } from 'react'; // Added useEffect for potential debugging
 import './PackageEditModal.css'; // Reusing modal styles for consistency
 
 const MarkLeaveModal = ({ membership, onGrantLeave, onClose, error }) => {
@@ -7,6 +7,20 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose, error }) => {
     const [reason, setReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState({}); // New errors state
+
+    // Log to see if error prop changes
+    useEffect(() => {
+        if (error) {
+            console.log('MarkLeaveModal received error prop:', error);
+            setErrors(prev => ({ ...prev, general: error }));
+        } else {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.general;
+                return newErrors;
+            });
+        }
+    }, [error]);
 
     const handleChange = (setter) => (e) => {
         setter(e.target.value);
@@ -34,24 +48,39 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose, error }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('MarkLeaveModal: handleSubmit called');
         setErrors({}); // Reset errors
 
         if (!validateForm()) {
+            console.log('MarkLeaveModal: Form validation failed', errors);
+            setSubmitting(false); // Ensure submitting is reset if validation fails
             return;
         }
 
         setSubmitting(true);
+        console.log('MarkLeaveModal: Submitting state set to true');
         try {
+            console.log('MarkLeaveModal: Calling onGrantLeave...');
             await onGrantLeave(membership.id, {
                 start_date: startDate,
                 end_date: endDate,
                 reason: reason
             });
-            onClose();
+            console.log('MarkLeaveModal: onGrantLeave successful, calling onClose()');
+            onClose(); // Only close on successful submission
         } catch (err) {
-            setErrors({ general: err.response?.data?.message || 'Failed to grant leave.' });
-            console.error('Failed to grant leave:', err);
+            console.error('MarkLeaveModal: Caught error from onGrantLeave:', err);
+            if (err.response?.status === 409) {
+                // Conflict detected, display message and keep modal open
+                setErrors({ general: err.response.data.message });
+                console.log('MarkLeaveModal: Conflict error set:', err.response.data.message);
+            } else {
+                // Other errors
+                setErrors({ general: err.response?.data?.message || 'Failed to grant leave.' });
+                console.log('MarkLeaveModal: General error set:', err.response?.data?.message || 'Failed to grant leave.');
+            }
         } finally {
+            console.log('MarkLeaveModal: Finally block executed, setting submitting to false');
             setSubmitting(false);
         }
     };
@@ -64,7 +93,6 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose, error }) => {
                     <button className="close-button" onClick={onClose}>&times;</button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    {error && <div className="error-message">{error}</div>}
                     {errors.general && <div className="error-message">{errors.general}</div>}
                     <div className="form-group">
                         <label>Leave Start Date</label>

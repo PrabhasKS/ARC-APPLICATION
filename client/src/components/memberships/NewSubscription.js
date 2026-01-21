@@ -336,6 +336,7 @@ const NewSubscription = () => {
                                 <p><strong>Duration:</strong> {selectedPackage?.duration_days || 'N/A'} days</p>
                                 <p><strong>Time Slot:</strong> {effectiveTimeSlot}</p>
                                 <p><strong>Team Size:</strong> {teamMembers.length} member(s)</p>
+                                <p><strong>Start Date:</strong> {format(new Date(startDate), 'dd/MM/yyyy')}</p>
                                 <hr/>
                                 <p><strong>Base Price:</strong> Rs. {basePrice}</p>
                                 <p className="final-price"><strong>Final Price:</strong> Rs. {finalPrice}</p>

@@ -102,7 +102,7 @@ router.post('/login', async (req, res) => {
         if (match) {
             // Create JWT
             const tokenPayload = { id: user.id, username: user.username, role: user.role };
-            const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
             res.json({ success: true, token: token, user: tokenPayload });
         } else {
             res.status(401).json({ success: false, message: 'Invalid credentials' });
