@@ -8,6 +8,7 @@ const TeamAttendance = () => {
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
     const [memberships, setMemberships] = useState([]);
     const [attended, setAttended] = useState(new Set());
+    const [onLeave, setOnLeave] = useState(new Set()); // New state for members on leave
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [modalError, setModalError] = useState(null);
@@ -37,12 +38,14 @@ const TeamAttendance = () => {
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
-            const [mems, atts] = await Promise.all([
+            const [mems, atts, leaves] = await Promise.all([
                 api.get(`/memberships/active?date=${date}`),
-                api.get(`/memberships/team-attendance?date=${date}`)
+                api.get(`/memberships/team-attendance?date=${date}`),
+                api.get(`/memberships/on-leave?date=${date}`) // Fetch memberships on leave
             ]);
             setMemberships(mems.data);
             setAttended(new Set(atts.data.map(a => a.membership_id)));
+            setOnLeave(new Set(leaves.data)); // Set the new state
             setError(null);
         } catch (err) {
             setError('Failed to fetch data for the selected date.');
@@ -88,7 +91,6 @@ const TeamAttendance = () => {
 
     const handleViewCalendar = async (membership) => {
         try {
-            // Fetch both attendance and leave history
             const [attRes, leaveRes] = await Promise.all([
                 api.get(`/memberships/active/${membership.id}/attendance-history`),
                 api.get(`/memberships/active/${membership.id}/leave-history`)
@@ -118,12 +120,19 @@ const TeamAttendance = () => {
 
     const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
         try {
-            await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
-            fetchData(); // Refresh the list
-            handleCloseLeaveModal();
+            const response = await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
+            
+            if (response.data.status === 'success') {
+                fetchData();
+                handleCloseLeaveModal();
+                return { status: 'success' };
+            } else if (response.data.status === 'conflict') {
+                return response.data;
+            }
         } catch (err) {
             setModalError(err.response?.data?.message || 'Failed to grant leave.');
             console.error(err);
+            throw err;
         }
     };
 
@@ -207,7 +216,9 @@ const TeamAttendance = () => {
                                 {visibleColumns.time_slot && <td>{mem.time_slot}</td>}
                                 {visibleColumns.status && (
                                     <td>
-                                        {attended.has(mem.id) ? (
+                                        {onLeave.has(mem.id) ? (
+                                            <span className="status-badge status-leave">ON LEAVE</span>
+                                        ) : attended.has(mem.id) ? (
                                             <span className="status-badge status-present">PRESENT</span>
                                         ) : (
                                             <button 

@@ -138,19 +138,23 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     };
 
     const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
-        console.log('ActiveMembershipsMgt: handleGrantLeaveSubmit called with membershipId:', membershipId, 'and leaveData:', leaveData);
         try {
-            console.log('ActiveMembershipsMgt: Calling API to grant leave...');
-            await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
-            console.log('ActiveMembershipsMgt: API call successful. Fetching memberships...');
-            fetchMemberships();
-            console.log('ActiveMembershipsMgt: Memberships fetched. Closing leave modal...');
-            handleCloseLeaveModal();
-            console.log('ActiveMembershipsMgt: Leave modal closed.');
+            const response = await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
+            
+            if (response.data.status === 'success') {
+                fetchMemberships();
+                handleCloseLeaveModal();
+                return { status: 'success' }; // Return success status
+            } else if (response.data.status === 'conflict') {
+                // The API call was successful, but there's a business logic conflict.
+                // Return the data to the modal to handle it.
+                return response.data;
+            }
         } catch (err) {
+            // This catches server errors (500) or network issues.
             console.error('ActiveMembershipsMgt: Caught error in handleGrantLeaveSubmit:', err);
             setModalError(err.response?.data?.message || 'Failed to grant leave.');
-            throw err; // Re-throw the error so MarkLeaveModal can catch it
+            throw err; // Re-throw so MarkLeaveModal can also see the error
         }
     };
 

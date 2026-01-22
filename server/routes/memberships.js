@@ -415,7 +415,7 @@ router.post('/request-leave', isPrivilegedUser, async (req, res) => {
 });
 
 router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
-    const { membership_id, start_date, end_date, reason } = req.body;
+    const { membership_id, start_date, end_date, reason, custom_extension_start_date } = req.body;
 
     if (!membership_id || !start_date || !end_date) {
         return res.status(400).json({ message: 'Membership ID, start date, and end date are required.' });
@@ -426,6 +426,8 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
+        const conflicts = [];
+
         // Calculate leave days
         const start = new Date(start_date);
         const end = new Date(end_date);
@@ -433,114 +435,168 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         const leave_days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
 
         if (leave_days <= 0) {
-            throw new Error('End date must be after or same as start date.');
+            throw new Error('End date must be on or after start date.');
         }
 
-        // --- CONFLICT CHECK START ---
-        // Get membership's current details and designated court_id and time_slot
         const [membershipData] = await connection.query(
             `SELECT court_id, time_slot, current_end_date FROM active_memberships WHERE id = ? FOR UPDATE`,
             [membership_id]
         );
-        if (membershipData.length === 0) throw new Error('Active membership not found.');
-        const { court_id, time_slot, current_end_date: old_current_end_date_str } = membershipData[0];
-        const old_current_end_date = new Date(old_current_end_date_str);
 
-        // Calculate new end date based on leave
-        const new_end_date_obj = new Date(old_current_end_date);
-        new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days);
-        const new_end_date_str = new_end_date_obj.toISOString().slice(0, 10);
+        if (membershipData.length === 0) {
+            throw new Error('Active membership not found.');
+        }
+        
+        const { court_id, time_slot, current_end_date: old_current_end_date_str } = membershipData[0];
+        
+        // Determine the extension period
+        let extension_start_date_str;
+        let final_extension_end_date;
+
+        if (custom_extension_start_date) {
+            extension_start_date_str = custom_extension_start_date;
+            const new_end_date_obj = new Date(custom_extension_start_date);
+            new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days -1); // -1 because it's inclusive
+            final_extension_end_date = new_end_date_obj.toISOString().slice(0, 10);
+        } else {
+            const old_current_end_date_obj = new Date(old_current_end_date_str);
+            old_current_end_date_obj.setDate(old_current_end_date_obj.getDate() + 1);
+            extension_start_date_str = old_current_end_date_obj.toISOString().slice(0, 10);
+
+            const new_end_date_obj = new Date(old_current_end_date_str);
+            new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days);
+            final_extension_end_date = new_end_date_obj.toISOString().slice(0, 10);
+        }
+        
+        const [leaveSlotStart, leaveSlotEnd] = time_slot.split(' - ');
 
         // --- CONFLICT CHECKS ---
 
-        // 1. Check for overlapping APPROVED leaves for this membership (within the requested leave period)
+        // 1. Check for overlapping APPROVED leaves for this membership
         const [overlappingLeaves] = await connection.query(
             `SELECT start_date, end_date FROM membership_leave 
-             WHERE membership_id = ? AND status = 'APPROVED'
-             AND (
-                 (? BETWEEN start_date AND end_date) OR
-                 (? BETWEEN start_date AND end_date) OR
-                 (start_date BETWEEN ? AND ?) OR
-                 (end_date BETWEEN ? AND ?)
+             WHERE membership_id = ? AND status = 'APPROVED' AND (
+                 (? BETWEEN start_date AND end_date) OR (? BETWEEN start_date AND end_date) OR
+                 (start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?)
              )`,
             [membership_id, start_date, end_date, start_date, end_date, start_date, end_date]
         );
 
         if (overlappingLeaves.length > 0) {
-            throw new Error(`Conflict: This member already has an approved leave from ${overlappingLeaves[0].start_date} to ${overlappingLeaves[0].end_date}.`);
+            conflicts.push({
+                type: 'leave',
+                date: new Date(overlappingLeaves[0].start_date).toISOString().slice(0, 10),
+                message: `This member already has an approved leave from ${new Date(overlappingLeaves[0].start_date).toISOString().slice(0, 10)} to ${new Date(overlappingLeaves[0].end_date).toISOString().slice(0, 10)}.`
+            });
         }
         
-        // 2. Check for overlapping bookings in the EXTENDED period.
-        const conflict_check_start_date_obj = new Date(old_current_end_date);
-        conflict_check_start_date_obj.setDate(conflict_check_start_date_obj.getDate() + 1);
-        const conflict_check_start_date_str = conflict_check_start_date_obj.toISOString().slice(0, 10);
-        
-        // Only check for conflicts if the extension period is valid
-        if (new_end_date_str >= conflict_check_start_date_str) {
-            // 2a. Check for overlapping one-off bookings in the EXTENDED period.
-            const [overlappingBookings] = await connection.query(
+        // 2. Check for conflicts in the LEAVE period itself
+        const [bookingsInLeavePeriod] = await connection.query(
+            `SELECT id, customer_name, date FROM bookings
+             WHERE court_id = ? AND time_slot = ? AND status != 'Cancelled'
+             AND date BETWEEN ? AND ?`,
+            [court_id, time_slot, start_date, end_date]
+        );
+
+        bookingsInLeavePeriod.forEach(booking => {
+            conflicts.push({
+                type: 'booking_leave',
+                date: new Date(booking.date).toISOString().slice(0, 10),
+                message: `Slot is booked by ${booking.customer_name} on ${new Date(booking.date).toISOString().slice(0, 10)}.`
+            });
+        });
+
+        // 3. Check for conflicts in the EXTENDED period.
+        if (final_extension_end_date >= extension_start_date_str) {
+            // 3a. Overlapping one-off bookings in EXTENDED period
+            const [bookingsInExtension] = await connection.query(
                 `SELECT id, customer_name, date FROM bookings
                  WHERE court_id = ? AND time_slot = ? AND status != 'Cancelled'
                  AND date BETWEEN ? AND ?`,
-                [court_id, time_slot, conflict_check_start_date_str, new_end_date_str]
+                [court_id, time_slot, extension_start_date_str, final_extension_end_date]
             );
 
-            if (overlappingBookings.length > 0) {
-                const firstConflict = overlappingBookings[0];
-                throw new Error(`Conflict on extension: The court/slot is already booked on ${firstConflict.date}.`);
-            }
+            bookingsInExtension.forEach(booking => {
+                conflicts.push({
+                    type: 'booking_extension',
+                    date: new Date(booking.date).toISOString().slice(0, 10),
+                    message: `Extension conflicts with booking on ${new Date(booking.date).toISOString().slice(0, 10)}.`
+                });
+            });
 
-            // 2b. Check for overlapping MEMBERSHIPS in the EXTENDED period.
-            const [conflictingMemberships] = await connection.query(
-                `SELECT id, time_slot FROM active_memberships
-                 WHERE court_id = ?
-                   AND id != ?
-                   AND status = 'active'
-                   AND start_date <= ? 
-                   AND current_end_date >= ?`,
-                [court_id, membership_id, new_end_date_str, conflict_check_start_date_str]
+            // 3b. Overlapping MEMBERSHIPS in EXTENDED period
+            const [membershipsInExtension] = await connection.query(
+                `SELECT id, time_slot, current_end_date FROM active_memberships
+                 WHERE court_id = ? AND id != ? AND status = 'active'
+                 AND start_date <= ? AND current_end_date >= ?`,
+                [court_id, membership_id, final_extension_end_date, extension_start_date_str]
             );
 
-            const [leaveSlotStart, leaveSlotEnd] = time_slot.split(' - ');
-            const clashingMembership = conflictingMemberships.find(m => {
+            const clashingMembership = membershipsInExtension.find(m => {
                 const [existingStart, existingEnd] = m.time_slot.split(' - ');
                 return checkOverlap(leaveSlotStart.trim(), leaveSlotEnd.trim(), existingStart.trim(), existingEnd.trim());
             });
 
             if (clashingMembership) {
-                throw new Error(`Conflict on extension: Another membership (ID: ${clashingMembership.id}) occupies this court and time slot during the proposed extension period.`);
+                conflicts.push({
+                    type: 'membership_extension',
+                    date: new Date(clashingMembership.current_end_date).toISOString().slice(0,10),
+                    message: `Extension conflicts with another membership (ID: ${clashingMembership.id}).`
+                });
             }
         }
         
-        // --- ALL CHECKS PASSED ---
-        // Grant the leave and extend the membership
-
-        // 1. Insert the leave record
+        // --- FINAL DECISION ---
+        if (conflicts.length > 0) {
+            await connection.rollback();
+            return res.status(200).json({ status: 'conflict', conflicts, old_end_date: old_current_end_date_str });
+        }
+        
+        // --- ALL CHECKS PASSED, PROCEED ---
         await connection.query(
             `INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status) 
              VALUES (?, ?, ?, ?, ?, 'APPROVED')`,
             [membership_id, start_date, end_date, leave_days, reason]
         );
         
-        // 2. Update the active_memberships table
         await connection.query(
             'UPDATE active_memberships SET current_end_date = ? WHERE id = ?',
-            [new_end_date_str, membership_id]
+            [final_extension_end_date, membership_id]
         );
 
         await connection.commit();
-        res.status(200).json({ message: `Leave granted successfully for ${leave_days} days. Membership extended to ${new_end_date_str}.` });
+        res.status(200).json({ status: 'success', message: `Leave granted successfully. Membership extended to ${final_extension_end_date}.` });
 
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Error granting leave:', error);
-        // Distinguish conflict errors for frontend
-        if (error.message.startsWith('Conflict:')) {
-            return res.status(409).json({ message: error.message });
-        }
-        res.status(500).json({ message: error.message || 'Failed to grant leave.' });
+        res.status(500).json({ message: error.message || 'Failed to grant leave due to an unexpected error.' });
     } finally {
         if (connection) connection.release();
+    }
+});
+
+// NEW: GET all memberships on leave for a specific date
+router.get('/on-leave', isPrivilegedUser, async (req, res) => {
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).json({ message: 'Date query parameter is required.' });
+    }
+
+    try {
+        const [leaveRecords] = await db.query(
+            `SELECT membership_id FROM membership_leave
+             WHERE status = 'APPROVED' AND ? BETWEEN start_date AND end_date`,
+            [date]
+        );
+        
+        const onLeaveIds = leaveRecords.map(record => record.membership_id);
+        res.json(onLeaveIds);
+
+    } catch (error) {
+        console.error('Error fetching memberships on leave:', error);
+        res.status(500).json({ message: 'Failed to fetch memberships on leave.' });
     }
 });
 
