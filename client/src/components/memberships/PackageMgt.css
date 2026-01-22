@@ -1,176 +1,199 @@
-/* Matches Ledger.css for consistency */
+    /* Matches Ledger.css for consistency */
 
-.package-mgt-container {
-    max-width: none;
-    padding: 24px 0;
-    animation: fadeIn 0.5s ease-in-out;
-}
+    .package-mgt-container {
+        max-width: none;
+        padding: 24px 0;
+        animation: fadeIn 0.5s ease-in-out;
+    }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-/* --- Page Header --- */
-.package-mgt-header {
-    background: none;
-    padding: 12px 0;
-    border-bottom: 1px solid #dee2e6;
-    margin-bottom: 1px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+    /* --- Page Header --- */
+    .package-mgt-header {
+        background: none;
+        padding: 12px 0;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 1px;
+    }
 
-.package-mgt-header h3 {
-    font-size: 36px;
-    font-weight: 700;
-    color: #023263;
-    margin: 0;
-    line-height: 1.0;
-}
+    .shared-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-/* --- Controls Bar & Filters --- */
-.controls-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Space out button group and search */
-    gap: 16px;
-    padding: 12px 20px;
-    margin-bottom: 24px;
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
+    .package-mgt-header h3 {
+        font-size: 36px;
+        font-weight: 700;
+        color: #023263;
+        margin: 0;
+        line-height: 1.0;
+    }
 
-.button-group {
-    display: flex;
-    align-items: center; /* Vertical alignment */
-    gap: 12px;
-    flex-shrink: 0;
-}
+    /* NEW styles for shared right-aligned controls */
+    .header-controls-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
-.primary-search-bar {
-    width: 350px; /* Constrained width */
-    position: relative;
-}
+    .header-controls-right .search-input {
+        width: 220px; /* Standard width for search */
+        padding: 6px 12px;
+        font-size: 14px;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+    }
 
-.primary-search-bar .search-input {
-    width: 100%;
-    background-color: #f8f9fa;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    font-size: 14px;
-    padding: 10px 16px 10px 35px; /* Space for search icon if added */
-    transition: all 0.2s;
-    box-sizing: border-box;
-}
+    .header-controls-right .btn {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
 
-/* --- Column Menu --- */
-.column-menu-wrapper {
-    position: relative;
-    display: inline-block;
-}
+    /* --- Controls Bar & Filters --- */
+    .controls-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between; /* Space out button group and search */
+        gap: 16px;
+        padding: 12px 20px;
+        margin-bottom: 24px;
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
 
-.column-menu-dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    min-width: 220px;
-    max-height: 300px; /* Scrollable if too many columns */
-    overflow-y: auto;
-    padding: 8px 0;
-    display: flex;
-    flex-direction: column;
-}
+    .button-group {
+        display: flex;
+        align-items: center; /* Vertical alignment */
+        gap: 12px;
+        flex-shrink: 0;
+    }
 
-.column-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    cursor: pointer;
-    color: #212529;
-}
+    .primary-search-bar {
+        width: 350px; /* Constrained width */
+        position: relative;
+    }
 
-.column-option:hover {
-    background-color: #f8f9fa;
-}
+    .primary-search-bar .search-input {
+        width: 100%;
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        font-size: 14px;
+        padding: 10px 16px 10px 35px; /* Space for search icon if added */
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
 
-/* --- Actions Menu (Three dots) --- */
-.actions-cell {
-    position: relative;
-    text-align: center;
-}
+    /* --- Column Menu --- */
+    .column-menu-wrapper {
+        position: relative;
+        display: inline-block;
+    }
 
-.three-dots-btn {
-    background-color: #f8f9fa;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 18px;
-    line-height: 1;
-    color: #495057;
-    cursor: pointer;
-    transition: all 0.2s;
-}
+    .column-menu-dropdown {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 8px);
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        min-width: 180px; /* Reduced from 220px */
+        max-height: 300px; /* Scrollable if too many columns */
+        overflow-y: auto;
+        padding: 8px 0;
+        display: flex;
+        flex-direction: column;
+    }
 
-.three-dots-btn:hover {
-    background-color: #e9ecef;
-    border-color: #adb5bd;
-}
+    .column-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        color: #212529;
+    }
 
-.actions-dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 5px);
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 100;
-    min-width: 160px;
-    overflow: hidden;
-    padding: 5px 0;
-}
+    .column-option:hover {
+        background-color: #f8f9fa;
+    }
 
-.actions-dropdown button {
-    display: block;
-    width: 100%;
-    padding: 10px 16px;
-    text-align: left;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 14px;
-    color: #212529;
-}
+    /* --- Actions Menu (Three dots) --- */
+    .actions-cell {
+        position: relative;
+        text-align: center;
+    }
 
-.actions-dropdown button:hover {
-    background-color: #f8f9fa;
-    color: #0d6efd;
-}
+    .three-dots-btn {
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 18px;
+        line-height: 1;
+        color: #495057;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-.actions-dropdown button.btn-danger {
-    color: #dc3545;
-}
-.actions-dropdown button.btn-danger:hover {
-    background-color: #fce8e6;
-}
+    .three-dots-btn:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
 
-/* Error Message */
-.error-message {
-    color: #721c24;
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
+    .actions-dropdown {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 5px);
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        min-width: 160px;
+        overflow: hidden;
+        padding: 5px 0;
+    }
+
+    .actions-dropdown button {
+        display: block;
+        width: 100%;
+        padding: 10px 16px;
+        text-align: left;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #212529;
+    }
+
+    .actions-dropdown button:hover {
+        background-color: #f8f9fa;
+        color: #0d6efd;
+    }
+
+    .actions-dropdown button.btn-danger {
+        color: #dc3545;
+    }
+    .actions-dropdown button.btn-danger:hover {
+        background-color: #fce8e6;
+    }
+
+    /* Error Message */
+    .error-message {
+        color: #721c24;
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }

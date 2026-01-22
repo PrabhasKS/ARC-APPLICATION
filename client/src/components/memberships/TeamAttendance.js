@@ -3,6 +3,7 @@ import api from '../../api';
 import AttendanceCalendarModal from './AttendanceCalendarModal';
 import MarkLeaveModal from './MarkLeaveModal';
 import './TeamAttendance.css';
+import './PackageMgt.css';
 
 const TeamAttendance = () => {
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -24,6 +25,7 @@ const TeamAttendance = () => {
     const [filterText, setFilterText] = useState('');
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [visibleColumns, setVisibleColumns] = useState({
+        id: true, // Added Team ID
         package: true,
         court: true,
         team: true,
@@ -150,7 +152,7 @@ const TeamAttendance = () => {
     return (
         <div className="attendance-container">
             <h3>Mark Team Attendance</h3>
-            <div className="attendance-header-controls">
+            <div className="package-mgt-header shared-header">
                 <div className="form-group attendance-datepicker">
                     <label>Select Date</label>
                     <input 
@@ -159,7 +161,7 @@ const TeamAttendance = () => {
                         onChange={e => setDate(e.target.value)}
                     />
                 </div>
-                 <div className="controls-container">
+                <div className="header-controls-right">
                     <input 
                         type="text" 
                         placeholder="Search..." 
@@ -195,6 +197,7 @@ const TeamAttendance = () => {
             <table className="dashboard-table">
                 <thead>
                     <tr>
+                        {visibleColumns.id && <th>ID</th>}
                         {visibleColumns.package && <th>Package</th>}
                         {visibleColumns.court && <th>Court</th>}
                         {visibleColumns.team && <th>Team</th>}
@@ -210,6 +213,7 @@ const TeamAttendance = () => {
                     {!loading && filteredMemberships.length > 0 ? (
                         filteredMemberships.map(mem => (
                             <tr key={mem.id}>
+                                {visibleColumns.id && <td>{mem.id}</td>}
                                 {visibleColumns.package && <td>{mem.package_name}</td>}
                                 {visibleColumns.court && <td>{mem.court_name}</td>}
                                 {visibleColumns.team && <td className="team-cell">{mem.team_members}</td>}

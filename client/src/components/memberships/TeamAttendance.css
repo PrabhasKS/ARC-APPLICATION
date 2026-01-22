@@ -2,19 +2,6 @@
     padding: 20px;
 }
 
-.attendance-header-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.attendance-datepicker {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
 /* Re-using status badges from other components */
 .status-badge {
     padding: 4px 8px;

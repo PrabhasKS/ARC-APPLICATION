@@ -4,6 +4,7 @@ import RenewModal from './RenewModal';
 import AddTeamMemberModal from './AddTeamMemberModal';
 import AddMembershipPaymentModal from './AddMembershipPaymentModal';
 import MarkLeaveModal from './MarkLeaveModal';
+import MembershipReceiptModal from './MembershipReceiptModal';
 import './PackageMgt.css'; 
 import { format } from 'date-fns'; // Import date-fns
 
@@ -24,6 +25,9 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
 
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [selectedMembershipForLeave, setSelectedMembershipForLeave] = useState(null);
+
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [selectedMembershipForReceipt, setSelectedMembershipForReceipt] = useState(null);
 
     const [openMenuId, setOpenMenuId] = useState(null);
     const [filterText, setFilterText] = useState('');
@@ -137,6 +141,25 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         setModalError(null);
     };
 
+    const handleOpenReceiptModal = async (membership) => {
+        try {
+            const response = await api.get(`/memberships/${membership.id}/details`);
+            setSelectedMembershipForReceipt(response.data);
+            setIsReceiptModalOpen(true);
+            setModalError(null);
+            setOpenMenuId(null);
+        } catch (err) {
+            setError('Failed to fetch membership details for receipt.');
+            console.error(err);
+        }
+    };
+
+    const handleCloseReceiptModal = () => {
+        setIsReceiptModalOpen(false);
+        setSelectedMembershipForReceipt(null);
+        setModalError(null);
+    };
+
     const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
         try {
             const response = await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
@@ -224,9 +247,9 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
 
     return (
         <div className="package-mgt-container">
-            <div className="package-mgt-header">
+            <div className="package-mgt-header shared-header">
                 <h3>{pageTitle}</h3>
-                <div className="controls-container">
+                <div className="header-controls-right">
                     <input 
                         type="text" 
                         placeholder="Search memberships..." 
@@ -304,6 +327,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                         <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
                                                         <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
                                                         <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
+                                                        <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                         <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
                                                     </div>
                                                 )}
@@ -317,13 +341,14 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                                                         {openMenuId === mem.id && (
                                                                                             <div className="actions-dropdown">
                                                                                                 <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
+                                                                                                <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
                                                                                 )}
                                                                                 {status === 'terminated' && (
-                                                                                    <button className="btn btn-secondary btn-sm" disabled>Receipt</button>
+                                                                                    <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                                                 )}
                                                                             </td>
                                                                         )}
@@ -367,6 +392,12 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                     onGrantLeave={handleGrantLeaveSubmit}
                     onClose={handleCloseLeaveModal}
                     error={modalError}
+                />
+            )}
+            {isReceiptModalOpen && (
+                <MembershipReceiptModal
+                    membership={selectedMembershipForReceipt}
+                    onClose={handleCloseReceiptModal}
                 />
             )}
         </div>

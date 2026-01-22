@@ -4,6 +4,7 @@ const db = require('../database');
 const { authenticateToken, isPrivilegedUser } = require('../middleware/auth');
 const sse = require('../sse');
 const cron = require('node-cron');
+const PDFDocument = require('pdfkit');
 
 // Apply authentication middleware to all routes in this file
 router.use(authenticateToken);
@@ -1187,6 +1188,173 @@ router.get('/active/:id/leave-history', isPrivilegedUser, async (req, res) => {
 
 });
 
+router.get('/:id/details', isPrivilegedUser, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const membershipQuery = `
+            SELECT 
+                am.id AS membership_id,
+                am.start_date,
+                am.current_end_date AS end_date,
+                am.status,
+                am.final_price AS price,
+                am.amount_paid,
+                am.balance_amount,
+                am.payment_status,
+                mp.name AS package_name,
+                mp.duration_days,
+                (SELECT u.username FROM users u JOIN payments p ON u.id = p.created_by_user_id WHERE p.membership_id = am.id ORDER BY p.payment_date ASC LIMIT 1) as created_by_user,
+                GROUP_CONCAT(DISTINCT m.full_name SEPARATOR ', ') AS member_name,
+                GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact
+            FROM 
+                active_memberships am
+            JOIN 
+                membership_packages mp ON am.package_id = mp.id
+            LEFT JOIN 
+                membership_team mt ON am.id = mt.membership_id
+            LEFT JOIN 
+                members m ON mt.member_id = m.id
+            WHERE 
+                am.id = ?
+            GROUP BY
+                am.id;
+        `;
+        const [membershipRows] = await db.query(membershipQuery, [id]);
+        if (membershipRows.length === 0) {
+            return res.status(404).json({ message: 'Membership not found' });
+        }
+        const membership = membershipRows[0];
+
+        const paymentsQuery = `
+            SELECT p.payment_id, p.amount, p.payment_mode, p.payment_date, u.username 
+            FROM payments p
+            LEFT JOIN users u ON p.created_by_user_id = u.id
+            WHERE p.membership_id = ?
+            ORDER BY p.payment_date ASC
+        `;
+        const [payments] = await db.query(paymentsQuery, [id]);
+
+        membership.payments = payments;
+        
+        //In the baseMembershipQuery it is duration_days, but in modal it is duration_months so I am converting it
+        membership.duration_months = membership.duration_days;
+
+        res.json(membership);
+
+    } catch (error) {
+        console.error('Error fetching membership details:', error);
+        res.status(500).json({ message: 'Error fetching membership details' });
+    }
+});
 
 
 module.exports = router;
+
+// PDF Receipt Generation
+router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const membershipQuery = `
+            SELECT 
+                am.id AS membership_id,
+                am.start_date,
+                am.current_end_date AS end_date,
+                am.status,
+                am.final_price AS price,
+                am.amount_paid,
+                (am.final_price - am.amount_paid) AS balance,
+                am.payment_status,
+                mp.name AS package_name,
+                mp.duration_days,
+                (SELECT u.username FROM users u JOIN payments p ON u.id = p.created_by_user_id WHERE p.membership_id = am.id ORDER BY p.payment_date ASC LIMIT 1) as created_by_user,
+                GROUP_CONCAT(DISTINCT m.full_name SEPARATOR ', ') AS team_members,
+                GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact
+            FROM 
+                active_memberships am
+            JOIN 
+                membership_packages mp ON am.package_id = mp.id
+            LEFT JOIN 
+                membership_team mt ON am.id = mt.membership_id
+            LEFT JOIN 
+                members m ON mt.member_id = m.id
+            WHERE 
+                am.id = ?
+            GROUP BY
+                am.id;
+        `;
+        const [membershipRows] = await db.query(membershipQuery, [id]);
+        if (membershipRows.length === 0) {
+            return res.status(404).send('Membership not found');
+        }
+        const membership = membershipRows[0];
+
+        const paymentsQuery = `
+            SELECT p.amount, p.payment_mode, p.payment_date, u.username 
+            FROM payments p
+            LEFT JOIN users u ON p.created_by_user_id = u.id
+            WHERE p.membership_id = ?
+            ORDER BY p.payment_date ASC
+        `;
+        const [payments] = await db.query(paymentsQuery, [id]);
+
+        const doc = new PDFDocument({ margin: 50 });
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="membership-receipt-${membership.membership_id}.pdf"`);
+        doc.pipe(res);
+
+        const formatDate = (dateString) => {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        };
+
+        // Header
+        doc.fontSize(20).text('ARC SportsZone', { align: 'center' });
+        doc.fontSize(14).text('Membership Receipt', { align: 'center' });
+        doc.moveDown();
+
+        // Membership Details
+        doc.fontSize(12).text(`Membership ID: ${membership.membership_id}`);
+        doc.text(`Package: ${membership.package_name} (${membership.duration_days} days)`);
+        doc.text(`Status: ${membership.status}`);
+        doc.text(`Start Date: ${formatDate(membership.start_date)}`);
+        doc.text(`End Date: ${formatDate(membership.end_date)}`);
+        doc.moveDown();
+
+        // Member Details
+        doc.fontSize(14).text('Member(s)', { underline: true });
+        doc.fontSize(12).text(membership.team_members);
+        doc.text(`Contact: ${membership.member_contact}`);
+        doc.moveDown();
+
+        // Payment Details
+        doc.fontSize(14).text('Payment Details', { underline: true });
+        doc.fontSize(12).text(`Total Price: Rs. ${membership.price.toFixed(2)}`);
+        doc.text(`Amount Paid: Rs. ${membership.amount_paid.toFixed(2)}`);
+        doc.text(`Balance: Rs. ${membership.balance.toFixed(2)}`);
+        doc.text(`Payment Status: ${membership.payment_status}`);
+        doc.moveDown();
+
+        // Payment History
+        if (payments.length > 0) {
+            doc.fontSize(14).text('Payment History', { underline: true });
+            payments.forEach(p => {
+                doc.fontSize(10).text(`- Rs. ${p.amount.toFixed(2)} via ${p.payment_mode} on ${formatDate(p.payment_date)} (by ${p.username || 'N/A'})`);
+            });
+            doc.moveDown();
+        }
+
+        // Footer
+        doc.fontSize(10).text(`Generated by: ${membership.created_by_user || 'N/A'}`, { align: 'right' });
+        doc.text(`Date: ${formatDate(new Date())}`, { align: 'right' });
+
+        doc.end();
+
+    } catch (error) {
+        console.error('Error generating membership PDF receipt:', error);
+        res.status(500).send('Error generating PDF receipt');
+    }
+});

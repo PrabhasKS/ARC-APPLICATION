@@ -1,0 +1,293 @@
+/* ===========================
+   MODAL OVERLAY
+   =========================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  overflow-y: auto;
+  z-index: 1000;
+  padding: 40px 0;
+}
+/* ===========================
+   MAIN RECEIPT CONTAINER
+   =========================== */
+.modal-content {
+  background-color: #fff;
+  padding: 40px 50px;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
+  font-family: 'Courier New', Courier, monospace;
+  color: #222;
+  margin: auto;
+}
+
+/* ===========================
+   HEADER
+   =========================== */
+.receipt-header {
+  text-align: center;
+  border-bottom: 2px dashed #333;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.receipt-header h1 {
+  font-size: 2.2rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #111;
+  margin-bottom: 0.3rem;
+}
+
+.receipt-header p {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #444;
+}
+
+/* ===========================
+   BODY SECTIONS
+   =========================== */
+.receipt-section {
+  margin-bottom: 1.8rem;
+  line-height: 1.6;
+}
+
+.receipt-section h2,
+.receipt-section h3 {
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.8rem;
+  color: #111;
+}
+
+/* Label-value alignment */
+.receipt-section p {
+  margin: 0.4rem 0;
+  font-size: 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.receipt-section strong {
+  min-width: 140px;
+  font-weight: 600;
+  color: #000;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+/* ===========================
+   PAYMENT HISTORY LIST
+   =========================== */
+.receipt-section ul {
+  list-style: none;
+  margin: 0.5rem 0 0 0;
+  padding: 0;
+}
+
+.receipt-section li {
+  font-size: 0.9rem;
+  margin: 0.3rem 0;
+}
+
+/* ===========================
+   FOOTER
+   =========================== */
+.receipt-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 2px dashed #333;
+  padding-top: 1.5rem;
+  margin-top: 2rem;
+}
+
+/* QR CODE */
+.qr-code {
+  text-align: center;
+}
+
+.qr-code p {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 0.4rem;
+  text-align: center;
+}
+
+/* Booking Info */
+.booking-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  gap: 4px;
+}
+
+.booking-summary-info p {
+  margin-bottom: 5px; /* Add space between paragraphs */
+}
+
+.booking-summary-info p:last-child {
+  margin-bottom: 0; /* No margin after the last paragraph */
+}
+
+/* ===========================
+   STATUS STYLES
+   =========================== */
+.status {
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: bold;
+  text-transform: capitalize;
+  display: inline-block;
+  min-width: 90px;
+  text-align: center;
+}
+
+.status.Completed,
+.status.Booked {
+  background-color: #28a745;
+}
+
+.status.Pending {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.status.Received {
+  background-color: #17a2b8;
+}
+
+.status.Cancelled {
+  background-color: #dc3545;
+}
+
+/* ===========================
+   ACTION BUTTONS
+   =========================== */
+.modal-actions {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  margin-left: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  transition: background-color 0.3s;
+}
+
+.modal-actions button:hover {
+  background-color: #0056b3;
+}
+
+/* ===========================
+   PRINT MODE - A4 SETTINGS
+   =========================== */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  body, html {
+    background: #fff;
+    font-size: 12pt; /* Set a base font size for the print document */
+  }
+
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make only the receipt content and its parents visible */
+  .modal-overlay, .modal-content, #receipt-content-to-print, #receipt-content-to-print * {
+    visibility: visible;
+  }
+
+  /* Reset modal layout for printing */
+  .modal-overlay {
+    position: static;
+    background: none;
+  }
+
+  .modal-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Hide non-essential parts */
+  .modal-actions {
+    display: none;
+  }
+
+  /* Space-utilizing styles */
+  .receipt-header h1 {
+    font-size: 2.5rem;
+  }
+  .receipt-header p {
+    font-size: 1.2rem;
+  }
+  .receipt-section {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    border-bottom: 1px solid #eee; /* Add separators for clarity */
+    padding-bottom: 1rem;
+  }
+  .receipt-section h2, .receipt-section h3 {
+    font-size: 1.5rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .receipt-section p {
+    font-size: 1.1rem;
+    display: block; /* Override flexbox for a document-like flow */
+  }
+  .receipt-section strong {
+      display: inline-block;
+      width: 180px; /* Align labels neatly */
+      font-weight: bold;
+  }
+
+  .receipt-section li {
+    font-size: 1rem;
+  }
+  .qr-code div {
+    max-width: 120px !important;
+  }
+
+  /* Ensure colors print */
+  .status {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
