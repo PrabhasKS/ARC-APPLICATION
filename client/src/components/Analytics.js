@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import {
@@ -57,13 +57,7 @@ const Analytics = () => {
         setDatePreset('today');
     }, []);
 
-    useEffect(() => {
-        if (dateRange.startDate && dateRange.endDate) {
-            fetchAnalyticsData(dateRange);
-        }
-    }, [dateRange, analyticsTab]);
-
-    const fetchAnalyticsData = async (dates) => {
+    const fetchAnalyticsData = useCallback(async (dates) => {
         try {
             const params = { ...dates };
 
@@ -257,7 +251,13 @@ const Analytics = () => {
         } catch (error) {
             console.error("Error fetching analytics data:", error);
         }
-    };
+    }, [analyticsTab]);
+
+    useEffect(() => {
+        if (dateRange.startDate && dateRange.endDate) {
+            fetchAnalyticsData(dateRange);
+        }
+    }, [dateRange, analyticsTab, fetchAnalyticsData]);
 
     const handleDateRangeChange = (e) => {
         setActiveFilter('custom');

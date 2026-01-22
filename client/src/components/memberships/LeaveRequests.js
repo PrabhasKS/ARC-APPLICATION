@@ -25,16 +25,6 @@ const LeaveRequests = () => {
         fetchLeaveRequests();
     }, [fetchLeaveRequests]);
 
-    const handleUpdateRequest = async (id, status) => {
-        try {
-            await api.put(`/memberships/leave-requests/${id}`, { status });
-            fetchLeaveRequests(); // Refresh the list
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to update leave request.');
-            console.error(err);
-        }
-    };
-
     if (loading) {
         return <div>Loading leave requests...</div>;
     }
