@@ -1,54 +1,91 @@
+/* =================================== */
+/* Desk Analytics - Stats Bar Style     */
+/* =================================== */
+
 .desk-analytics-container {
     display: flex;
-    justify-content: space-around;
-    padding: 1rem;
-    background-color: #f9f9f9;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
     border-radius: 8px;
-    margin-bottom: 1rem;
-    border: 1px solid #eee;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    overflow: hidden; /* Ensures child borders don't poke out of the radius */
 }
 
-.summary-card {
-    background-color: #fff;
+.stat-item {
+    flex: 1 1 0; /* Distribute space evenly */
     padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    text-align: center;
-    flex-grow: 1;
-    margin: 0 0.5rem;
-}
-
-.summary-card h4 {
-    margin: 0 0 0.5rem 0;
-    color: #333;
-    font-size: 1rem;
-}
-
-.summary-card p {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #007bff;
-}
-
-.summary-card ul {
-    list-style-type: none;
-    padding: 0;
-    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
     text-align: left;
+    border-right: 1px solid #e9ecef;
+    min-width: 0; /* Prevents flex items from overflowing */
 }
 
-.summary-card li {
-    font-size: 0.9rem;
-    color: #555;
-    padding: 0.2rem 0;
+.desk-analytics-container .stat-item:last-child {
+    border-right: none; /* No divider on the last item */
 }
 
-.error-message {
-    color: #d9534f;
-    padding: 1rem;
-    background-color: #f2dede;
-    border: 1px solid #ebccd1;
+.stat-label {
+    font-size: 0.8rem; /* Compact label size */
+    color: #6c757d; /* Muted color for the label */
+    text-transform: uppercase;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-value {
+    font-size: 1.5rem; /* Prominent but not huge value */
+    font-weight: 700;
+    color: #212529;
+    line-height: 1.2;
+}
+
+.stat-value.pending {
+    color: #dc3545; /* Highlight pending amount */
+}
+
+/* Special styling for the 'Revenue by Mode' item */
+.stat-item.mode-details {
+    flex-grow: 1.5; /* Give slightly more space as it has more content */
+}
+
+.modes-wrapper {
+    display: flex;
+    gap: 0.8rem; /* Horizontal gap between modes */
+    align-items: center;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+    margin-top: 2px;
+}
+
+.mode-item {
+    font-size: 0.85rem;
+    color: #495057;
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.5rem;
     border-radius: 4px;
+}
+
+.mode-value {
+    font-weight: 600;
+    color: #000;
+}
+
+.no-data {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* General Error Message Style (retained for consistency) */
+.error-message {
+    color: #721c24;
+    padding: 1rem;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
     text-align: center;
 }

@@ -64,31 +64,31 @@ const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'http://
 
     return (
         <div className="desk-analytics-container">
-            <div className="summary-card">
-                <h4>Total Bookings</h4>
-                <p>{total_bookings}</p>
+            <div className="stat-item">
+                <span className="stat-label">Total Bookings</span>
+                <span className="stat-value">{total_bookings}</span>
             </div>
-            <div className="summary-card">
-                <h4>Total Revenue</h4>
-                <p>₹{Number(total_revenue).toFixed(2)}</p>
+            <div className="stat-item">
+                <span className="stat-label">Total Revenue</span>
+                <span className="stat-value">₹{Number(total_revenue).toFixed(2)}</span>
             </div>
-            <div className="summary-card">
-                <h4>Pending Amount</h4>
-                <p>₹{Number(pending_amount).toFixed(2)}</p>
+            <div className="stat-item">
+                <span className="stat-label">Pending Amount</span>
+                <span className="stat-value pending">₹{Number(pending_amount).toFixed(2)}</span>
             </div>
-            <div className="summary-card">
-                <h4>Revenue by Mode</h4>
-                {revenue_by_mode.length > 0 ? (
-                    <ul>
-                        {revenue_by_mode.map(mode => (
-                            <li key={mode.payment_mode}>
-                                {mode.payment_mode}: ₹{Number(mode.total).toFixed(2)}
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>No revenue data.</p>
-                )}
+            <div className="stat-item mode-details">
+                <span className="stat-label">Revenue by Mode</span>
+                <div className="modes-wrapper">
+                    {revenue_by_mode.length > 0 ? (
+                        revenue_by_mode.map(mode => (
+                            <span className="mode-item" key={mode.payment_mode}>
+                                {mode.payment_mode}: <span className="mode-value">₹{Number(mode.total).toFixed(2)}</span>
+                            </span>
+                        ))
+                    ) : (
+                        <span className="no-data">No revenue data.</span>
+                    )}
+                </div>
             </div>
         </div>
     );

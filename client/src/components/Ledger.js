@@ -19,6 +19,7 @@ const Ledger = ({ user }) => {
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [error, setError] = useState(null);
+    const [showAnalytics, setShowAnalytics] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -157,7 +158,7 @@ const Ledger = ({ user }) => {
     return (
         <div className="ledger-container">
             {/* <h2 style={{ color: 'red' }}>DEBUG: Version 2</h2> */}
-            {user && (user.role === 'admin' || user.role === 'desk') && (
+            {user && (user.role === 'admin' || user.role === 'desk') && showAnalytics && (
                 <DeskAnalytics date={filters.date} />
             )}
             <header className="page-header">
@@ -165,6 +166,11 @@ const Ledger = ({ user }) => {
             </header>
             <div className="controls-bar">
                 <div className="button-group">
+                    {user && (user.role === 'admin' || user.role === 'desk') && (
+                        <button className="filter-button" onClick={() => setShowAnalytics(!showAnalytics)}>
+                            {showAnalytics ? 'Hide' : 'Show'} Analytics
+                        </button>
+                    )}
                     <button className="filter-button" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
                         Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
                     </button>
