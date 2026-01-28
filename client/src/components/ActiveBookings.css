@@ -1,3 +1,4 @@
+/* --- Container & Layout --- */
 .active-bookings-container {
     padding: 15px;
     background-color: #f9f9f9;
@@ -21,14 +22,17 @@
     gap: 15px;
 }
 
+/* --- Card Styling --- */
 .active-booking-card {
     background-color: #fff;
-    border-left: 5px solid #ccc; /* Default border */
-    padding: 10px 15px;
+    border-left: 5px solid #ccc;
+    padding: 12px 15px; /* Slightly more padding for breathability */
     border-radius: 5px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    cursor: pointer; /* Make cards look clickable */
+    cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .active-booking-card:hover {
@@ -36,43 +40,51 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
+/* --- Status Colors --- */
 .active-booking-card.upcoming {
-    border-left-color: #17a2b8; /* Blue for upcoming */
+    border-left-color: #17a2b8;
 }
 
 .active-booking-card.active {
-    border-left-color: #28a745; /* Green for active */
+    border-left-color: #28a745;
     animation: pulse 2s infinite;
 }
 
 .active-booking-card.ended {
-    border-left-color: #dc3545; /* Red for ended */
+    border-left-color: #dc3545;
 }
 
+/* --- The Row Fix (Sport & Court Name) --- */
 .booking-info {
-    display: flex;
-    flex-direction: row; /* Explicitly set direction */
-    justify-content: space-between; /* Place items in opposite corners */
-    align-items: center; /* Vertically align items */
+    display: flex !important;      /* Forces children into a row */
+    flex-direction: row !important;
+    justify-content: space-between; /* Pushes Sport to left, Court to right */
+    align-items: center;            /* Vertical alignment */
+    width: 100%;                    /* Spans full width of card */
     font-weight: bold;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
 }
 
 .sport-name,
 .court-name {
-    flex-shrink: 0; /* Prevent items from shrinking */
-    white-space: nowrap; /* Prevent text from wrapping */
+    flex-shrink: 0;                 /* Stops them from squishing */
+    white-space: nowrap;            /* Stops them from wrapping */
+    display: inline-block;          /* Ensures they behave as containers */
 }
 
 .sport-name {
     color: #333;
+    font-size: 1.1em;
 }
 
 .court-name {
     color: #666;
     font-size: 0.9em;
+    text-align: right;              /* Aligns text within its own space */
 }
 
+/* --- Centered Details --- */
 .booking-date {
     font-size: 0.9em;
     font-weight: bold;
@@ -94,6 +106,7 @@
     text-align: center;
 }
 
+/* --- Action Buttons & Messages --- */
 .ended-message {
     margin-top: 10px;
     padding-top: 10px;
@@ -104,28 +117,33 @@
 }
 
 .clear-btn {
-    margin-left: 10px;
-    padding: 3px 8px;
+    margin-top: 8px;
+    padding: 6px 12px;
     border: 1px solid #ccc;
     background-color: #f0f0f0;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    transition: background 0.2s;
+}
+
+.clear-btn:hover {
+    background-color: #e2e2e2;
 }
 
 .mark-completed-btn {
-    background-color: #28a745; /* Green */
+    background-color: #28a745;
     color: white;
     border-color: #28a745;
 }
 
+.mark-completed-btn:hover {
+    background-color: #218838;
+}
+
+/* --- Animations --- */
 @keyframes pulse {
-    0% {
-        box-shadow: 0 1px 3px rgba(40, 167, 69, 0.2);
-    }
-    50% {
-        box-shadow: 0 1px 15px rgba(40, 167, 69, 0.5);
-    }
-    100% {
-        box-shadow: 0 1px 3px rgba(40, 167, 69, 0.2);
-    }
+    0% { box-shadow: 0 1px 3px rgba(40, 167, 69, 0.2); }
+    50% { box-shadow: 0 1px 15px rgba(40, 167, 69, 0.5); }
+    100% { box-shadow: 0 1px 3px rgba(40, 167, 69, 0.2); }
 }

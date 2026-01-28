@@ -3,7 +3,7 @@ import api from '../../api';
 import PackageEditModal from './PackageEditModal';
 import './PackageMgt.css';
 
-const PackageMgt = () => {
+const PackageMgt = ({ user }) => {
     const [packages, setPackages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -11,6 +11,8 @@ const PackageMgt = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState(null);
+
+    const isAdmin = user && user.role === 'admin';
 
     const fetchPackages = useCallback(async () => {
         try {
@@ -83,7 +85,9 @@ const PackageMgt = () => {
         <div className="package-mgt-container">
             <div className="package-mgt-header">
                 <h3>Membership Packages</h3>
-                <button className="btn btn-primary" onClick={() => handleOpenModal()}>Add New Package</button>
+                {isAdmin && (
+                    <button className="btn btn-primary" onClick={() => handleOpenModal()}>Add New Package</button>
+                )}
             </div>
             <table className="dashboard-table">
                 <thead>
@@ -92,7 +96,7 @@ const PackageMgt = () => {
                         <th>Duration (Days)</th>
                         <th>Per Person Price (Rs.)</th>
                         <th>Max Team Size</th>
-                        <th>Actions</th>
+                        {isAdmin && <th>Actions</th>}
                     </tr>
                 </thead>
                 <tbody>
@@ -103,15 +107,17 @@ const PackageMgt = () => {
                                 <td>{pkg.duration_days}</td>
                                 <td>{pkg.per_person_price}</td>
                                 <td>{pkg.max_team_size}</td>
-                                <td className="actions-cell">
-                                    <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal(pkg)}>Edit</button>
-                                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(pkg.id)}>Delete</button>
-                                </td>
+                                {isAdmin && (
+                                    <td className="actions-cell">
+                                        <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal(pkg)}>Edit</button>
+                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(pkg.id)}>Delete</button>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="5">No membership packages found.</td>
+                            <td colSpan={isAdmin ? "5" : "4"}>No membership packages found.</td>
                         </tr>
                     )}
                 </tbody>

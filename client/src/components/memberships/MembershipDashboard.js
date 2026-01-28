@@ -15,7 +15,7 @@ const MembershipDashboard = ({ user }) => {
             case 'subscribe':
                 return <NewSubscription />;
             case 'packages':
-                return <PackageMgt />;
+                return <PackageMgt user={user} />;
             case 'memberships':
                 return <MembershipView />;
             case 'attendance':

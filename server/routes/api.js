@@ -40,7 +40,7 @@ const toMinutes = (timeStr) => {
     if (!timeStr) return 0;
     const parts = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (!parts) return 0;
-
+ 
     let hours = parseInt(parts[1], 10);
     const minutes = parseInt(parts[2], 10);
     const modifier = parts[3] ? parts[3].toUpperCase() : null;

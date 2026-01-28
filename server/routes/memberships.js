@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { authenticateToken, isPrivilegedUser } = require('../middleware/auth');
+const { authenticateToken, isPrivilegedUser, isAdmin } = require('../middleware/auth');
 const sse = require('../sse');
 const cron = require('node-cron');
 const PDFDocument = require('pdfkit');
@@ -70,7 +70,7 @@ router.get('/packages/:id', async (req, res) => {
 });
 
 // POST a new membership package
-router.post('/packages', isPrivilegedUser, async (req, res) => {
+router.post('/packages', isAdmin, async (req, res) => {
   try {
     const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
     if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
@@ -88,7 +88,7 @@ router.post('/packages', isPrivilegedUser, async (req, res) => {
 });
 
 // PUT (update) an existing membership package
-router.put('/packages/:id', isPrivilegedUser, async (req, res) => {
+router.put('/packages/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
@@ -110,7 +110,7 @@ router.put('/packages/:id', isPrivilegedUser, async (req, res) => {
 });
 
 // DELETE a membership package
-router.delete('/packages/:id', isPrivilegedUser, async (req, res) => {
+router.delete('/packages/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const [result] = await db.query('DELETE FROM membership_packages WHERE id = ?', [id]);
