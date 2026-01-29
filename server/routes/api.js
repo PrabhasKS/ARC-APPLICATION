@@ -679,7 +679,14 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
             const [hours, minutes] = timeStr.split(':').map(Number);
             return hours * 60 + minutes;
         };
-        const durationInMinutes = parseTime(endTime) - parseTime(startTime);
+        let startMinutes = parseTime(startTime);
+        let endMinutes = parseTime(endTime);
+
+        // Adjust endMinutes if the booking crosses midnight
+        if (endMinutes <= startMinutes) {
+            endMinutes += 24 * 60; // Add 24 hours in minutes
+        }
+        const durationInMinutes = endMinutes - startMinutes;
 
         let court_price;
         if (capacity > 1) {
@@ -758,7 +765,14 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             const [hours, minutes] = timeStr.split(':').map(Number);
             return hours * 60 + minutes;
         };
-        const durationInMinutes = parseTime(endTime) - parseTime(startTime);
+        let startMinutes = parseTime(startTime);
+        let endMinutes = parseTime(endTime);
+
+        // Adjust endMinutes if the booking crosses midnight
+        if (endMinutes <= startMinutes) {
+            endMinutes += 24 * 60; // Add 24 hours in minutes
+        }
+        const durationInMinutes = endMinutes - startMinutes;
 
         if (durationInMinutes <= 0) {
             await connection.rollback();
