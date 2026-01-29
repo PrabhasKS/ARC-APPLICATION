@@ -46,9 +46,12 @@ const MembershipReceiptModal = ({ membership, onClose }) => {
                         </div>
                         <div className="receipt-section">
                             <h3>Payment Details</h3>
-                            <p><strong>Total Amount:</strong> ₹{membership.price}</p>
+                            <p><strong>Actual Price:</strong> ₹{membership.base_price}</p>
+                            <p><strong>Discount:</strong> ₹{membership.discount_amount}</p>
+                            {/*membership.discount_details && <p><strong>Discount Details:</strong> {membership.discount_details}</p>*/}
+                            <p><strong>Final Price:</strong> ₹{membership.price}</p>
                             <p><strong>Amount Paid:</strong> ₹{membership.amount_paid || 0}</p>
-                            <p><strong>Balance:</strong> ₹{(membership.price - (membership.amount_paid || 0))}</p>
+                            <p><strong>Balance:</strong> ₹{membership.balance_amount}</p>
                             <p><strong>Payment Status:</strong> <span className={`status ${membership.payment_status}`}>{membership.payment_status}</span></p>
                              {membership.payments && membership.payments.length > 0 && (
                                 <div>
@@ -77,7 +80,7 @@ const MembershipReceiptModal = ({ membership, onClose }) => {
                             </div>
                             <div className="booking-info">
                                 <p><strong>Registered By:</strong> {membership.created_by_user || 'N/A'}</p>
-                                <p><strong>Membership Status:</strong> <span className={`status ${membership.status}`}>{membership.status}</span></p>
+                                <p><strong>Membership Status:</strong> <span className={`status ${membership.status}`} style={{ color: 'black' }}>{membership.status}</span></p>
                             </div>
                         </div>
                     </div>

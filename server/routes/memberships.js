@@ -744,6 +744,9 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
         if (date) {
             whereClause += ' AND ? BETWEEN am.start_date AND am.current_end_date';
             queryParams.push(date);
+        } else {
+            // For the general 'active' list, only include memberships that have not expired.
+            whereClause += ' AND am.current_end_date >= CURDATE()';
         }
 
         const query = `
@@ -1201,11 +1204,14 @@ router.get('/:id/details', isPrivilegedUser, async (req, res) => {
                 am.amount_paid,
                 am.balance_amount,
                 am.payment_status,
+                am.discount_details,
                 mp.name AS package_name,
                 mp.duration_days,
+                mp.per_person_price,
                 (SELECT u.username FROM users u JOIN payments p ON u.id = p.created_by_user_id WHERE p.membership_id = am.id ORDER BY p.payment_date ASC LIMIT 1) as created_by_user,
                 GROUP_CONCAT(DISTINCT m.full_name SEPARATOR ', ') AS member_name,
-                GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact
+                GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact,
+                COUNT(DISTINCT mt.member_id) as member_count
             FROM 
                 active_memberships am
             JOIN 
@@ -1224,6 +1230,12 @@ router.get('/:id/details', isPrivilegedUser, async (req, res) => {
             return res.status(404).json({ message: 'Membership not found' });
         }
         const membership = membershipRows[0];
+
+        const base_price = parseFloat(membership.per_person_price) * membership.member_count;
+        const discount_amount = base_price - parseFloat(membership.price);
+
+        membership.base_price = base_price;
+        membership.discount_amount = discount_amount;
 
         const paymentsQuery = `
             SELECT p.payment_id, p.amount, p.payment_mode, p.payment_date, u.username 
@@ -1264,8 +1276,11 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
                 am.amount_paid,
                 (am.final_price - am.amount_paid) AS balance,
                 am.payment_status,
+                am.discount_details,
                 mp.name AS package_name,
                 mp.duration_days,
+                mp.per_person_price,
+                (SELECT COUNT(DISTINCT mt.member_id) FROM membership_team mt WHERE mt.membership_id = am.id) as member_count,
                 (SELECT u.username FROM users u JOIN payments p ON u.id = p.created_by_user_id WHERE p.membership_id = am.id ORDER BY p.payment_date ASC LIMIT 1) as created_by_user,
                 GROUP_CONCAT(DISTINCT m.full_name SEPARATOR ', ') AS team_members,
                 GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact
@@ -1287,6 +1302,12 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
             return res.status(404).send('Membership not found');
         }
         const membership = membershipRows[0];
+
+        const base_price = parseFloat(membership.per_person_price) * membership.member_count;
+        const discount_amount = base_price - parseFloat(membership.price);
+
+        membership.base_price = base_price;
+        membership.discount_amount = discount_amount;
 
         const paymentsQuery = `
             SELECT p.amount, p.payment_mode, p.payment_date, u.username 
@@ -1332,8 +1353,13 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
 
         // Payment Details
         doc.fontSize(14).text('Payment Details', { underline: true });
-        doc.fontSize(12).text(`Total Price: Rs. ${membership.price.toFixed(2)}`);
-        doc.text(`Amount Paid: Rs. ${membership.amount_paid.toFixed(2)}`);
+        doc.fontSize(12).text(`Actual Price: Rs. ${membership.base_price.toFixed(2)}`);
+        doc.text(`Discount: Rs. ${membership.discount_amount.toFixed(2)}`);
+        if (membership.discount_details) {
+            doc.text(`Discount Details: ${membership.discount_details}`);
+        }
+        doc.font('Helvetica-Bold').text(`Final Price: Rs. ${membership.price.toFixed(2)}`);
+        doc.font('Helvetica').text(`Amount Paid: Rs. ${membership.amount_paid.toFixed(2)}`);
         doc.text(`Balance: Rs. ${membership.balance.toFixed(2)}`);
         doc.text(`Payment Status: ${membership.payment_status}`);
         doc.moveDown();
