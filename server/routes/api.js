@@ -149,9 +149,26 @@ router.get('/admin/users', authenticateToken, isAdmin, async (req, res) => {
 router.delete('/admin/users/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     try {
+        // Step 1: Get the role of the user to be deleted
+        const [userToDelete] = await db.query('SELECT role FROM users WHERE id = ?', [id]);
+
+        if (userToDelete.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Step 2: If the user is an admin, check if they are the last admin
+        if (userToDelete[0].role === 'admin') {
+            const [adminCount] = await db.query('SELECT COUNT(*) as count FROM users WHERE role = "admin"');
+            if (adminCount[0].count === 1) {
+                return res.status(403).json({ message: 'Cannot delete the last administrator. Please create another admin user first.' });
+            }
+        }
+
+        // Step 3: Proceed with deletion if not the last admin or not an admin
         await db.query('DELETE FROM users WHERE id = ?', [id]);
         res.json({ success: true, message: 'User deleted successfully' });
     } catch (err) {
+        console.error('Error deleting user:', err);
         res.status(500).json({ error: err.message });
     }
 });
