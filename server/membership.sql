@@ -177,3 +177,14 @@ ADD COLUMN end_date DATE NULL;
 
 ALTER TABLE active_memberships
 ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active';
+
+ALTER TABLE active_memberships
+ADD COLUMN created_by_user_id INT NULL,
+ADD CONSTRAINT fk_created_by_user
+  FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE membership_leave
+ADD COLUMN approved_by_user_id INT NULL,
+ADD CONSTRAINT fk_approved_by_user
+  FOREIGN KEY (approved_by_user_id) REFERENCES users(id) ON DELETE SET NULL;
+

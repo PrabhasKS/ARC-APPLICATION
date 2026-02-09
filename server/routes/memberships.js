@@ -339,9 +339,9 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         // ----------------------
         
         const [activeMembershipResult] = await connection.query(
-            `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [package_id, court_id, start_date, time_slot, original_end_date, original_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status]
+            `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status, created_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [package_id, court_id, start_date, time_slot, original_end_date, original_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status, created_by_user_id]
         );
         const active_membership_id = activeMembershipResult.insertId;
 
@@ -382,12 +382,14 @@ router.get('/leave-requests', isPrivilegedUser, async (req, res) => {
             SELECT 
                 ml.id, ml.membership_id, ml.leave_days, ml.start_date, ml.end_date, ml.reason, ml.status, ml.requested_at,
                 am.start_date as membership_start_date, am.current_end_date, mp.name as package_name,
-                GROUP_CONCAT(m.full_name SEPARATOR ', ') as team_members
+                GROUP_CONCAT(m.full_name SEPARATOR ', ') as team_members,
+                u.username as approved_by
             FROM membership_leave ml
             JOIN active_memberships am ON ml.membership_id = am.id
             JOIN membership_packages mp ON am.package_id = mp.id
             LEFT JOIN membership_team mt ON am.id = mt.membership_id
             LEFT JOIN members m ON mt.member_id = m.id
+            LEFT JOIN users u ON ml.approved_by_user_id = u.id
             GROUP BY ml.id ORDER BY ml.requested_at DESC
         `;
         const [requests] = await db.query(query);
@@ -417,6 +419,7 @@ router.post('/request-leave', isPrivilegedUser, async (req, res) => {
 
 router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
     const { membership_id, start_date, end_date, reason, custom_extension_start_date } = req.body;
+    const approved_by_user_id = req.user.id;
 
     if (!membership_id || !start_date || !end_date) {
         return res.status(400).json({ message: 'Membership ID, start date, and end date are required.' });
@@ -555,9 +558,9 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         
         // --- ALL CHECKS PASSED, PROCEED ---
         await connection.query(
-            `INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status) 
-             VALUES (?, ?, ?, ?, ?, 'APPROVED')`,
-            [membership_id, start_date, end_date, leave_days, reason]
+            `INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status, approved_by_user_id) 
+             VALUES (?, ?, ?, ?, ?, 'APPROVED', ?)`,
+            [membership_id, start_date, end_date, leave_days, reason, approved_by_user_id]
         );
         
         await connection.query(
@@ -717,11 +720,8 @@ const baseMembershipQuery = `
         COUNT(DISTINCT mt.member_id) as current_members_count,
         (
             SELECT u.username 
-            FROM payments p 
-            JOIN users u ON p.created_by_user_id = u.id 
-            WHERE p.membership_id = am.id 
-            ORDER BY p.payment_date ASC 
-            LIMIT 1
+            FROM users u 
+            WHERE u.id = am.created_by_user_id
         ) as created_by,
         (
              SELECT GROUP_CONCAT(CONCAT(p.amount, ': ', p.payment_mode, IF(p.payment_id IS NOT NULL, CONCAT(' (', p.payment_id, ')'), '')) SEPARATOR '; ')
@@ -731,6 +731,7 @@ const baseMembershipQuery = `
     FROM active_memberships am
     JOIN membership_packages mp ON am.package_id = mp.id
     JOIN courts c ON am.court_id = c.id
+    LEFT JOIN users creator ON am.created_by_user_id = creator.id
     LEFT JOIN membership_team mt ON am.id = mt.membership_id
     LEFT JOIN members m ON mt.member_id = m.id
 `;
@@ -1208,7 +1209,7 @@ router.get('/:id/details', isPrivilegedUser, async (req, res) => {
                 mp.name AS package_name,
                 mp.duration_days,
                 mp.per_person_price,
-                (SELECT u.username FROM users u JOIN payments p ON u.id = p.created_by_user_id WHERE p.membership_id = am.id ORDER BY p.payment_date ASC LIMIT 1) as created_by_user,
+                creator.username AS created_by_user,
                 GROUP_CONCAT(DISTINCT m.full_name SEPARATOR ', ') AS member_name,
                 GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact,
                 COUNT(DISTINCT mt.member_id) as member_count
@@ -1216,6 +1217,8 @@ router.get('/:id/details', isPrivilegedUser, async (req, res) => {
                 active_memberships am
             JOIN 
                 membership_packages mp ON am.package_id = mp.id
+            LEFT JOIN
+                users creator ON am.created_by_user_id = creator.id
             LEFT JOIN 
                 membership_team mt ON am.id = mt.membership_id
             LEFT JOIN 
@@ -1245,8 +1248,17 @@ router.get('/:id/details', isPrivilegedUser, async (req, res) => {
             ORDER BY p.payment_date ASC
         `;
         const [payments] = await db.query(paymentsQuery, [id]);
-
         membership.payments = payments;
+
+        const leaveQuery = `
+            SELECT ml.start_date, ml.end_date, ml.reason, u.username as approved_by
+            FROM membership_leave ml
+            LEFT JOIN users u ON ml.approved_by_user_id = u.id
+            WHERE ml.membership_id = ? AND ml.status = 'APPROVED'
+            ORDER BY ml.start_date ASC
+        `;
+        const [leaves] = await db.query(leaveQuery, [id]);
+        membership.leaves = leaves;
         
         //In the baseMembershipQuery it is duration_days, but in modal it is duration_months so I am converting it
         membership.duration_months = membership.duration_days;
@@ -1281,13 +1293,15 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
                 mp.duration_days,
                 mp.per_person_price,
                 (SELECT COUNT(DISTINCT mt.member_id) FROM membership_team mt WHERE mt.membership_id = am.id) as member_count,
-                (SELECT u.username FROM users u JOIN payments p ON u.id = p.created_by_user_id WHERE p.membership_id = am.id ORDER BY p.payment_date ASC LIMIT 1) as created_by_user,
+                creator.username as created_by_user,
                 GROUP_CONCAT(DISTINCT m.full_name SEPARATOR ', ') AS team_members,
                 GROUP_CONCAT(DISTINCT m.phone_number SEPARATOR ', ') as member_contact
             FROM 
                 active_memberships am
             JOIN 
                 membership_packages mp ON am.package_id = mp.id
+            LEFT JOIN
+                users creator ON am.created_by_user_id = creator.id
             LEFT JOIN 
                 membership_team mt ON am.id = mt.membership_id
             LEFT JOIN 
@@ -1384,3 +1398,4 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
         res.status(500).send('Error generating PDF receipt');
     }
 });
+

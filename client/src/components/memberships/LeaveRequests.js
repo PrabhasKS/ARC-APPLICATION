@@ -46,6 +46,7 @@ const LeaveRequests = () => {
                         <th>Days</th>
                         <th>Reason</th>
                         <th>Status</th>
+                        <th>Approved By</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -67,11 +68,12 @@ const LeaveRequests = () => {
                                         {req.status}
                                     </span>
                                 </td>
+                                <td>{req.approved_by || '-'}</td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7">No leave records found.</td>
+                            <td colSpan="8">No leave records found.</td>
                         </tr>
                     )}
                 </tbody>
