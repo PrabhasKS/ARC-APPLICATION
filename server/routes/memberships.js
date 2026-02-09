@@ -311,7 +311,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
 
         const startDateObj = new Date(start_date);
         const endDateObj = new Date(startDateObj);
-        endDateObj.setDate(startDateObj.getDate() + duration_days);
+        endDateObj.setDate(startDateObj.getDate() + duration_days - 1); // -1 to make it inclusive
         const original_end_date = endDateObj.toISOString().slice(0, 10);
 
         // --- Conflict Check ---
@@ -863,7 +863,7 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
 
         const startDate = new Date(start_date);
         const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + duration_days);
+        endDate.setDate(startDate.getDate() + duration_days - 1);
 
         // --- UPDATE existing active_memberships record ---
         await connection.query(
