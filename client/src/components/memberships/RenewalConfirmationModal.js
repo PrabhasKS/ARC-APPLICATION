@@ -1,5 +1,6 @@
 import React from 'react';
 import './PackageEditModal.css'; // Re-use modal styles
+import { format } from 'date-fns';
 
 const RenewalConfirmationModal = ({ renewedMembership, onClose }) => {
     return (
@@ -12,7 +13,7 @@ const RenewalConfirmationModal = ({ renewedMembership, onClose }) => {
                 <div className="modal-body">
                     <p>Membership ID: <strong>{renewedMembership.id}</strong></p>
                     <p>Package: <strong>{renewedMembership.package_name}</strong></p>
-                    <p>New End Date: <strong>{renewedMembership.current_end_date}</strong></p>
+                    <p>New End Date: <strong>{format(new Date(renewedMembership.current_end_date), 'dd/MM/yyyy')}</strong></p>
                     <p>Amount Paid: <strong>Rs. {renewedMembership.amount_paid}</strong></p>
                     <p>Balance Amount: <strong>Rs. {renewedMembership.balance_amount}</strong></p>
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api';
 import './LeaveRequests.css';
+import { format } from 'date-fns';
 
 const LeaveRequests = () => {
     const [requests, setRequests] = useState([]);
@@ -58,7 +59,7 @@ const LeaveRequests = () => {
                                 <td className="team-cell">{req.team_members}</td>
                                 <td>
                                     {req.start_date && req.end_date ? 
-                                        `${new Date(req.start_date).toLocaleDateString()} - ${new Date(req.end_date).toLocaleDateString()}` : 
+                                        `${format(new Date(req.start_date), 'dd/MM/yyyy')} - ${format(new Date(req.end_date), 'dd/MM/yyyy')}` : 
                                         'N/A'}
                                 </td>
                                 <td>{req.leave_days}</td>

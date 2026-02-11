@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api';
 import './HolidayMgt.css';
+import { format } from 'date-fns';
 
 const HolidayMgt = () => {
     const [holidays, setHolidays] = useState([]);
@@ -104,7 +105,7 @@ const HolidayMgt = () => {
                             {holidays.length > 0 ? (
                                 holidays.map(h => (
                                     <tr key={h.id}>
-                                        <td>{new Date(h.holiday_date).toLocaleDateString()}</td>
+                                        <td>{format(new Date(h.holiday_date), 'dd/MM/yyyy')}</td>
                                         <td>{h.reason}</td>
                                         <td className="actions-cell">
                                             <button className="btn btn-danger btn-sm" onClick={() => handleDelete(h.id)}>Delete</button>
