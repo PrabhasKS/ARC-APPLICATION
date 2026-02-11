@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api';
 import RenewModal from './RenewModal';
-import AddTeamMemberModal from './AddTeamMemberModal';
 import AddMembershipPaymentModal from './AddMembershipPaymentModal';
 import MarkLeaveModal from './MarkLeaveModal';
 import MembershipReceiptModal from './MembershipReceiptModal';
-import RenewalConfirmationModal from './RenewalConfirmationModal'; // Import the new modal
+import RenewalConfirmationModal from './RenewalConfirmationModal';
+import ManageActiveMembersModal from './ManageActiveMembersModal'; // New Import
 import './PackageMgt.css';
-import { format } from 'date-fns'; // Import date-fns
+import { format } from 'date-fns';
 
 const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const [memberships, setMemberships] = useState([]);
@@ -18,9 +18,6 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
     const [selectedMembership, setSelectedMembership] = useState(null);
 
-    const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-    const [membershipToAddMemberTo, setMembershipToAddMemberTo] = useState(null);
-
     const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
     const [selectedMembershipForPayment, setSelectedMembershipForPayment] = useState(null);
 
@@ -30,8 +27,11 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [selectedMembershipForReceipt, setSelectedMembershipForReceipt] = useState(null);
 
-    const [isRenewalConfirmationModalOpen, setIsRenewalConfirmationModalOpen] = useState(false); // New state
-    const [renewedMembershipDetails, setRenewedMembershipDetails] = useState(null); // New state
+    const [isRenewalConfirmationModalOpen, setIsRenewalConfirmationModalOpen] = useState(false);
+    const [renewedMembershipDetails, setRenewedMembershipDetails] = useState(null);
+
+    const [isManageMembersModalOpen, setIsManageMembersModalOpen] = useState(false); // New state
+    const [membershipToManageMembersFor, setMembershipToManageMembersFor] = useState(null); // New state
 
     const [openMenuId, setOpenMenuId] = useState(null);
     const [filterText, setFilterText] = useState('');
@@ -95,9 +95,22 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         setModalError(null);
     };
 
-    const handleCloseRenewalConfirmationModal = () => { // New handler
+    const handleCloseRenewalConfirmationModal = () => {
         setIsRenewalConfirmationModalOpen(false);
         setRenewedMembershipDetails(null);
+    };
+
+    const handleOpenManageMembersModal = (membership) => { // New handler
+        setMembershipToManageMembersFor(membership);
+        setIsManageMembersModalOpen(true);
+        setModalError(null);
+        setOpenMenuId(null);
+    };
+
+    const handleCloseManageMembersModal = () => { // New handler
+        setIsManageMembersModalOpen(false);
+        setMembershipToManageMembersFor(null);
+        setModalError(null);
     };
 
     const handleRenewSubmit = async (membershipId, renewalData) => {
@@ -105,27 +118,12 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             const response = await api.put(`/memberships/active/${membershipId}/renew`, renewalData);
             fetchMemberships();
             handleCloseRenewModal();
-            // Show confirmation modal
-            // Assuming backend returns the updated membership details in response.data
             setRenewedMembershipDetails(response.data);
             setIsRenewalConfirmationModalOpen(true);
         } catch (err) {
             setModalError(err.response?.data?.message || 'Failed to renew membership.');
             console.error(err);
         }
-    };
-
-    const handleOpenAddMemberModal = (membership) => {
-        setMembershipToAddMemberTo(membership);
-        setIsAddMemberModalOpen(true);
-        setModalError(null);
-        setOpenMenuId(null);
-    };
-
-    const handleCloseAddMemberModal = () => {
-        setIsAddMemberModalOpen(false);
-        setMembershipToAddMemberTo(null);
-        setModalError(null);
     };
 
     const handleOpenAddPaymentModal = (membership) => {
@@ -177,20 +175,17 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         try {
             const response = await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
             
-            if (response.data.status === 'success') {
+            if (response && response.data.status === 'success') {
                 fetchMemberships();
                 handleCloseLeaveModal();
-                return { status: 'success' }; // Return success status
-            } else if (response.data.status === 'conflict') {
-                // The API call was successful, but there's a business logic conflict.
-                // Return the data to the modal to handle it.
+                return { status: 'success' };
+            } else if (response && response.data.status === 'conflict') {
                 return response.data;
             }
         } catch (err) {
-            // This catches server errors (500) or network issues.
             console.error('ActiveMembershipsMgt: Caught error in handleGrantLeaveSubmit:', err);
             setModalError(err.response?.data?.message || 'Failed to grant leave.');
-            throw err; // Re-throw so MarkLeaveModal can also see the error
+            throw err;
         }
     };
 
@@ -219,7 +214,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         if (window.confirm('Are you sure you want to terminate this ended membership? This will move it to the terminated list.')) {
             try {
                 await api.put(`/memberships/ended/${id}/terminate`);
-                fetchMemberships(); // Refresh the list to reflect the status change
+                fetchMemberships();
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to terminate ended membership.');
             } finally {
@@ -337,7 +332,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                 {openMenuId === mem.id && (
                                                     <div className="actions-dropdown">
                                                         {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
+                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenManageMembersModal(mem)}>Manage Members</button>
                                                         <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
                                                         <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                         <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
@@ -379,18 +374,8 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                             membership={selectedMembership}
                                                             onRenew={handleRenewSubmit}
                                                             onClose={handleCloseRenewModal}
-                                                            error={modalError}
                                                         />
-                                                    )}            {isAddMemberModalOpen && membershipToAddMemberTo && (
-                <AddTeamMemberModal
-                    activeMembershipId={membershipToAddMemberTo.id}
-                    maxTeamSize={membershipToAddMemberTo.max_team_size}
-                    currentTeamSize={membershipToAddMemberTo.current_members_count}
-                    onMemberAdded={fetchMemberships}
-                    onClose={handleCloseAddMemberModal}
-                    error={modalError}
-                />
-            )}
+                                                    )}
             {isAddPaymentModalOpen && selectedMembershipForPayment && (
                 <AddMembershipPaymentModal
                     membership={selectedMembershipForPayment}
@@ -417,6 +402,13 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                 <RenewalConfirmationModal
                     renewedMembership={renewedMembershipDetails}
                     onClose={handleCloseRenewalConfirmationModal}
+                />
+            )}
+            {isManageMembersModalOpen && membershipToManageMembersFor && ( // New modal rendering
+                <ManageActiveMembersModal
+                    membership={membershipToManageMembersFor}
+                    onClose={handleCloseManageMembersModal}
+                    onMembersUpdated={fetchMemberships} // Callback to refresh the list after update
                 />
             )}
         </div>

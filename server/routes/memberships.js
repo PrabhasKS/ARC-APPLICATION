@@ -833,7 +833,7 @@ router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
 
 router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
     const { id: membership_id } = req.params; // Renamed for clarity
-    const { start_date, discount_details, initial_payment } = req.body;
+    const { start_date, discount_details, initial_payment, new_member_ids } = req.body; // Added new_member_ids
     const created_by_user_id = req.user.id;
 
     let connection;
@@ -855,14 +855,19 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
             throw new Error('Membership cannot be renewed unless it is ended or active and past its end date.');
         }
 
-        const [packages] = await connection.query('SELECT duration_days, per_person_price FROM membership_packages WHERE id = ?', [oldMembership.package_id]);
-        if (packages.length === 0) throw new Error('Original package not found.');
-        const { duration_days, per_person_price } = packages[0];
-        
-        const [teamMembers] = await connection.query('SELECT COUNT(*) as member_count FROM membership_team WHERE membership_id = ?', [membership_id]);
-        const member_count = teamMembers[0].member_count;
+        if (!Array.isArray(new_member_ids) || new_member_ids.length === 0) {
+            throw new Error('New member IDs are required for renewal.');
+        }
 
-        const new_final_price = parseFloat(per_person_price) * member_count;
+        const [packages] = await connection.query('SELECT duration_days, per_person_price, max_team_size FROM membership_packages WHERE id = ?', [oldMembership.package_id]);
+        if (packages.length === 0) throw new Error('Original package not found.');
+        const { duration_days, per_person_price, max_team_size } = packages[0];
+        
+        if (new_member_ids.length > max_team_size) {
+            throw new Error(`The number of members (${new_member_ids.length}) exceeds the maximum allowed for this package (${max_team_size}).`);
+        }
+
+        const new_final_price = parseFloat(per_person_price) * new_member_ids.length;
         const amount_paid = parseFloat(initial_payment?.amount || 0);
         const balance_amount = new_final_price - amount_paid;
         let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
@@ -886,6 +891,18 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
            WHERE id = ?`,
           [start_date, endDate.toISOString().slice(0,10), endDate.toISOString().slice(0,10), new_final_price, discount_details, amount_paid, balance_amount, payment_status, membership_id]
         );
+
+        // --- Update membership_team ---
+        // 1. Delete existing team members for this membership
+        await connection.query('DELETE FROM membership_team WHERE membership_id = ?', [membership_id]);
+        
+        // 2. Insert new team members
+        for (const member_id_item of new_member_ids) {
+            await connection.query(
+                'INSERT INTO membership_team (membership_id, member_id) VALUES (?, ?)',
+                [membership_id, member_id_item]
+            );
+        }
 
         if (initial_payment && initial_payment.amount > 0) {
             await connection.query(
@@ -926,6 +943,139 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         if (connection) await connection.rollback();
         console.error('Error renewing membership:', error);
         res.status(500).json({ message: `Failed to renew membership: ${error.message}` });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// PUT (manage members) for an active membership
+router.put('/active/:id/manage-members', isPrivilegedUser, async (req, res) => {
+    const { id: membership_id } = req.params;
+    const { member_ids } = req.body; // Expect an array of member IDs that should be in the team
+
+    if (!Array.isArray(member_ids)) {
+        return res.status(400).json({ message: 'Member IDs must be provided as an array.' });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Fetch current membership details and lock row
+        const [memberships] = await connection.query(
+            `SELECT am.*, mp.per_person_price, mp.max_team_size,
+                    (SELECT COUNT(*) FROM membership_team WHERE membership_id = am.id) as current_members_count
+             FROM active_memberships am
+             JOIN membership_packages mp ON am.package_id = mp.id
+             WHERE am.id = ? FOR UPDATE`,
+            [membership_id]
+        );
+        if (memberships.length === 0) {
+            throw new Error('Active membership not found.');
+        }
+        const membership = memberships[0];
+
+        // Validate new member count
+        if (member_ids.length === 0) {
+            throw new Error('At least one member must be in the team.');
+        }
+        if (member_ids.length > membership.max_team_size) {
+            throw new Error(`Team size (${member_ids.length}) exceeds maximum allowed (${membership.max_team_size}).`);
+        }
+
+        // Fetch current members associated with this membership
+        const [currentTeamMembers] = await connection.query(
+            'SELECT member_id FROM membership_team WHERE membership_id = ?',
+            [membership_id]
+        );
+        const currentMemberIds = new Set(currentTeamMembers.map(row => row.member_id));
+        const newMemberIdsSet = new Set(member_ids);
+
+        // Determine members to remove and members to add
+        const membersToRemove = [...currentMemberIds].filter(id => !newMemberIdsSet.has(id));
+        const membersToAdd = [...newMemberIdsSet].filter(id => !currentMemberIds.has(id));
+
+        // Remove members
+        if (membersToRemove.length > 0) {
+            await connection.query(
+                `DELETE FROM membership_team WHERE membership_id = ? AND member_id IN (?)`,
+                [membership_id, membersToRemove]
+            );
+        }
+
+        // Add members
+        for (const memberId of membersToAdd) {
+            await connection.query(
+                'INSERT INTO membership_team (membership_id, member_id) VALUES (?, ?)',
+                [membership_id, memberId]
+            );
+        }
+
+        // Recalculate price based on new team composition rules
+        const old_members_count = membership.current_members_count;
+        const new_members_count = member_ids.length;
+        const per_person_price = parseFloat(membership.per_person_price);
+        
+        let final_price_to_set = parseFloat(membership.final_price); // Start with current final price
+
+        if (new_members_count > old_members_count) {
+            // Net increase in members, so price should increase
+            final_price_to_set += (new_members_count - old_members_count) * per_person_price;
+        } else {
+            // Net decrease or same number of members.
+            // Price should not decrease ("no refunds").
+            // If replacing, price remains the same.
+            // If reducing members, price remains the same.
+        }
+
+        let new_amount_paid = parseFloat(membership.amount_paid); // Amount paid does not change by managing members, only by payment additions
+        
+        // The balance_amount needs to reflect the new final_price (if it increased)
+        let new_balance_amount = final_price_to_set - new_amount_paid;
+        let payment_status = new_balance_amount <= 0 ? 'Completed' : (new_amount_paid > 0 ? 'Received' : 'Pending');
+
+        // Update active_memberships table
+        await connection.query(
+            `UPDATE active_memberships 
+             SET final_price = ?, 
+                 balance_amount = ?, 
+                 payment_status = ? 
+             WHERE id = ?`,
+            [final_price_to_set, new_balance_amount, payment_status, membership_id]
+        );
+
+        // Fetch the full updated membership object to return
+        const [updatedMembershipRows] = await connection.query(
+            `SELECT 
+                am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details, 
+                am.amount_paid, am.balance_amount, am.payment_status, am.status,
+                mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
+                c.name as court_name,
+                GROUP_CONCAT(DISTINCT m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+                COUNT(DISTINCT mt.member_id) as current_members_count
+            FROM active_memberships am
+            JOIN membership_packages mp ON am.package_id = mp.id
+            JOIN courts c ON am.court_id = c.id
+            LEFT JOIN membership_team mt ON am.id = mt.membership_id
+            LEFT JOIN members m ON mt.member_id = m.id
+            WHERE am.id = ?
+            GROUP BY am.id`,
+            [membership_id]
+        );
+
+        await connection.commit();
+
+        if (updatedMembershipRows.length > 0) {
+            res.status(200).json(updatedMembershipRows[0]);
+        } else {
+            res.status(404).json({ message: 'Managed membership details not found.' });
+        }
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error managing active membership members:', error);
+        res.status(500).json({ message: `Failed to manage members: ${error.message}` });
     } finally {
         if (connection) connection.release();
     }
@@ -1000,7 +1150,7 @@ router.post('/active/:id/add-member', isPrivilegedUser, async (req, res) => {
                 mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
                 c.name as court_name,
                 GROUP_CONCAT(m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
-                COUNT(mt.member_id) as current_members_count
+                COUNT(DISTINCT mt.member_id) as current_members_count
             FROM active_memberships am
             JOIN membership_packages mp ON am.package_id = mp.id
             JOIN courts c ON am.court_id = c.id
@@ -1102,7 +1252,7 @@ router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {
                 mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
                 c.name as court_name,
                 GROUP_CONCAT(m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
-                COUNT(mt.member_id) as current_members_count
+                COUNT(DISTINCT mt.member_id) as current_members_count
             FROM active_memberships am
             JOIN membership_packages mp ON am.package_id = mp.id
             JOIN courts c ON am.court_id = c.id
@@ -1427,4 +1577,3 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
         res.status(500).send('Error generating PDF receipt');
     }
 });
-
