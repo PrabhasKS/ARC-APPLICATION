@@ -1013,21 +1013,17 @@ router.put('/active/:id/manage-members', isPrivilegedUser, async (req, res) => {
         }
 
         // Recalculate price based on new team composition rules
-        const old_members_count = membership.current_members_count;
-        const new_members_count = member_ids.length;
+        const old_members_count = membership.current_members_count; // This is the count from the DB at the start of transaction
+        const new_members_count = member_ids.length; // This is the count of members after this operation
         const per_person_price = parseFloat(membership.per_person_price);
         
         let final_price_to_set = parseFloat(membership.final_price); // Start with current final price
 
-        if (new_members_count > old_members_count) {
-            // Net increase in members, so price should increase
-            final_price_to_set += (new_members_count - old_members_count) * per_person_price;
-        } else {
-            // Net decrease or same number of members.
-            // Price should not decrease ("no refunds").
-            // If replacing, price remains the same.
-            // If reducing members, price remains the same.
-        }
+        // The rule is: price increases if actual members go up. Price does NOT decrease.
+        // So, the final_price should be the maximum of:
+        // 1. The current (previous) final_price.
+        // 2. The price if all 'new_members_count' slots were filled from scratch.
+        final_price_to_set = Math.max(final_price_to_set, per_person_price * new_members_count);
 
         let new_amount_paid = parseFloat(membership.amount_paid); // Amount paid does not change by managing members, only by payment additions
         
