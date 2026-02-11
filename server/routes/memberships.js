@@ -845,6 +845,11 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         if (memberships.length === 0) throw new Error('Membership to renew not found.');
         const oldMembership = memberships[0];
 
+        // Check if there's a pending balance
+        if (parseFloat(oldMembership.balance_amount) > 0) {
+            throw new Error('Membership cannot be renewed due to an outstanding balance.');
+        }
+
         // Ensure membership is 'ended' or 'active' and past its current_end_date to be renewed
         if (oldMembership.status !== 'ended' && !(oldMembership.status === 'active' && new Date(oldMembership.current_end_date) < new Date())) {
             throw new Error('Membership cannot be renewed unless it is ended or active and past its end date.');
@@ -891,8 +896,32 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
 
         // No changes to membership_team as renewal applies to existing team members.
         
+        // Fetch the updated membership details to send back to the frontend
+        const [renewedMembershipRows] = await connection.query(
+            `SELECT
+                am.id, am.start_date, am.current_end_date, am.time_slot, am.final_price, am.discount_details,
+                am.amount_paid, am.balance_amount, am.payment_status, am.status,
+                mp.name as package_name, mp.per_person_price as package_price, mp.max_team_size,
+                c.name as court_name,
+                GROUP_CONCAT(DISTINCT m.full_name ORDER BY m.full_name SEPARATOR ', ') as team_members,
+                COUNT(DISTINCT mt.member_id) as current_members_count
+            FROM active_memberships am
+            JOIN membership_packages mp ON am.package_id = mp.id
+            JOIN courts c ON am.court_id = c.id
+            LEFT JOIN membership_team mt ON am.id = mt.membership_id
+            LEFT JOIN members m ON mt.member_id = m.id
+            WHERE am.id = ?
+            GROUP BY am.id`,
+            [membership_id]
+        );
+
         await connection.commit();
-        res.status(200).json({ id: membership_id, message: 'Membership renewed successfully.' }); // Changed status to 200
+
+        if (renewedMembershipRows.length > 0) {
+            res.status(200).json(renewedMembershipRows[0]);
+        } else {
+            res.status(404).json({ message: 'Renewed membership details not found.' });
+        }
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Error renewing membership:', error);

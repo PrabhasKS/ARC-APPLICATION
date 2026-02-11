@@ -5,7 +5,8 @@ import AddTeamMemberModal from './AddTeamMemberModal';
 import AddMembershipPaymentModal from './AddMembershipPaymentModal';
 import MarkLeaveModal from './MarkLeaveModal';
 import MembershipReceiptModal from './MembershipReceiptModal';
-import './PackageMgt.css'; 
+import RenewalConfirmationModal from './RenewalConfirmationModal'; // Import the new modal
+import './PackageMgt.css';
 import { format } from 'date-fns'; // Import date-fns
 
 const ActiveMembershipsMgt = ({ status = 'active' }) => {
@@ -28,6 +29,9 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
 
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [selectedMembershipForReceipt, setSelectedMembershipForReceipt] = useState(null);
+
+    const [isRenewalConfirmationModalOpen, setIsRenewalConfirmationModalOpen] = useState(false); // New state
+    const [renewedMembershipDetails, setRenewedMembershipDetails] = useState(null); // New state
 
     const [openMenuId, setOpenMenuId] = useState(null);
     const [filterText, setFilterText] = useState('');
@@ -91,11 +95,20 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         setModalError(null);
     };
 
+    const handleCloseRenewalConfirmationModal = () => { // New handler
+        setIsRenewalConfirmationModalOpen(false);
+        setRenewedMembershipDetails(null);
+    };
+
     const handleRenewSubmit = async (membershipId, renewalData) => {
         try {
-            await api.put(`/memberships/active/${membershipId}/renew`, renewalData); // Changed to api.put
+            const response = await api.put(`/memberships/active/${membershipId}/renew`, renewalData);
             fetchMemberships();
             handleCloseRenewModal();
+            // Show confirmation modal
+            // Assuming backend returns the updated membership details in response.data
+            setRenewedMembershipDetails(response.data);
+            setIsRenewalConfirmationModalOpen(true);
         } catch (err) {
             setModalError(err.response?.data?.message || 'Failed to renew membership.');
             console.error(err);
@@ -324,7 +337,6 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                 {openMenuId === mem.id && (
                                                     <div className="actions-dropdown">
                                                         {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
                                                         <button className="btn btn-info btn-sm" onClick={() => handleOpenAddMemberModal(mem)}>Add Member</button>
                                                         <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
                                                         <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
@@ -340,6 +352,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                                                         </button>
                                                                                         {openMenuId === mem.id && (
                                                                                             <div className="actions-dropdown">
+                                                                                                {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
                                                                                                 <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
                                                                                                 <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
@@ -398,6 +411,12 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                 <MembershipReceiptModal
                     membership={selectedMembershipForReceipt}
                     onClose={handleCloseReceiptModal}
+                />
+            )}
+            {isRenewalConfirmationModalOpen && renewedMembershipDetails && ( // Conditionally render the new modal
+                <RenewalConfirmationModal
+                    renewedMembership={renewedMembershipDetails}
+                    onClose={handleCloseRenewalConfirmationModal}
                 />
             )}
         </div>

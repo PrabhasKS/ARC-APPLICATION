@@ -98,6 +98,11 @@ const RenewModal = ({ membership, onRenew, onClose, error }) => {
                 <form onSubmit={handleSubmit} className="modal-form">
                     {error && <div className="error-message">{error}</div>}
                     {errors.general && <div className="error-message">{errors.general}</div>}
+                    {membership?.balance_amount > 0 && (
+                        <div className="error-message">
+                            <p><strong>Note:</strong> This membership has an outstanding balance of Rs. {membership.balance_amount}. Please clear the balance before renewing.</p>
+                        </div>
+                    )}
                     <div className="summary-card" style={{padding: '1rem', marginBottom: '1rem'}}>
                          <p><strong>Package:</strong> {membership?.package_name}</p>
                          <p><strong>Team:</strong> {membership?.team_members}</p>
@@ -148,7 +153,7 @@ const RenewModal = ({ membership, onRenew, onClose, error }) => {
                     )}
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
-                        <button type="submit" className="btn btn-primary" disabled={submitting}>Renew Subscription</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting || membership?.balance_amount > 0}>Renew Subscription</button>
                     </div>
                 </form>
             </div>
