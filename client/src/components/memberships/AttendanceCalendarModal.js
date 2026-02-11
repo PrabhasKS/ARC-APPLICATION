@@ -75,10 +75,6 @@ const AttendanceCalendarModal = ({ membership, attendanceHistory, leaveHistory =
         return months;
     };
 
-    const handlePrint = () => {
-        window.print();
-    };
-
     const months = getMonthsToDisplay();
     const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -94,7 +90,6 @@ const AttendanceCalendarModal = ({ membership, attendanceHistory, leaveHistory =
                         </p>
                     </div>
                     <div className="calendar-controls">
-                        <button className="btn btn-secondary" onClick={handlePrint}>Print</button>
                         <button className="btn btn-danger" onClick={onClose}>Close</button>
                     </div>
                 </div>
