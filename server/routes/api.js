@@ -88,6 +88,31 @@ const checkOverlap = (startA, endA, startB, endB) => {
 
     return startAMin < endBMin && endAMin > startBMin;
 };
+
+// Helper to build date filter clauses and params
+const buildDateFilter = (columnName, startDate, endDate, isDateTime = false) => {
+    let filterSql = '';
+    let queryParams = [];
+
+    if (startDate && endDate) {
+        if (startDate === endDate) {
+            // For a single day
+            if (isDateTime) {
+                filterSql = ` AND ${columnName} >= ? AND ${columnName} < DATE_ADD(?, INTERVAL 1 DAY)`;
+                queryParams.push(startDate, startDate);
+            } else { // Assuming DATE type
+                filterSql = ` AND ${columnName} = ?`;
+                queryParams.push(startDate);
+            }
+        } else {
+            // For a date range
+            filterSql = ` AND ${columnName} BETWEEN ? AND ?`;
+            queryParams.push(startDate, endDate);
+        }
+    }
+    return { filterSql, queryParams };
+};
+
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -1525,24 +1550,19 @@ router.delete('/accessories/:id', authenticateToken, isAdmin, async (req, res) =
 router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
-        if (startDate && endDate) {
-            dateFilter = ' AND date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
-
-        const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ active_total_amount }]] = await db.query(`SELECT SUM(total_price) as active_total_amount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ amount_received }]] = await db.query(`SELECT SUM(amount_paid) as amount_received FROM bookings WHERE 1=1${dateFilter}`, [...queryParams]);
-        const [[{ total_cancellations }]] = await db.query(`SELECT COUNT(*) as total_cancellations FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?${bookingDateFilterSql}`, ['Cancelled', ...bookingQueryParams]);
+        const [[{ active_total_amount }]] = await db.query(`SELECT SUM(total_price) as active_total_amount FROM bookings WHERE status != ?${bookingDateFilterSql}`, ['Cancelled', ...bookingQueryParams]);
+        const [[{ amount_received }]] = await db.query(`SELECT SUM(amount_paid) as amount_received FROM bookings WHERE 1=1${bookingDateFilterSql}`, [...bookingQueryParams]);
+        const [[{ total_cancellations }]] = await db.query(`SELECT COUNT(*) as total_cancellations FROM bookings WHERE status = ?${bookingDateFilterSql}`, ['Cancelled', ...bookingQueryParams]);
         const [[{ total_sports }]] = await db.query('SELECT COUNT(*) as total_sports FROM sports');
         const [[{ total_courts }]] = await db.query('SELECT COUNT(*) as total_courts FROM courts');
-        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != ?${dateFilter}`, ['Cancelled', ...queryParams]);
-        const [[{ cancelled_revenue }]] = await db.query(`SELECT SUM(amount_paid) as cancelled_revenue FROM bookings WHERE status = ?${dateFilter}`, ['Cancelled', ...queryParams]);
+        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != ?${bookingDateFilterSql}`, ['Cancelled', ...bookingQueryParams]);
+        const [[{ cancelled_revenue }]] = await db.query(`SELECT SUM(amount_paid) as cancelled_revenue FROM bookings WHERE status = ?${bookingDateFilterSql}`, ['Cancelled', ...bookingQueryParams]);
 
-        const [[{ amount_pending }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as amount_pending FROM bookings WHERE balance_amount > 0 AND status = 'Booked'${dateFilter}`, [...queryParams]);
+        const [[{ amount_pending }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as amount_pending FROM bookings WHERE balance_amount > 0 AND status = 'Booked'${bookingDateFilterSql}`, [...bookingQueryParams]);
 
         const total_amount = (parseFloat(active_total_amount) || 0) + (parseFloat(cancelled_revenue) || 0);
 
@@ -1615,21 +1635,16 @@ router.get('/analytics/desk-summary', authenticateToken, isPrivilegedUser, async
 router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' WHERE date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
             SELECT DATE(date) as date, COUNT(*) as count 
             FROM bookings 
-            ${dateFilter}
+            ${bookingDateFilterSql ? ' WHERE ' + bookingDateFilterSql.substring(5) : ''}
             GROUP BY DATE(date) 
             ORDER BY DATE(date) ASC
-        `, queryParams);
+        `, bookingQueryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1640,23 +1655,18 @@ router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (r
 router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = ['Cancelled'];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND b.date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('b.date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
             SELECT s.name, SUM(b.amount_paid) as revenue
             FROM bookings b
             JOIN sports s ON b.sport_id = s.id
             WHERE b.status != ?
-            ${dateFilter}
+            ${bookingDateFilterSql}
             GROUP BY s.name
             ORDER BY revenue DESC
-        `, queryParams);
+        `, ['Cancelled', ...bookingQueryParams]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1667,13 +1677,8 @@ router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req
 router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = ['Cancelled'];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
             SELECT 
@@ -1684,13 +1689,13 @@ router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (
                 bookings
             WHERE
                 status != ?
-                ${dateFilter}
+                ${bookingDateFilterSql}
             GROUP BY 
                 day_of_week, hour_of_day
             ORDER BY
                 FIELD(day_of_week, 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'),
                 hour_of_day;
-        `, queryParams);
+        `, ['Cancelled', ...bookingQueryParams]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1701,20 +1706,15 @@ router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (
 router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' WHERE date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
             SELECT status, COUNT(*) as count 
             FROM bookings 
-            ${dateFilter}
+            ${bookingDateFilterSql ? ' WHERE ' + bookingDateFilterSql.substring(5) : ''}
             GROUP BY status
-        `, queryParams);
+        `, bookingQueryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1725,23 +1725,18 @@ router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin,
 router.get('/analytics/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = ['Cancelled'];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND b.date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('b.date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
             SELECT p.payment_mode, SUM(p.amount) as revenue
             FROM payments p
             JOIN bookings b ON p.booking_id = b.id
             WHERE b.status != ?
-            ${dateFilter}
+            ${bookingDateFilterSql}
             GROUP BY p.payment_mode
             ORDER BY revenue DESC
-        `, queryParams);
+        `, ['Cancelled', ...bookingQueryParams]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1753,23 +1748,18 @@ router.get('/analytics/revenue-by-payment-mode', authenticateToken, isAdmin, asy
 router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = ['Cancelled'];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND b.date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('b.date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
             SELECT u.username, COUNT(b.id) as booking_count
             FROM bookings b
             JOIN users u ON b.created_by_user_id = u.id
             WHERE b.status != ?
-            ${dateFilter}
+            ${bookingDateFilterSql}
             GROUP BY u.username
             ORDER BY booking_count DESC
-        `, queryParams);
+        `, ['Cancelled', ...bookingQueryParams]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1782,27 +1772,18 @@ router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (re
 router.get('/analytics/membership/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let paymentDateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND am.start_date BETWEEN ? AND ?';
-            paymentDateFilter = ' AND p.payment_date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('am.start_date', startDate, endDate, false); // active_memberships.start_date is DATE
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         // 1. Total Active Memberships (snapshot: currently active, regardless of date range)
         const [[{ total_active }]] = await db.query('SELECT COUNT(*) as total_active FROM active_memberships WHERE current_end_date >= CURDATE()');
 
         // 2. New Memberships (Started in range)
-        const [[{ new_memberships }]] = await db.query(`SELECT COUNT(*) as new_memberships FROM active_memberships am WHERE 1=1 ${dateFilter}`, queryParams);
+        const [[{ new_memberships }]] = await db.query(`SELECT COUNT(*) as new_memberships FROM active_memberships am WHERE 1=1 ${membershipDateFilterSql}`, membershipQueryParams);
 
         // 3. Total Revenue (Payments made in range)
-        // Note: queryParams is reused here, so we need to be careful if we have multiple filters.
-        // Creating a fresh param array for the revenue query.
-        const revenueParams = (startDate && endDate) ? [startDate, endDate] : [];
-        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments p WHERE p.membership_id IS NOT NULL ${paymentDateFilter}`, revenueParams);
+        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments p WHERE p.membership_id IS NOT NULL ${paymentDateFilterSql}`, paymentQueryParams);
 
         res.json({
             total_active,
@@ -1818,13 +1799,8 @@ router.get('/analytics/membership/summary', authenticateToken, isAdmin, async (r
 router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND p.payment_date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
             SELECT s.name, SUM(p.amount) as revenue
@@ -1833,10 +1809,10 @@ router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin,
             JOIN membership_packages mp ON am.package_id = mp.id
             JOIN sports s ON mp.sport_id = s.id
             WHERE p.membership_id IS NOT NULL
-            ${dateFilter}
+            ${paymentDateFilterSql}
             GROUP BY s.name
             ORDER BY revenue DESC
-        `, queryParams);
+        `, paymentQueryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1847,22 +1823,17 @@ router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin,
 router.get('/analytics/membership/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND payment_date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
             SELECT payment_mode, SUM(amount) as revenue
             FROM payments
             WHERE membership_id IS NOT NULL
-            ${dateFilter}
+            ${paymentDateFilterSql}
             GROUP BY payment_mode
             ORDER BY revenue DESC
-        `, queryParams);
+        `, paymentQueryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1913,27 +1884,22 @@ router.get('/ledger/download', authenticateToken, async (req, res) => {
 router.get('/analytics/overall/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let paymentDateFilter = '';
-        let bookingDateFilter = '';
-        let queryParams = [];
 
-        if (startDate && endDate) {
-            paymentDateFilter = ' AND payment_date BETWEEN ? AND ?';
-            bookingDateFilter = ' AND date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true);
+        const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false);
 
         // 1. Total Revenue (All payments)
-        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments WHERE 1=1 ${paymentDateFilter}`, queryParams);
+        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments WHERE 1=1 ${paymentDateFilterSql}`, paymentQueryParams);
 
         // 2. Total Discount (Currently only tracked explicitly in bookings)
-        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != 'Cancelled' ${bookingDateFilter}`, queryParams);
+        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != 'Cancelled' ${bookingDateFilterSql}`, bookingQueryParams);
 
         res.json({
             total_revenue: parseFloat(total_revenue) || 0,
             total_discount: parseFloat(total_discount) || 0
         });
     } catch (err) {
+        console.error("Error in /analytics/overall/summary:", err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1942,13 +1908,8 @@ router.get('/analytics/overall/summary', authenticateToken, isAdmin, async (req,
 router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND p.payment_date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         // Combine revenue from Bookings and Memberships linked to sports
         const query = `
@@ -1959,7 +1920,7 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
                 JOIN bookings b ON p.booking_id = b.id
                 JOIN sports s ON b.sport_id = s.id
                 WHERE p.booking_id IS NOT NULL
-                ${dateFilter}
+                ${paymentDateFilterSql}
                 GROUP BY s.name
 
                 UNION ALL
@@ -1971,7 +1932,7 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
                 JOIN membership_packages mp ON am.package_id = mp.id
                 JOIN sports s ON mp.sport_id = s.id
                 WHERE p.membership_id IS NOT NULL
-                ${dateFilter}
+                ${paymentDateFilterSql}
                 GROUP BY s.name
             ) as combined
             GROUP BY sport_name
@@ -1979,7 +1940,7 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
         `;
 
         // We need to pass parameters twice because of the UNION
-        const fullParams = [...queryParams, ...queryParams];
+        const fullParams = [...paymentQueryParams, ...paymentQueryParams];
         
         const [rows] = await db.query(query, fullParams);
         res.json(rows);
@@ -1992,22 +1953,17 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
 router.get('/analytics/overall/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND payment_date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
             SELECT payment_mode, SUM(amount) as revenue
             FROM payments
             WHERE 1=1
-            ${dateFilter}
+            ${paymentDateFilterSql}
             GROUP BY payment_mode
             ORDER BY revenue DESC
-        `, queryParams);
+        `, paymentQueryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2018,13 +1974,8 @@ router.get('/analytics/overall/revenue-by-payment-mode', authenticateToken, isAd
 router.get('/analytics/overall/revenue-distribution', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let dateFilter = '';
-        let queryParams = [];
-
-        if (startDate && endDate) {
-            dateFilter = ' AND payment_date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
-        }
+        
+        const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
             SELECT 
@@ -2036,10 +1987,10 @@ router.get('/analytics/overall/revenue-distribution', authenticateToken, isAdmin
                 SUM(amount) as revenue
             FROM payments
             WHERE 1=1
-            ${dateFilter}
+            ${paymentDateFilterSql}
             GROUP BY source
             ORDER BY revenue DESC
-        `, queryParams);
+        `, paymentQueryParams);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });

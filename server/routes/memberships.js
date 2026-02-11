@@ -322,8 +322,8 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
             `SELECT time_slot 
              FROM active_memberships 
              WHERE court_id = ? 
-             AND start_date <= ? 
-             AND current_end_date >= ?`,
+             AND start_date < ? 
+             AND current_end_date > ?`,
             [court_id, original_end_date, start_date]
         );
 
@@ -480,10 +480,9 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         const [overlappingLeaves] = await connection.query(
             `SELECT start_date, end_date FROM membership_leave 
              WHERE membership_id = ? AND status = 'APPROVED' AND (
-                 (? BETWEEN start_date AND end_date) OR (? BETWEEN start_date AND end_date) OR
-                 (start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?)
+                 start_date < ? AND end_date > ?
              )`,
-            [membership_id, start_date, end_date, start_date, end_date, start_date, end_date]
+            [membership_id, end_date, start_date]
         );
 
         if (overlappingLeaves.length > 0) {
@@ -495,11 +494,13 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         }
         
         // 2. Check for conflicts in the LEAVE period itself
+        const { filterSql: leavePeriodBookingFilterSql, queryParams: leavePeriodBookingQueryParams } = buildDateFilter('date', start_date, end_date, false);
+
         const [bookingsInLeavePeriod] = await connection.query(
             `SELECT id, customer_name, date FROM bookings
              WHERE court_id = ? AND time_slot = ? AND status != 'Cancelled'
-             AND date BETWEEN ? AND ?`,
-            [court_id, time_slot, start_date, end_date]
+             ${leavePeriodBookingFilterSql}`,
+            [court_id, time_slot, ...leavePeriodBookingQueryParams]
         );
 
         bookingsInLeavePeriod.forEach(booking => {
@@ -513,11 +514,13 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         // 3. Check for conflicts in the EXTENDED period.
         if (final_extension_end_date >= extension_start_date_str) {
             // 3a. Overlapping one-off bookings in EXTENDED period
+            const { filterSql: extensionBookingFilterSql, queryParams: extensionBookingQueryParams } = buildDateFilter('date', extension_start_date_str, final_extension_end_date, false);
+
             const [bookingsInExtension] = await connection.query(
                 `SELECT id, customer_name, date FROM bookings
                  WHERE court_id = ? AND time_slot = ? AND status != 'Cancelled'
-                 AND date BETWEEN ? AND ?`,
-                [court_id, time_slot, extension_start_date_str, final_extension_end_date]
+                 ${extensionBookingFilterSql}`,
+                [court_id, time_slot, ...extensionBookingQueryParams]
             );
 
             bookingsInExtension.forEach(booking => {
@@ -532,7 +535,7 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
             const [membershipsInExtension] = await connection.query(
                 `SELECT id, time_slot, current_end_date FROM active_memberships
                  WHERE court_id = ? AND id != ? AND status = 'active'
-                 AND start_date <= ? AND current_end_date >= ?`,
+                 AND start_date < ? AND current_end_date > ?`,
                 [court_id, membership_id, final_extension_end_date, extension_start_date_str]
             );
 
@@ -591,8 +594,8 @@ router.get('/on-leave', isPrivilegedUser, async (req, res) => {
     try {
         const [leaveRecords] = await db.query(
             `SELECT membership_id FROM membership_leave
-             WHERE status = 'APPROVED' AND ? BETWEEN start_date AND end_date`,
-            [date]
+             WHERE status = 'APPROVED' AND start_date <= ? AND end_date >= ?`,
+            [date, date]
         );
         
         const onLeaveIds = leaveRecords.map(record => record.membership_id);
@@ -743,8 +746,8 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
         const queryParams = [];
         
         if (date) {
-            whereClause += ' AND ? BETWEEN am.start_date AND am.current_end_date';
-            queryParams.push(date);
+            whereClause += ' AND am.start_date <= ? AND am.current_end_date >= ?';
+            queryParams.push(date, date);
         } else {
             // For the general 'active' list, only include memberships that have not expired.
             whereClause += ' AND am.current_end_date >= CURDATE()';
