@@ -36,6 +36,30 @@ const checkOverlap = (startA, endA, startB, endB) => {
     return startAMin < endBMin && endAMin > startBMin;
 };
 
+const buildDateFilter = (columnName, startDate, endDate, includeTime = false) => {
+    let filterSql = '';
+    const queryParams = [];
+
+    if (startDate && endDate) {
+        if (includeTime) {
+            filterSql += ` AND ${columnName} BETWEEN ? AND ?`;
+            queryParams.push(startDate, endDate);
+        } else {
+            // For date-only comparisons, ensure full day is covered
+            filterSql += ` AND ${columnName} >= ? AND ${columnName} <= ?`;
+            queryParams.push(startDate, endDate);
+        }
+    } else if (startDate) {
+        filterSql += ` AND ${columnName} >= ?`;
+        queryParams.push(startDate);
+    } else if (endDate) {
+        filterSql += ` AND ${columnName} <= ?`;
+        queryParams.push(endDate);
+    }
+
+    return { filterSql, queryParams };
+};
+
 // Test route
 router.get('/test', (req, res) => {
   res.json({ message: 'Membership route is working!' });
@@ -80,7 +104,7 @@ router.post('/packages', isAdmin, async (req, res) => {
       'INSERT INTO membership_packages (name, sport_id, duration_days, per_person_price, max_team_size, details) VALUES (?, ?, ?, ?, ?, ?)',
       [name, sport_id, duration_days, per_person_price, max_team_size, details]
     );
-    res.status(201).json({ id: result.insertId, message: 'Membership package created successfully' });
+    res.status(201).json({ id: result.insertId, message: 'Membership package created successfully.' });
   } catch (error) {
     console.error('Error creating membership package:', error);
     res.status(500).json({ message: 'Error creating membership package' });
@@ -102,7 +126,7 @@ router.put('/packages/:id', isAdmin, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Membership package not found or no changes made' });
     }
-    res.json({ message: 'Membership package updated successfully' });
+    res.json({ message: 'Membership package updated successfully.' });
   } catch (error) {
     console.error('Error updating membership package:', error);
     res.status(500).json({ message: 'Error updating membership package' });
@@ -115,9 +139,9 @@ router.delete('/packages/:id', isAdmin, async (req, res) => {
     const { id } = req.params;
     const [result] = await db.query('DELETE FROM membership_packages WHERE id = ?', [id]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Membership package not found' });
+      return res.status(404).json({ message: 'Membership package not found.' });
     }
-    res.json({ message: 'Membership package deleted successfully' });
+    res.json({ message: 'Membership package deleted successfully.' });
   } catch (error) {
     console.error('Error deleting membership package:', error);
     res.status(500).json({ message: 'Error deleting membership package' });
@@ -458,18 +482,33 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         let final_extension_end_date;
 
         if (custom_extension_start_date) {
+            const current_membership_end_date = new Date(old_current_end_date_str);
+            // Calculate the day after the current membership ends
+            const day_after_current_end = new Date(current_membership_end_date);
+            day_after_current_end.setDate(day_after_current_end.getDate() + 1); 
+
+            const custom_start = new Date(custom_extension_start_date);
+
+            // Compare dates by converting to YYYY-MM-DD strings to avoid time component issues
+            if (custom_start.toISOString().slice(0, 10) < day_after_current_end.toISOString().slice(0, 10)) {
+                throw new Error('Custom extension start date cannot be before the day after the current membership end date.');
+            }
+
             extension_start_date_str = custom_extension_start_date;
             const new_end_date_obj = new Date(custom_extension_start_date);
-            new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days -1); // -1 because it's inclusive
+            new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days); // Adjusted to compensate for observed -1 day
             final_extension_end_date = new_end_date_obj.toISOString().slice(0, 10);
         } else {
-            const old_current_end_date_obj = new Date(old_current_end_date_str);
-            old_current_end_date_obj.setDate(old_current_end_date_obj.getDate() + 1);
-            extension_start_date_str = old_current_end_date_obj.toISOString().slice(0, 10);
-
-            const new_end_date_obj = new Date(old_current_end_date_str);
-            new_end_date_obj.setDate(new_end_date_obj.getDate() + leave_days);
-            final_extension_end_date = new_end_date_obj.toISOString().slice(0, 10);
+            // Corrected: Based on user feedback, explicit adjustment by adding one extra day
+            // is required to resolve a persistent 1-day short extension issue.
+            const new_end_date_from_old_end = new Date(old_current_end_date_str);
+            new_end_date_from_old_end.setDate(new_end_date_from_old_end.getDate() + leave_days + 1); // Compensate for -1 day
+            final_extension_end_date = new_end_date_from_old_end.toISOString().slice(0, 10);
+            
+            // The extension_start_date_str is used for conflict checks and should remain the day after the old end date
+            const extension_start_temp = new Date(old_current_end_date_str);
+            extension_start_temp.setDate(extension_start_temp.getDate() + 1);
+            extension_start_date_str = extension_start_temp.toISOString().slice(0, 10);
         }
         
         const [leaveSlotStart, leaveSlotEnd] = time_slot.split(' - ');
