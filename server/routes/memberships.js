@@ -62,178 +62,178 @@ const buildDateFilter = (columnName, startDate, endDate, includeTime = false) =>
 
 // Test route
 router.get('/test', (req, res) => {
-  res.json({ message: 'Membership route is working!' });
+    res.json({ message: 'Membership route is working!' });
 });
 
 // ------------------- Membership Packages CRUD -------------------
 
 // GET all membership packages
 router.get('/packages', async (req, res) => {
-  try {
-    const [rows] = await db.query('SELECT * FROM membership_packages');
-    res.json(rows);
-  } catch (error) {
-    console.error('Error fetching membership packages:', error);
-    res.status(500).json({ message: 'Error fetching membership packages' });
-  }
+    try {
+        const [rows] = await db.query('SELECT * FROM membership_packages');
+        res.json(rows);
+    } catch (error) {
+        console.error('Error fetching membership packages:', error);
+        res.status(500).json({ message: 'Error fetching membership packages' });
+    }
 });
 
 // GET a specific membership package by ID
 router.get('/packages/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [rows] = await db.query('SELECT * FROM membership_packages WHERE id = ?', [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Membership package not found' });
+    try {
+        const { id } = req.params;
+        const [rows] = await db.query('SELECT * FROM membership_packages WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Membership package not found' });
+        }
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error fetching membership package by ID:', error);
+        res.status(500).json({ message: 'Error fetching membership package' });
     }
-    res.json(rows[0]);
-  } catch (error) {
-    console.error('Error fetching membership package by ID:', error);
-    res.status(500).json({ message: 'Error fetching membership package' });
-  }
 });
 
 // POST a new membership package
 router.post('/packages', isAdmin, async (req, res) => {
-  try {
-    const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
-    if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    try {
+        const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
+        if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+        const [result] = await db.query(
+            'INSERT INTO membership_packages (name, sport_id, duration_days, per_person_price, max_team_size, details) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, sport_id, duration_days, per_person_price, max_team_size, details]
+        );
+        res.status(201).json({ id: result.insertId, message: 'Membership package created successfully.' });
+    } catch (error) {
+        console.error('Error creating membership package:', error);
+        res.status(500).json({ message: 'Error creating membership package' });
     }
-    const [result] = await db.query(
-      'INSERT INTO membership_packages (name, sport_id, duration_days, per_person_price, max_team_size, details) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, sport_id, duration_days, per_person_price, max_team_size, details]
-    );
-    res.status(201).json({ id: result.insertId, message: 'Membership package created successfully.' });
-  } catch (error) {
-    console.error('Error creating membership package:', error);
-    res.status(500).json({ message: 'Error creating membership package' });
-  }
 });
 
 // PUT (update) an existing membership package
 router.put('/packages/:id', isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
-    if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    try {
+        const { id } = req.params;
+        const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
+        if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+        const [result] = await db.query(
+            'UPDATE membership_packages SET name = ?, sport_id = ?, duration_days = ?, per_person_price = ?, max_team_size = ?, details = ? WHERE id = ?',
+            [name, sport_id, duration_days, per_person_price, max_team_size, details, id]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Membership package not found or no changes made' });
+        }
+        res.json({ message: 'Membership package updated successfully.' });
+    } catch (error) {
+        console.error('Error updating membership package:', error);
+        res.status(500).json({ message: 'Error updating membership package' });
     }
-    const [result] = await db.query(
-      'UPDATE membership_packages SET name = ?, sport_id = ?, duration_days = ?, per_person_price = ?, max_team_size = ?, details = ? WHERE id = ?',
-      [name, sport_id, duration_days, per_person_price, max_team_size, details, id]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Membership package not found or no changes made' });
-    }
-    res.json({ message: 'Membership package updated successfully.' });
-  } catch (error) {
-    console.error('Error updating membership package:', error);
-    res.status(500).json({ message: 'Error updating membership package' });
-  }
 });
 
 // DELETE a membership package
 router.delete('/packages/:id', isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [result] = await db.query('DELETE FROM membership_packages WHERE id = ?', [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Membership package not found.' });
+    try {
+        const { id } = req.params;
+        const [result] = await db.query('DELETE FROM membership_packages WHERE id = ?', [id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Membership package not found.' });
+        }
+        res.json({ message: 'Membership package deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting membership package:', error);
+        res.status(500).json({ message: 'Error deleting membership package' });
     }
-    res.json({ message: 'Membership package deleted successfully.' });
-  } catch (error) {
-    console.error('Error deleting membership package:', error);
-    res.status(500).json({ message: 'Error deleting membership package' });
-  }
 });
 
 // ------------------- Members CRUD -------------------
 
 // POST a new member
 router.post('/members', isPrivilegedUser, async (req, res) => {
-  const { full_name, phone_number, email, notes } = req.body;
-  if (!full_name || !phone_number) {
-    return res.status(400).json({ message: 'Full name and phone number are required.' });
-  }
-  try {
-    const [result] = await db.query(
-      'INSERT INTO members (full_name, phone_number, email, notes) VALUES (?, ?, ?, ?)',
-      [full_name, phone_number, email, notes]
-    );
-    res.status(201).json({ id: result.insertId, message: 'Member created successfully.' });
-  } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'A member with this phone number already exists.' });
+    const { full_name, phone_number, email, notes } = req.body;
+    if (!full_name || !phone_number) {
+        return res.status(400).json({ message: 'Full name and phone number are required.' });
     }
-    console.error('Error creating member:', error);
-    res.status(500).json({ message: 'Error creating member.' });
-  }
+    try {
+        const [result] = await db.query(
+            'INSERT INTO members (full_name, phone_number, email, notes) VALUES (?, ?, ?, ?)',
+            [full_name, phone_number, email, notes]
+        );
+        res.status(201).json({ id: result.insertId, message: 'Member created successfully.' });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'A member with this phone number already exists.' });
+        }
+        console.error('Error creating member:', error);
+        res.status(500).json({ message: 'Error creating member.' });
+    }
 });
 
 // GET (search) for members
 router.get('/members', isPrivilegedUser, async (req, res) => {
-  const { q } = req.query;
-  if (!q) {
-    try {
-        const [rows] = await db.query('SELECT id, full_name, phone_number, email FROM members');
-        return res.json(rows);
-    } catch (error) {
-        console.error('Error fetching all members:', error);
-        return res.status(500).json({ message: 'Error fetching members.' });
+    const { q } = req.query;
+    if (!q) {
+        try {
+            const [rows] = await db.query('SELECT id, full_name, phone_number, email FROM members');
+            return res.json(rows);
+        } catch (error) {
+            console.error('Error fetching all members:', error);
+            return res.status(500).json({ message: 'Error fetching members.' });
+        }
     }
-  }
-  try {
-    const searchQuery = `%${q}%`;
-    const [rows] = await db.query(
-      'SELECT id, full_name, phone_number, email FROM members WHERE full_name LIKE ? OR phone_number LIKE ?',
-      [searchQuery, searchQuery]
-    );
-    res.json(rows);
-  } catch (error) {
-    console.error('Error searching for members:', error);
-    res.status(500).json({ message: 'Error searching for members.' });
-  }
+    try {
+        const searchQuery = `%${q}%`;
+        const [rows] = await db.query(
+            'SELECT id, full_name, phone_number, email FROM members WHERE full_name LIKE ? OR phone_number LIKE ?',
+            [searchQuery, searchQuery]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('Error searching for members:', error);
+        res.status(500).json({ message: 'Error searching for members.' });
+    }
 });
 
 // PUT (update) a member
 router.put('/members/:id', isPrivilegedUser, async (req, res) => {
-  const { id } = req.params;
-  const { full_name, phone_number, email, notes } = req.body;
-  if (!full_name || !phone_number) {
-    return res.status(400).json({ message: 'Full name and phone number are required.' });
-  }
-  try {
-    const [result] = await db.query(
-      'UPDATE members SET full_name = ?, phone_number = ?, email = ?, notes = ? WHERE id = ?',
-      [full_name, phone_number, email, notes, id]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Member not found.' });
+    const { id } = req.params;
+    const { full_name, phone_number, email, notes } = req.body;
+    if (!full_name || !phone_number) {
+        return res.status(400).json({ message: 'Full name and phone number are required.' });
     }
-    res.json({ message: 'Member updated successfully.' });
-  } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'Another member with this phone number already exists.' });
+    try {
+        const [result] = await db.query(
+            'UPDATE members SET full_name = ?, phone_number = ?, email = ?, notes = ? WHERE id = ?',
+            [full_name, phone_number, email, notes, id]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Member not found.' });
+        }
+        res.json({ message: 'Member updated successfully.' });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'Another member with this phone number already exists.' });
+        }
+        console.error('Error updating member:', error);
+        res.status(500).json({ message: 'Error updating member.' });
     }
-    console.error('Error updating member:', error);
-    res.status(500).json({ message: 'Error updating member.' });
-  }
 });
 
 // DELETE a member
 router.delete('/members/:id', isPrivilegedUser, async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [result] = await db.query('DELETE FROM members WHERE id = ?', [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Member not found.' });
+    const { id } = req.params;
+    try {
+        const [result] = await db.query('DELETE FROM members WHERE id = ?', [id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Member not found.' });
+        }
+        res.json({ message: 'Member deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting member:', error);
+        res.status(500).json({ message: 'Error deleting member.' });
     }
-    res.json({ message: 'Member deleted successfully.' });
-  } catch (error) {
-    console.error('Error deleting member:', error);
-    res.status(500).json({ message: 'Error deleting member.' });
-  }
 });
 
 // ------------------- Active Memberships -------------------
@@ -300,7 +300,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         discount_details,
         initial_payment
     } = req.body;
-    
+
     const created_by_user_id = req.user.id;
 
     if (!package_id || !court_id || !start_date || !time_slot || !team_members || team_members.length === 0) {
@@ -314,13 +314,13 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
 
         const [packages] = await connection.query('SELECT duration_days, max_team_size, per_person_price, sport_id FROM membership_packages WHERE id = ?', [package_id]);
         if (packages.length === 0) throw new Error('Membership package not found.');
-        
+
         const { duration_days, max_team_size, per_person_price, sport_id } = packages[0];
 
         if (team_members.length > max_team_size) {
             throw new Error(`The number of members (${team_members.length}) exceeds the maximum allowed for this package (${max_team_size}).`);
         }
-        
+
         const base_price = parseFloat(per_person_price) * team_members.length;
         const final_price = base_price - parseFloat(discount_amount || 0);
         const amount_paid = parseFloat(initial_payment?.amount || 0);
@@ -361,7 +361,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
             throw new Error('This time slot is full and overlaps with an existing membership on the selected dates.');
         }
         // ----------------------
-        
+
         const [activeMembershipResult] = await connection.query(
             `INSERT INTO active_memberships (package_id, court_id, start_date, time_slot, original_end_date, current_end_date, final_price, discount_details, amount_paid, balance_amount, payment_status, created_by_user_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -375,7 +375,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
                 [active_membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
             );
         }
-        
+
         for (const member of team_members) {
             if (!member.member_id) {
                 throw new Error('A team member has an invalid ID. Cannot create subscription.');
@@ -385,7 +385,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
                 [active_membership_id, member.member_id]
             );
         }
-        
+
         await connection.commit();
         res.status(201).json({ id: active_membership_id, message: 'Membership created successfully.' });
 
@@ -474,9 +474,9 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         if (membershipData.length === 0) {
             throw new Error('Active membership not found.');
         }
-        
+
         const { court_id, time_slot, current_end_date: old_current_end_date_str } = membershipData[0];
-        
+
         // Determine the extension period
         let extension_start_date_str;
         let final_extension_end_date;
@@ -485,7 +485,7 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
             const current_membership_end_date = new Date(old_current_end_date_str);
             // Calculate the day after the current membership ends
             const day_after_current_end = new Date(current_membership_end_date);
-            day_after_current_end.setDate(day_after_current_end.getDate() + 1); 
+            day_after_current_end.setDate(day_after_current_end.getDate() + 1);
 
             const custom_start = new Date(custom_extension_start_date);
 
@@ -504,13 +504,13 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
             const new_end_date_from_old_end = new Date(old_current_end_date_str);
             new_end_date_from_old_end.setDate(new_end_date_from_old_end.getDate() + leave_days + 1); // Compensate for -1 day
             final_extension_end_date = new_end_date_from_old_end.toISOString().slice(0, 10);
-            
+
             // The extension_start_date_str is used for conflict checks and should remain the day after the old end date
             const extension_start_temp = new Date(old_current_end_date_str);
             extension_start_temp.setDate(extension_start_temp.getDate() + 1);
             extension_start_date_str = extension_start_temp.toISOString().slice(0, 10);
         }
-        
+
         const [leaveSlotStart, leaveSlotEnd] = time_slot.split(' - ');
 
         // --- CONFLICT CHECKS ---
@@ -519,7 +519,7 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
         const [overlappingLeaves] = await connection.query(
             `SELECT start_date, end_date FROM membership_leave 
              WHERE membership_id = ? AND status = 'APPROVED' AND (
-                 start_date < ? AND end_date > ?
+                 start_date <= ? AND end_date >= ?
              )`,
             [membership_id, end_date, start_date]
         );
@@ -531,7 +531,7 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
                 message: `This member already has an approved leave from ${new Date(overlappingLeaves[0].start_date).toISOString().slice(0, 10)} to ${new Date(overlappingLeaves[0].end_date).toISOString().slice(0, 10)}.`
             });
         }
-        
+
         // 2. Check for conflicts in the LEAVE period itself
         const { filterSql: leavePeriodBookingFilterSql, queryParams: leavePeriodBookingQueryParams } = buildDateFilter('date', start_date, end_date, false);
 
@@ -586,25 +586,25 @@ router.post('/grant-leave', isPrivilegedUser, async (req, res) => {
             if (clashingMembership) {
                 conflicts.push({
                     type: 'membership_extension',
-                    date: new Date(clashingMembership.current_end_date).toISOString().slice(0,10),
+                    date: new Date(clashingMembership.current_end_date).toISOString().slice(0, 10),
                     message: `Extension conflicts with another membership (ID: ${clashingMembership.id}).`
                 });
             }
         }
-        
+
         // --- FINAL DECISION ---
         if (conflicts.length > 0) {
             await connection.rollback();
             return res.status(200).json({ status: 'conflict', conflicts, old_end_date: old_current_end_date_str });
         }
-        
+
         // --- ALL CHECKS PASSED, PROCEED ---
         await connection.query(
             `INSERT INTO membership_leave (membership_id, start_date, end_date, leave_days, reason, status, approved_by_user_id) 
              VALUES (?, ?, ?, ?, ?, 'APPROVED', ?)`,
             [membership_id, start_date, end_date, leave_days, reason, approved_by_user_id]
         );
-        
+
         await connection.query(
             'UPDATE active_memberships SET current_end_date = ? WHERE id = ?',
             [final_extension_end_date, membership_id]
@@ -636,7 +636,7 @@ router.get('/on-leave', isPrivilegedUser, async (req, res) => {
              WHERE status = 'APPROVED' AND start_date <= ? AND end_date >= ?`,
             [date, date]
         );
-        
+
         const onLeaveIds = leaveRecords.map(record => record.membership_id);
         res.json(onLeaveIds);
 
@@ -671,14 +671,14 @@ router.put('/leave-requests/:id', isPrivilegedUser, async (req, res) => {
             await connection.query("UPDATE membership_leave SET status = 'APPROVED', compensation_applied = TRUE WHERE id = ?", [id]);
             const [memberships] = await connection.query('SELECT current_end_date FROM active_memberships WHERE id = ?', [leaveRequest.membership_id]);
             if (memberships.length === 0) throw new Error('Associated active membership not found.');
-            
+
             const current_end_date = new Date(memberships[0].current_end_date);
             current_end_date.setDate(current_end_date.getDate() + leaveRequest.leave_days);
             const new_end_date = current_end_date.toISOString().slice(0, 10);
 
             await connection.query('UPDATE active_memberships SET current_end_date = ? WHERE id = ?', [new_end_date, leaveRequest.membership_id]);
         }
-        
+
         await connection.commit();
         res.json({ message: `Leave request ${status.toLowerCase()}.` });
     } catch (error) {
@@ -783,7 +783,7 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
         const { date } = req.query;
         let whereClause = ` WHERE am.status = 'active' `;
         const queryParams = [];
-        
+
         if (date) {
             whereClause += ' AND am.start_date <= ? AND am.current_end_date >= ?';
             queryParams.push(date, date);
@@ -798,7 +798,7 @@ router.get('/active', isPrivilegedUser, async (req, res) => {
             GROUP BY am.id
             ORDER BY am.start_date DESC
         `;
-        
+
         const [memberships] = await db.query(query, queryParams);
         res.json(memberships);
     } catch (error) {
@@ -841,20 +841,20 @@ router.get('/ended', isPrivilegedUser, async (req, res) => {
 
 // Cron job to automatically mark memberships as 'ended'
 cron.schedule('0 1 * * *', async () => { // Runs every day at 1:00 AM
-  console.log('Running daily cron job to update ended memberships...');
-  try {
-    const [result] = await db.query(
-      "UPDATE active_memberships SET status = 'ended' WHERE current_end_date < CURDATE() AND status = 'active'"
-    );
-    console.log(`Updated ${result.affectedRows} memberships to 'ended' status.`);
-  } catch (error) {
-    console.error('Error in daily membership status update cron job:', error);
-  }
+    console.log('Running daily cron job to update ended memberships...');
+    try {
+        const [result] = await db.query(
+            "UPDATE active_memberships SET status = 'ended' WHERE current_end_date < CURDATE() AND status = 'active'"
+        );
+        console.log(`Updated ${result.affectedRows} memberships to 'ended' status.`);
+    } catch (error) {
+        console.error('Error in daily membership status update cron job:', error);
+    }
 });
 
 router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
     const { id } = req.params;
-    
+
     try {
         const [result] = await db.query(
             "UPDATE active_memberships SET status = 'terminated' WHERE id = ?",
@@ -904,7 +904,7 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         const [packages] = await connection.query('SELECT duration_days, per_person_price, max_team_size FROM membership_packages WHERE id = ?', [oldMembership.package_id]);
         if (packages.length === 0) throw new Error('Original package not found.');
         const { duration_days, per_person_price, max_team_size } = packages[0];
-        
+
         if (new_member_ids.length > max_team_size) {
             throw new Error(`The number of members (${new_member_ids.length}) exceeds the maximum allowed for this package (${max_team_size}).`);
         }
@@ -920,7 +920,7 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
 
         // --- UPDATE existing active_memberships record ---
         await connection.query(
-          `UPDATE active_memberships 
+            `UPDATE active_memberships 
            SET start_date = ?, 
                original_end_date = ?, 
                current_end_date = ?, 
@@ -931,13 +931,13 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
                payment_status = ?,
                status = 'active'
            WHERE id = ?`,
-          [start_date, endDate.toISOString().slice(0,10), endDate.toISOString().slice(0,10), new_final_price, discount_details, amount_paid, balance_amount, payment_status, membership_id]
+            [start_date, endDate.toISOString().slice(0, 10), endDate.toISOString().slice(0, 10), new_final_price, discount_details, amount_paid, balance_amount, payment_status, membership_id]
         );
 
         // --- Update membership_team ---
         // 1. Delete existing team members for this membership
         await connection.query('DELETE FROM membership_team WHERE membership_id = ?', [membership_id]);
-        
+
         // 2. Insert new team members
         for (const member_id_item of new_member_ids) {
             await connection.query(
@@ -954,7 +954,7 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         }
 
         // No changes to membership_team as renewal applies to existing team members.
-        
+
         // Fetch the updated membership details to send back to the frontend
         const [renewedMembershipRows] = await connection.query(
             `SELECT
@@ -1058,7 +1058,7 @@ router.put('/active/:id/manage-members', isPrivilegedUser, async (req, res) => {
         const old_members_count = membership.current_members_count; // This is the count from the DB at the start of transaction
         const new_members_count = member_ids.length; // This is the count of members after this operation
         const per_person_price = parseFloat(membership.per_person_price);
-        
+
         let final_price_to_set = parseFloat(membership.final_price); // Start with current final price
 
         // The rule is: price increases if actual members go up. Price does NOT decrease.
@@ -1068,7 +1068,7 @@ router.put('/active/:id/manage-members', isPrivilegedUser, async (req, res) => {
         final_price_to_set = Math.max(final_price_to_set, per_person_price * new_members_count);
 
         let new_amount_paid = parseFloat(membership.amount_paid); // Amount paid does not change by managing members, only by payment additions
-        
+
         // The balance_amount needs to reflect the new final_price (if it increased)
         let new_balance_amount = final_price_to_set - new_amount_paid;
         let payment_status = new_balance_amount <= 0 ? 'Completed' : (new_amount_paid > 0 ? 'Received' : 'Pending');
@@ -1122,7 +1122,7 @@ router.put('/active/:id/manage-members', isPrivilegedUser, async (req, res) => {
 // NEW: Add a member to an existing active membership
 router.post('/active/:id/add-member', isPrivilegedUser, async (req, res) => {
     const { id: active_membership_id } = req.params;
-    const { member_id, payment } = req.body; 
+    const { member_id, payment } = req.body;
     const created_by_user_id = req.user.id;
 
     if (!member_id) {
@@ -1171,7 +1171,7 @@ router.post('/active/:id/add-member', isPrivilegedUser, async (req, res) => {
                 [active_membership_id, payment.amount, payment.payment_mode, payment.payment_id, created_by_user_id]
             );
         }
-        
+
         const new_balance_amount = new_final_price - new_amount_paid;
         const new_payment_status = new_balance_amount <= 0 ? 'Completed' : 'Received';
 
@@ -1211,7 +1211,7 @@ router.post('/active/:id/add-member', isPrivilegedUser, async (req, res) => {
 
 router.put('/ended/:id/terminate', isPrivilegedUser, async (req, res) => {
     const { id } = req.params;
-    
+
     let connection;
     try {
         connection = await db.getConnection();
@@ -1364,7 +1364,7 @@ router.get('/active/:id/attendance-history', isPrivilegedUser, async (req, res) 
     const { id } = req.params;
     try {
         const [rows] = await db.query(
-            "SELECT DATE_FORMAT(attendance_date, '%Y-%m-%d') as attendance_date_str FROM team_attendance WHERE membership_id = ? ORDER BY attendance_date ASC", 
+            "SELECT DATE_FORMAT(attendance_date, '%Y-%m-%d') as attendance_date_str FROM team_attendance WHERE membership_id = ? ORDER BY attendance_date ASC",
             [id]
         );
         const dates = rows.map(row => row.attendance_date_str);
@@ -1379,7 +1379,7 @@ router.get('/active/:id/attendance-history', isPrivilegedUser, async (req, res) 
 router.get('/active/:id/leave-history', isPrivilegedUser, async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await db.query('SELECT start_date, end_date FROM membership_leave WHERE membership_id = ? AND status = "APPROVED"', [id]);
+        const [rows] = await db.query('SELECT DATE_FORMAT(start_date, \'%Y-%m-%d\') as start_date, DATE_FORMAT(end_date, \'%Y-%m-%d\') as end_date FROM membership_leave WHERE membership_id = ? AND status = "APPROVED"', [id]);
         res.json(rows);
     } catch (error) {
         console.error('Error fetching membership leave history:', error);
@@ -1454,7 +1454,7 @@ router.get('/:id/details', isPrivilegedUser, async (req, res) => {
         `;
         const [leaves] = await db.query(leaveQuery, [id]);
         membership.leaves = leaves;
-        
+
         //In the baseMembershipQuery it is duration_days, but in modal it is duration_months so I am converting it
         membership.duration_months = membership.duration_days;
 
