@@ -20,7 +20,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
 
     const calculatedCustomEndDate = useMemo(() => {
         if (!customExtensionStartDate || !leaveDuration) return null;
-        const start = new Date(customExtensionStartDate);
+        const start = new Date(customExtensionStartDate.replace(/-/g, '/'));
         // We subtract 1 because if leave is 1 day, extension is also 1 day, so start and end are same.
         const end = addDays(start, leaveDuration - 1);
         return format(end, 'yyyy-MM-dd');
@@ -66,8 +66,8 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
             setError('Both start and end dates are required.');
             return false;
         }
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        const start = new Date(startDate.replace(/-/g, '/'));
+        const end = new Date(endDate.replace(/-/g, '/'));
         if (start > end) {
             setError('Leave end date must be on or after the start date.');
             return false;
@@ -107,8 +107,8 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                 const isExtConflict = response.conflicts.every(c => c.type.includes('_extension'));
                 
                 if (isExtConflict) {
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
+                    const start = new Date(startDate.replace(/-/g, '/'));
+                    const end = new Date(endDate.replace(/-/g, '/'));
                     const duration = differenceInCalendarDays(end, start) + 1;
                     setLeaveDuration(duration);
                     setError(`The ${duration}-day leave is fine, but the automatic extension conflicts. Please select a new start date for the compensation period.`);
@@ -145,7 +145,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                             <ul style={{ paddingLeft: '20px', margin: 0 }}>
                                 {conflicts.map((conflict, index) => (
                                     <li key={index} style={{ color: '#c00', marginBottom: '5px' }}>
-                                        <strong>{format(new Date(conflict.date), 'dd/MM/yyyy')}:</strong> {conflict.message}
+                                        <strong>{format(new Date(conflict.date.replace(/-/g, '/')), 'dd/MM/yyyy')}:</strong> {conflict.message}
                                     </li>
                                 ))}
                             </ul>
@@ -195,7 +195,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                                 />
                                 {calculatedCustomEndDate && (
                                     <p className="form-text" style={{marginTop: '5px'}}>
-                                        This will extend the membership from <strong>{format(new Date(customExtensionStartDate), 'dd/MM/yyyy')}</strong> to <strong>{format(new Date(calculatedCustomEndDate), 'dd/MM/yyyy')}</strong>.
+                                        This will extend the membership from <strong>{format(new Date(customExtensionStartDate.replace(/-/g, '/')), 'dd/MM/yyyy')}</strong> to <strong>{format(new Date(calculatedCustomEndDate.replace(/-/g, '/')), 'dd/MM/yyyy')}</strong>.
                                     </p>
                                 )}
                             </div>

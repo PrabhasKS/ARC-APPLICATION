@@ -5,8 +5,14 @@ import MarkLeaveModal from './MarkLeaveModal';
 import './TeamAttendance.css';
 import './PackageMgt.css';
 
+const getTodayString = () => {
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+};
+
 const TeamAttendance = () => {
-    const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+    const [date, setDate] = useState(getTodayString());
     const [memberships, setMemberships] = useState([]);
     const [attended, setAttended] = useState(new Set());
     const [onLeave, setOnLeave] = useState(new Set()); // New state for members on leave

@@ -58,7 +58,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             setLoading(true);
             const response = await api.get(`/memberships/${status}`);
             setMemberships(response.data);
-            setError(null);
+            // setError(null); // Let's not clear previous errors on fetch
         } catch (err) {
             setError(`Failed to fetch ${status} memberships.`);
             console.error(err);
@@ -81,6 +81,16 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             document.removeEventListener('click', handleClickOutside);
         };
     }, []);
+
+    // Effect to auto-clear the error after some time
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => {
+                setError(null);
+            }, 5000); // 5 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [error]);
 
     const handleOpenRenewModal = (membership) => {
         setSelectedMembership(membership);
@@ -249,12 +259,14 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         return <div>Loading {status} memberships...</div>;
     }
 
-    if (error) {
-        return <div className="error-message">{error}</div>;
-    }
-
     return (
         <div className="package-mgt-container">
+            {error && (
+                <div className="error-message-inline">
+                    {error}
+                    <button onClick={() => setError(null)} className="close-error-btn">&times;</button>
+                </div>
+            )}
             <div className="package-mgt-header shared-header">
                 <h3>{pageTitle}</h3>
                 <div className="header-controls-right">

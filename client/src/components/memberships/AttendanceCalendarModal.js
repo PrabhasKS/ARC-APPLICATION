@@ -27,10 +27,16 @@ const AttendanceCalendarModal = ({ membership, attendanceHistory, leaveHistory =
     const getDayStatus = (date) => {
         if (!date) return 'empty';
         
-        const dateStr = date.toISOString().slice(0, 10);
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const startDateStr = new Date(membership.start_date).toISOString().slice(0, 10);
-        const endDateStr = new Date(membership.current_end_date).toISOString().slice(0, 10);
+        // Manually format local date objects to string to avoid timezone shifts
+        const pad = (n) => String(n).padStart(2, '0');
+        const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+        
+        // Server dates are likely 'YYYY-MM-DDTHH:mm:ss.sssZ', so slicing is safe
+        const startDateStr = membership.start_date.slice(0, 10);
+        const endDateStr = membership.current_end_date.slice(0, 10);
 
         // Before membership start
         if (dateStr < startDateStr) return 'disabled';
@@ -40,8 +46,8 @@ const AttendanceCalendarModal = ({ membership, attendanceHistory, leaveHistory =
 
         // Check if on leave
         const isOnLeave = leaveHistory.some(leave => {
-            const start = new Date(leave.start_date).toISOString().slice(0, 10);
-            const end = new Date(leave.end_date).toISOString().slice(0, 10);
+            const start = leave.start_date.slice(0, 10);
+            const end = leave.end_date.slice(0, 10);
             return dateStr >= start && dateStr <= end;
         });
         if (isOnLeave) return 'leave';

@@ -1217,15 +1217,23 @@ router.put('/ended/:id/terminate', isPrivilegedUser, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // Check if membership exists and is in 'ended' status
+        // Check if membership exists, is in 'ended' status or active but past its end date, AND get balance_amount
         const [memberships] = await connection.query(
-            "SELECT id FROM active_memberships WHERE id = ? AND status = 'ended' FOR UPDATE",
+            "SELECT id, balance_amount FROM active_memberships WHERE id = ? AND (status = 'ended' OR (status = 'active' AND current_end_date < CURDATE())) FOR UPDATE",
             [id]
         );
 
         if (memberships.length === 0) {
             await connection.rollback();
             return res.status(404).json({ message: 'Ended membership not found.' });
+        }
+
+        const membership = memberships[0];
+
+        // NEW: Check for outstanding balance
+        if (parseFloat(membership.balance_amount) > 0) {
+            await connection.rollback();
+            return res.status(403).json({ message: 'Cannot terminate membership with outstanding balance. Please clear the balance first.' });
         }
 
         // Update status to 'terminated'
@@ -1352,61 +1360,31 @@ router.get('/team-attendance', isPrivilegedUser, async (req, res) => {
 });
 
 // GET attendance history for a specific membership (for calendar view)
-
 router.get('/active/:id/attendance-history', isPrivilegedUser, async (req, res) => {
-
     const { id } = req.params;
-
     try {
-
-        const [rows] = await db.query('SELECT attendance_date FROM team_attendance WHERE membership_id = ? ORDER BY attendance_date ASC', [id]);
-
-        // Return array of date strings
-
-        const dates = rows.map(row => {
-
-             // Handle timezone issues by treating the date string directly if possible, or ensuring strict YYYY-MM-DD format
-
-             const d = new Date(row.attendance_date);
-
-             return d.toISOString().slice(0, 10);
-
-        });
-
+        const [rows] = await db.query(
+            "SELECT DATE_FORMAT(attendance_date, '%Y-%m-%d') as attendance_date_str FROM team_attendance WHERE membership_id = ? ORDER BY attendance_date ASC", 
+            [id]
+        );
+        const dates = rows.map(row => row.attendance_date_str);
         res.json(dates);
-
     } catch (error) {
-
         console.error('Error fetching membership attendance history:', error);
-
         res.status(500).json({ message: 'Error fetching membership attendance history.' });
-
     }
-
 });
 
-
-
 // GET approved leave history for a specific membership
-
 router.get('/active/:id/leave-history', isPrivilegedUser, async (req, res) => {
-
     const { id } = req.params;
-
     try {
-
         const [rows] = await db.query('SELECT start_date, end_date FROM membership_leave WHERE membership_id = ? AND status = "APPROVED"', [id]);
-
         res.json(rows);
-
     } catch (error) {
-
         console.error('Error fetching membership leave history:', error);
-
         res.status(500).json({ message: 'Error fetching membership leave history.' });
-
     }
-
 });
 
 router.get('/:id/details', isPrivilegedUser, async (req, res) => {
