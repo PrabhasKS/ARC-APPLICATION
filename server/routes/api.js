@@ -40,7 +40,7 @@ const toMinutes = (timeStr) => {
     if (!timeStr) return 0;
     const parts = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (!parts) return 0;
- 
+
     let hours = parseInt(parts[1], 10);
     const minutes = parseInt(parts[2], 10);
     const modifier = parts[3] ? parts[3].toUpperCase() : null;
@@ -106,8 +106,16 @@ const buildDateFilter = (columnName, startDate, endDate, isDateTime = false) => 
             }
         } else {
             // For a date range
-            filterSql = ` AND ${columnName} BETWEEN ? AND ?`;
-            queryParams.push(startDate, endDate);
+            if (isDateTime) {
+                // For DATETIME columns, BETWEEN treats endDate as midnight (00:00:00),
+                // which excludes all records after midnight on the last day.
+                // Use >= start AND < end+1day to capture the full last day.
+                filterSql = ` AND ${columnName} >= ? AND ${columnName} < DATE_ADD(?, INTERVAL 1 DAY)`;
+                queryParams.push(startDate, endDate);
+            } else {
+                filterSql = ` AND ${columnName} BETWEEN ? AND ?`;
+                queryParams.push(startDate, endDate);
+            }
         }
     }
     return { filterSql, queryParams };
@@ -271,11 +279,11 @@ router.get('/courts/availability', authenticateToken, async (req, res) => {
                 }
                 occupiedSlots += overlappingMemberships.length; // Each membership occupies 1 slot
             }
-            
+
             const availableSlots = Math.max(0, court.capacity - occupiedSlots);
 
-            return { 
-                ...court, 
+            return {
+                ...court,
                 is_available: availableSlots > 0,
                 available_slots: availableSlots,
                 reason: availableSlots === 0 ? 'Full' : (occupiedSlots > 0 ? 'Partial' : 'Available')
@@ -370,8 +378,8 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             // Note: No specific 'else' for 'cancelled' is needed if we assume the frontend sends 'cancelled' as a status.
             // However, to be robust:
             else if (status === 'cancelled') {
-                 // We need to remove the initial 'b.status != ?' for this case
-                whereClauses.pop(); 
+                // We need to remove the initial 'b.status != ?' for this case
+                whereClauses.pop();
                 queryParams.pop();
                 whereClauses.push('b.status = ?');
                 queryParams.push('Cancelled');
@@ -423,12 +431,12 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
 
         query += ' ORDER BY b.id DESC LIMIT ? OFFSET ?';
         const offset = (page - 1) * limit;
-        
+
         // Create a separate params array for the main query to avoid mutation issues
         const mainQueryParams = [...queryParams, parseInt(limit, 10), parseInt(offset, 10)];
 
         const [rows] = await connection.query(query, mainQueryParams);
-        
+
         const bookings = rows.map(row => ({
             ...row,
             accessories: row.accessories ? JSON.parse(row.accessories) : [],
@@ -469,7 +477,7 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
 
             const slots = timeSlots.map(slot => {
                 const slotStartHour = parseInt(slot.split(':')[0]);
-                
+
                 const subSlots = [0, 30].map(minute => {
                     const subSlotStartMinutes = slotStartHour * 60 + minute;
                     const subSlotEndMinutes = subSlotStartMinutes + 30;
@@ -505,20 +513,20 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
 
                         // If still available, check for memberships
                         if (availability === 'available' || availability === 'partial') {
-                             const overlappingMembership = courtMemberships.find(m => {
+                            const overlappingMembership = courtMemberships.find(m => {
                                 const [startStr, endStr] = m.time_slot.split(' - ');
                                 const membershipStart = toMinutes(startStr);
                                 const membershipEnd = toMinutes(endStr);
                                 return subSlotStartMinutes < membershipEnd && subSlotEndMinutes > membershipStart;
-                             });
+                            });
 
-                             if (overlappingMembership) {
-                                 const isAttended = attendedMembershipIds.includes(overlappingMembership.id);
-                                 if (isAttended) {
-                                     availability = 'attended'; // This will be colored yellow on the frontend
-                                 }
-                                 // If not attended, do nothing, so it remains 'available' (green)
-                             }
+                            if (overlappingMembership) {
+                                const isAttended = attendedMembershipIds.includes(overlappingMembership.id);
+                                if (isAttended) {
+                                    availability = 'attended'; // This will be colored yellow on the frontend
+                                }
+                                // If not attended, do nothing, so it remains 'available' (green)
+                            }
                         }
                     }
                     return { availability, booking: booking_details };
@@ -656,7 +664,7 @@ router.get('/booking/:id/receipt.pdf', async (req, res) => {
         // Customer Details
         doc.fontSize(8).text(`Customer: ${booking.customer_name} | Contact: ${booking.customer_contact}`);
         doc.moveDown(0.5);
-        
+
         // Booking Info
         doc.fontSize(8).text(`Sport: ${booking.sport_name} | Court: ${booking.court_name}`);
         doc.moveDown();
@@ -736,7 +744,7 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
             if (durationInMinutes >= 30) { // Only charge for 30 mins or more
                 const num_of_hours = Math.floor(durationInMinutes / 60);
                 const remaining_minutes = durationInMinutes % 60;
-                
+
                 court_price = num_of_hours * hourly_price;
                 if (remaining_minutes >= 30) {
                     court_price += hourly_price / 2;
@@ -777,7 +785,7 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
 });
 router.post('/bookings', authenticateToken, async (req, res) => {
     const { court_id, customer_name, customer_contact, customer_email, date, startTime, endTime,
-            payment_mode, payment_id, amount_paid, slots_booked, discount_amount, discount_reason, accessories } = req.body;
+        payment_mode, payment_id, amount_paid, slots_booked, discount_amount, discount_reason, accessories } = req.body;
     const created_by_user_id = req.user.id;
 
     let connection;
@@ -828,7 +836,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             if (durationInMinutes >= 30) { // Only charge for 30 mins or more
                 const num_of_hours = Math.floor(durationInMinutes / 60);
                 const remaining_minutes = durationInMinutes % 60;
-                
+
                 base_court_price = num_of_hours * hourly_price;
                 if (remaining_minutes >= 30) {
                     base_court_price += hourly_price / 2;
@@ -854,7 +862,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                 }
             }
         }
-        
+
         // Total price is discounted court price + accessories price
         const total_price = final_court_price + accessories_total_price;
 
@@ -880,7 +888,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
 
         // --- Concurrency Lock and Conflict Check ---
         const [existingBookings] = await connection.query('SELECT time_slot, slots_booked FROM bookings WHERE court_id = ? AND date = ? AND status != ? FOR UPDATE', [court_id, date, 'Cancelled']);
-        
+
         const [activeMemberships] = await connection.query(
             `SELECT time_slot 
              FROM active_memberships 
@@ -924,7 +932,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
             }
         }
         // --- End Concurrency Lock and Conflict Check ---
-        
+
         const [result] = await connection.query(
             'INSERT INTO bookings (court_id, sport_id, created_by_user_id, customer_name, customer_contact, customer_email, date, time_slot, total_price, amount_paid, balance_amount, payment_status, payment_mode, payment_id, slots_booked, status, discount_amount, discount_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [court_id, sport_id, created_by_user_id, customer_name, customer_contact, customer_email, date, time_slot, total_price, amount_paid, balance_amount, payment_status, payment_mode, payment_id, slots_booked, 'Booked', discount_amount, discount_reason]
@@ -1025,7 +1033,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
                 // For multi-capacity resources, check if there are enough slots
                 const totalSlotsInOverlap = overlappingBookings.reduce((total, b) => total + parseInt(b.slots_booked, 10), 0);
                 const slotsBeingMoved = parseInt(existingBooking.slots_booked, 10);
-                
+
                 if ((totalSlotsInOverlap + slotsBeingMoved) > capacity) {
                     await connection.rollback();
                     connection.release();
@@ -1078,7 +1086,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
             connection.release();
             return res.status(400).json({ message: 'Cannot remove/update items where the total amount would be less than the amount already paid.' });
         }
-        
+
         const final_balance_amount = final_total_price - total_paid;
 
         let final_payment_status = 'Pending';
@@ -1087,7 +1095,7 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
         } else if (total_paid > 0) {
             final_payment_status = 'Received';
         }
-        
+
         const updateFields = {
             customer_name,
             customer_contact,
@@ -1220,13 +1228,13 @@ router.post('/bookings/:id/extend', authenticateToken, async (req, res) => {
 
         // Calculate new price
         const newTimeSlot = `${startTimeStr} - ${newEndTime}`;
-        
+
         const startTime24 = to24Hour(startTimeStr);
         const startDate = new Date(booking.date);
         startDate.setHours(startTime24.hours, startTime24.minutes, 0, 0);
 
         const durationInMinutes = (bookingDate.getTime() - startDate.getTime()) / (1000 * 60);
-        
+
         const new_total_price = (durationInMinutes / 60) * hourly_price;
         const new_balance_amount = new_total_price - booking.amount_paid;
         const payment_status = new_balance_amount <= 0 ? 'Completed' : 'Pending';
@@ -1550,7 +1558,7 @@ router.delete('/accessories/:id', authenticateToken, isAdmin, async (req, res) =
 router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings WHERE status != ?${bookingDateFilterSql}`, ['Cancelled', ...bookingQueryParams]);
@@ -1598,14 +1606,14 @@ router.get('/analytics/desk-summary', authenticateToken, isPrivilegedUser, async
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         const [[{ total_bookings }]] = await db.query(`SELECT COUNT(*) as total_bookings FROM bookings ${whereString}`, queryParams);
-        
+
         // Total revenue should probably include revenue from cancelled bookings, so we query it separately.
         const totalRevenueParams = date ? [date] : [];
         const totalRevenueFilter = date ? 'WHERE date = ?' : '';
         const [[{ total_revenue }]] = await db.query(`SELECT COALESCE(SUM(amount_paid), 0) as total_revenue FROM bookings ${totalRevenueFilter}`, totalRevenueParams);
 
         const [[{ pending_amount }]] = await db.query(`SELECT COALESCE(SUM(balance_amount), 0) as pending_amount FROM bookings ${whereString} AND balance_amount > 0`, queryParams);
-        
+
         const paymentModeQuery = `
             SELECT p.payment_mode, SUM(p.amount) as total
             FROM payments p
@@ -1635,7 +1643,7 @@ router.get('/analytics/desk-summary', authenticateToken, isPrivilegedUser, async
 router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
@@ -1655,7 +1663,7 @@ router.get('/analytics/bookings-over-time', authenticateToken, isAdmin, async (r
 router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('b.date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
@@ -1677,7 +1685,7 @@ router.get('/analytics/revenue-by-sport', authenticateToken, isAdmin, async (req
 router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
@@ -1706,7 +1714,7 @@ router.get('/analytics/utilization-heatmap', authenticateToken, isAdmin, async (
 router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
@@ -1725,7 +1733,7 @@ router.get('/analytics/booking-status-distribution', authenticateToken, isAdmin,
 router.get('/analytics/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('b.date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
@@ -1748,7 +1756,7 @@ router.get('/analytics/revenue-by-payment-mode', authenticateToken, isAdmin, asy
 router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: bookingDateFilterSql, queryParams: bookingQueryParams } = buildDateFilter('b.date', startDate, endDate, false); // bookings.date is DATE
 
         const [rows] = await db.query(`
@@ -1772,7 +1780,7 @@ router.get('/analytics/staff-performance', authenticateToken, isAdmin, async (re
 router.get('/analytics/membership/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('am.start_date', startDate, endDate, false); // active_memberships.start_date is DATE
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
@@ -1799,7 +1807,7 @@ router.get('/analytics/membership/summary', authenticateToken, isAdmin, async (r
 router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
@@ -1823,7 +1831,7 @@ router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin,
 router.get('/analytics/membership/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
@@ -1908,7 +1916,7 @@ router.get('/analytics/overall/summary', authenticateToken, isAdmin, async (req,
 router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         // Combine revenue from Bookings and Memberships linked to sports
@@ -1941,7 +1949,7 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
 
         // We need to pass parameters twice because of the UNION
         const fullParams = [...paymentQueryParams, ...paymentQueryParams];
-        
+
         const [rows] = await db.query(query, fullParams);
         res.json(rows);
     } catch (err) {
@@ -1953,7 +1961,7 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
 router.get('/analytics/overall/revenue-by-payment-mode', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
@@ -1974,7 +1982,7 @@ router.get('/analytics/overall/revenue-by-payment-mode', authenticateToken, isAd
 router.get('/analytics/overall/revenue-distribution', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         const [rows] = await db.query(`
@@ -2109,7 +2117,7 @@ router.post('/whatsapp', async (req, res) => {
                 const time_slot = `${formatTo12Hour(session.startTime)} - ${formatTo12Hour(session.endTime)}`;
                 const sql = 'INSERT INTO bookings (court_id, sport_id, customer_name, customer_contact, date, time_slot, payment_mode, amount_paid, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
                 const values = [session.court_id, session.sport_id, session.customer_name, session.customer_contact, session.date, time_slot, 'online', session.amount, 'Booked'];
-                
+
                 try {
                     const [result] = await db.query(sql, values);
                     const bookingId = result.insertId;
