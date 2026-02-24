@@ -5,9 +5,9 @@ const BookingDetailsModal = ({ booking, onClose }) => {
     if (!booking) return null;
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <div id="receipt-content-to-print"> 
+        <div className="receipt-overlay" onClick={onClose}>
+            <div className="receipt-modal" onClick={e => e.stopPropagation()}>
+                <div id="receipt-content-to-print">
                     <div className="receipt-header">
                         <h1>Booking Details</h1>
                         <p>ARC SportsZone</p>

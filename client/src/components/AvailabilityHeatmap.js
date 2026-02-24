@@ -12,21 +12,19 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
     const getCellColor = (availability) => {
         switch (availability) {
             case 'available':
-                return '#a3d9a5'; // Darker Green
+                return '#98f69bff'; // Light green
             case 'partial':
-                return '#ffe082'; // Darker Yellow
-            // case 'membership':
-            //     return '#4e269eff'; // Gold for Membership
+                return 'rgba(255, 232, 160, 1)'; // Light yellow
             case 'attended':
-                return '#ffeb3b'; // Yellow for Attended Membership
+                return '#fee497ff'; // Light yellow
             case 'booked':
             case 'full':
-                return '#f0a1a8'; // Darker Red
+                return '#fdacb3ff'; // Light red
             case 'maintenance':
             case 'under-maintenance':
-                return '#c0c1c2'; // Darker Grey
+                return '#d0d2d3'; // Light gray
             default:
-                return '#f7f7a8'; // Darker lightyellow for other cases
+                return '#ffe8a0'; // Light yellow fallback
         }
     };
 
@@ -56,25 +54,25 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
         <div style={{ overflowX: 'auto', position: 'relative' }}>
             <h3>Court Availability Heatmap</h3>
             {tooltip.visible && (
-                <div style={{ position: 'fixed', top: tooltip.y + 10, left: tooltip.x + 10, backgroundColor: 'white', border: '1px solid #ccc', padding: '10px', zIndex: 1000, pointerEvents: 'none' }}>
+                <div style={{ position: 'fixed', top: tooltip.y + 10, left: tooltip.x + 10, backgroundColor: '#fff', border: '1px solid #D5D8DC', borderRadius: '8px', padding: '12px 16px', zIndex: 1000, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: '13px' }}>
                     {tooltip.content}
                 </div>
             )}
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                     <tr>
-                        <th style={{ minWidth: '150px', padding: '8px', border: '1px solid #ddd' }}>Court</th>
+                        <th style={{ minWidth: '150px', padding: '10px 12px', border: '1px solid #2E5A99', backgroundColor: '#1B3A6B', color: '#fff', fontWeight: '600', fontSize: '13px', letterSpacing: '0.5px' }}>Court</th>
                         {timeSlots.map(time => (
-                            <th key={time} style={{ padding: '8px', border: '1px solid #ddd' }}>{time}</th>
+                            <th key={time} style={{ padding: '10px 8px', border: '1px solid #2E5A99', backgroundColor: '#1B3A6B', color: '#fff', fontWeight: '600', fontSize: '12px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{time}</th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
                     {heatmapData.map(court => (
                         <tr key={court.id}>
-                            <td style={{ padding: '8px', border: '1px solid #ddd', fontWeight: 'bold' }}>{court.name} ({court.sport_name})</td>
+                            <td style={{ padding: '10px 12px', border: '1px solid #E8EAED', fontWeight: '600', fontSize: '13px', color: '#1B3A6B', backgroundColor: '#F8F9FA', whiteSpace: 'nowrap' }}>{court.name} ({court.sport_name})</td>
                             {court.slots.map(slot => (
-                                <td key={slot.time} style={{ padding: 0, border: '1px solid #ddd', textAlign: 'center' }}>
+                                <td key={slot.time} style={{ padding: 0, border: '1px solid #E8EAED', textAlign: 'center' }}>
                                     <div style={{ display: 'flex', height: '100%' }}>
                                         {slot.subSlots.map((subSlot, index) => {
                                             const totalSlotsBooked = subSlot.booking ? subSlot.booking.reduce((acc, b) => acc + (Number(b.slots_booked) || 0), 0) : 0;
@@ -85,7 +83,7 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                                                         backgroundColor: getCellColor(subSlot.availability),
                                                         width: '50%',
                                                         height: '40px',
-                                                        border: '1px solid black',
+                                                        border: '1px solid rgba(27,58,107,0.3)',
                                                         cursor: subSlot.availability === 'available' || subSlot.availability === 'partial' ? 'pointer' : 'not-allowed'
                                                     }}
                                                     onClick={() => (subSlot.availability === 'available' || subSlot.availability === 'partial') && onSlotSelect(court, slot.time, index * 30)}

@@ -1,192 +1,193 @@
-/* --- MAIN PAGE CONTAINER --- */
+/* ── Admin Analytics ── */
 .analytics-container {
-  padding: 32px;
-    /* This is the main light gray background */
+  padding: var(--space-2xl);
 }
 
-/* --- PAGE TITLE --- */
 .analytics-title {
-  font-size: 2.25rem; /* 36px */
+  font-size: var(--font-size-4xl);
   font-weight: 700;
-  color: #111827; /* Gray-900 */
-  margin-bottom: 0; /* <-- MODIFIED (was 24px) */
+  color: var(--color-text);
+  margin-bottom: 0;
 }
 
-/* --- NEW HEADER WRAPPER --- */
 .analytics-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px; /* This now controls the space below the header */
+  margin-bottom: var(--space-xl);
 }
 
-/* --- FILTER BAR --- */
+/* ── Filter Bar ── */
 .filters {
   display: flex;
-  flex-wrap: wrap; 
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: var(--space-md);
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-xl);
 }
 
 .filter-btn {
   padding: 8px 16px;
-  font-size: 0.875rem; /* 14px */
+  font-size: var(--font-size-base);
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid #d1d5db; /* Gray-300 border */
-  border-radius: 8px; /* Curvy button */
-  background-color: #ffffff;
-  color: #374151; /* Gray-700 */
-  transition: all 0.2s ease;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-base);
 }
 
 .filter-btn:hover {
-  background-color: #f9fafb; /* Gray-50 */
-  border-color: #9ca3af; /* Gray-400 */
+  background-color: #F4F6F9;
+  border-color: var(--color-primary-light);
 }
 
 .filter-btn.active {
-  background-color: #1d4ed8; /* Blue-700 */
-  color: #ffffff;
-  border-color: #1d4ed8;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-dark);
+  border-color: var(--color-primary);
 }
 
 .filter-btn.clear-btn {
-  background-color: #f3f4f6; /* Gray-100 */
-  border-color: #d1d5db;
+  background-color: #F4F6F9;
+  border-color: var(--color-border);
 }
 
 .filter-input {
   padding: 8px 12px;
-  font-size: 0.875rem;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border);
 }
 
-/* --- STAT CARD GRID --- */
-/* THIS IS THE FIX:
-   Notice there is NO background-color property here. 
-   This removes the panel you wanted to delete.
-*/
+/* ── Stat Cards ── */
 .summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-2xl);
 }
 
-/* --- BASE CARD STYLING (For ALL cards) --- */
 .card,
 .chart-card {
-  background-color: #ffffff; /* Cards are white */
-  border-radius: 12px; /* Curvy edges */
-  padding: 24px;
-  border: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-slow);
 }
 
-/* --- CARD HOVER EFFECT (For ALL cards) --- */
 .card:hover,
 .chart-card:hover {
-  transform: translateY(-5px); /* Lifts the card */
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
 }
 
-/* --- STAT CARD CONTENT (Icon + Text) --- */
 .stat-card-content {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-base);
 }
 
 .stat-icon-container {
-  padding: 12px;
-  border-radius: 10px;
+  padding: var(--space-md);
+  border-radius: var(--radius-base);
 }
 
 .stat-icon-container span {
-  font-size: 24px; /* Emoji size */
+  font-size: 24px;
   display: block;
 }
 
 .stat-text h4 {
   margin: 0;
-  font-size: 0.875rem; /* 14px */
+  font-size: var(--font-size-base);
   font-weight: 500;
-  color: #6b7280; /* Gray-500 */
+  color: var(--color-text-muted);
 }
 
 .stat-text p {
   margin: 4px 0 0;
-  font-size: 1.875rem; /* 30px */
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #111827; /* Gray-900 */
+  color: var(--color-text);
 }
 
-/* --- DOWNLOAD BUTTON --- */
+/* ── Download Button ── */
 .download-ledger {
-  margin-bottom: 0; /* <-- MODIFIED (was 32px) */
+  margin-bottom: 0;
 }
 
 .download-ledger button {
   padding: 10px 20px;
-  font-size: 1em;
+  font-size: var(--font-size-md);
   font-weight: 600;
   cursor: pointer;
   border: none;
-  border-radius: 8px; /* Curvy button */
-  background-color: #1d4ed8; /* Strong blue */
-  color: white;
-  transition: background-color 0.3s ease;
+  border-radius: var(--radius-base);
+  background: var(--color-primary-gradient);
+  color: var(--color-text-on-dark);
+  transition: all var(--transition-base);
 }
 
 .download-ledger button:hover {
-  background-color: #1e40af; /* Darker blue on hover */
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
 }
 
-/* --- CHARTS GRID --- */
+/* ── Charts Grid ── */
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 24px;
+  gap: var(--space-xl);
 }
 
-/* Title inside chart cards */
 .chart-card h3 {
-  font-size: 1.25rem;
+  font-size: var(--font-size-xl);
   font-weight: 600;
-  color: #374151; /* Gray-700 */
-  margin-bottom: 16px;
+  color: var(--color-text);
+  margin-bottom: var(--space-base);
 }
 
-/* --- TABS (Matches Ledger Design) --- */
-.tabs-container {
-    display: flex;
-    gap: 20px;
-    border-bottom: 2px solid #e5e7eb; /* Gray-200 */
-    margin-bottom: 24px;
+/* ── Tabs (local override) ── */
+.analytics-container .tabs-container {
+  display: flex;
+  gap: var(--space-lg);
+  border-bottom: 2px solid var(--color-border-light);
+  margin-bottom: var(--space-xl);
 }
 
-.tab-button {
-    padding: 12px 4px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 600;
-    color: #6b7280; /* Gray-500 */
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
-    margin-bottom: -2px;
+.analytics-container .tab-button {
+  padding: 12px 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-bottom: 3px solid transparent;
+  transition: all var(--transition-base);
+  margin-bottom: -2px;
 }
 
-.tab-button:hover {
-    color: #374151; /* Gray-700 */
+.analytics-container .tab-button:hover {
+  color: var(--color-text);
 }
 
-.tab-button.active {
-    color: #1d4ed8; /* Blue-700 */
-    border-bottom-color: #1d4ed8;
+.analytics-container .tab-button.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .analytics-container {
+    padding: var(--space-base);
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }

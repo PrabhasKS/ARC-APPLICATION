@@ -1,58 +1,90 @@
+/* ── App Header ── */
 .app-header {
+    background: var(--color-primary-gradient);
+    color: var(--color-text-on-dark);
+    padding: 0 var(--space-lg) 0 var(--space-md);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 2rem;
-    background-color: #fff;
-    border-bottom: 1px solid #e0e0e0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.header-title {
-    display: flex;
-    align-items: center;
+    height: 80px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    position: sticky;
+    top: 0;
+    z-index: 900;
 }
 
 .header-logo {
-    height: 50px;
+    height: 65px;
     width: auto;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
 }
 
 .header-nav {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: var(--space-lg);
 }
 
 .header-nav a {
+    color: rgba(255, 255, 255, 0.85);
     text-decoration: none;
-    color: #333;
+    font-size: var(--font-size-base);
     font-weight: 500;
-    padding: 0.5rem 0;
+    padding: 6px 0;
     border-bottom: 2px solid transparent;
-    transition: color 0.2s ease, border-bottom-color 0.2s ease;
+    transition: all var(--transition-base);
 }
 
 .header-nav a:hover {
-    color: #007bff;
+    color: var(--color-text-on-dark);
 }
 
 .header-nav a.active {
-    color: #007bff;
-    border-bottom-color: #007bff;
+    color: var(--color-text-on-dark);
+    border-bottom-color: var(--color-text-on-dark);
 }
 
+/* ── Logout Button ── */
 .logout-btn {
-    background-color: #dc3545;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-text-on-dark);
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 5px;
-    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
     font-weight: 500;
-    transition: background-color 0.2s ease;
+    cursor: pointer;
+    transition: all var(--transition-base);
 }
 
 .logout-btn:hover {
-    background-color: #c82333;
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+}
+
+/* ── Responsive Header ── */
+@media (max-width: 768px) {
+    .app-header {
+        padding: 0 var(--space-base);
+        height: auto;
+        flex-wrap: wrap;
+        padding-top: var(--space-md);
+        padding-bottom: var(--space-md);
+    }
+
+    .header-nav {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        margin-top: var(--space-sm);
+    }
+
+    .header-nav a {
+        font-size: var(--font-size-sm);
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius-sm);
+        border-bottom: none;
+    }
 }

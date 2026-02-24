@@ -1,88 +1,65 @@
-.add-member-modal {
-    max-width: 600px;
-}
+/* ── Add Member Modal ── */
+/* Inherits base modal styles from PackageEditModal.css */
 
-.modal-body {
-    padding-top: 1rem;
-}
-
-.search-input {
+.add-member-modal .search-input {
     width: 100%;
-    padding: 0.8rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-md);
+    background-color: #F8F9FA;
+    transition: all var(--transition-base);
+    box-sizing: border-box;
 }
 
-.search-results-list {
+.add-member-modal .search-input:focus {
+    outline: none;
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+    background-color: var(--color-surface);
+}
+
+.add-member-modal .search-results {
     list-style: none;
     padding: 0;
-    margin: 0;
-    max-height: 200px;
+    margin: var(--space-xs) 0 var(--space-base) 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    max-height: 160px;
     overflow-y: auto;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-md);
 }
 
-.search-results-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.8rem;
-    border-bottom: 1px solid #f0f0f0;
+.add-member-modal .search-results li {
+    padding: 10px var(--space-base);
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background-color var(--transition-fast);
 }
 
-.search-results-list li:last-child {
+.add-member-modal .search-results li:last-child {
     border-bottom: none;
 }
 
-.search-results-list li span {
-    font-weight: 500;
+.add-member-modal .search-results li:hover {
+    background-color: #EBF0F7;
+    color: var(--color-primary);
 }
 
-.no-results {
-    text-align: center;
-    padding: 1.5rem;
-    background-color: #f9f9f9;
-    border-radius: 5px;
+/* ── New Member Form ── */
+.add-member-modal .new-member-form {
+    background-color: #F8F9FA;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-base);
+    padding: var(--space-base);
+    margin-top: var(--space-base);
 }
 
-.no-results p {
-    margin: 0 0 1rem 0;
-    color: #666;
-}
-
-.new-member-actions {
-    margin-top: 1rem;
-    text-align: center;
-}
-
-.new-member-form {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e0e0e0;
-}
-
-.new-member-form h4 {
-    margin-bottom: 1rem;
-    color: #333;
-}
-
-.form-group-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.form-group-row input,
-.form-group-row textarea {
-    flex: 1;
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 1rem;
-}
-
-.form-group-row textarea {
-    min-height: 80px;
+.add-member-modal .new-member-form h4 {
+    margin: 0 0 var(--space-base) 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-primary);
 }

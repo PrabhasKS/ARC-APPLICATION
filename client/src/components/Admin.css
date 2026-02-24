@@ -1,258 +1,256 @@
-/* --- Admin Page General Layout --- */
+/* ── Admin Page Layout ── */
 .admin-container {
-    padding: 24px;
+    padding: var(--space-xl);
     max-width: 1400px;
     margin: 0 auto;
 }
 
-.admin-tabs {
-  display: flex;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e9ecef;
-}
-
-.admin-tabs button {
-  padding: 10px 20px;
-  border: none;
-  background-color: transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 16px;
-  color: #6c757d;
-  position: relative;
-  top: 2px; /* Adjust to align with border */
-}
-
-.admin-tabs button.active {
-  color: #0d6efd;
-  border-bottom: 2px solid #0d6efd;
-  font-weight: 600;
-}
-
-.admin-tabs button:hover:not(.active) {
-  color: #0d6efd;
-}
-
-/* Adjust admin-header to accommodate tabs */
 .admin-header {
     display: flex;
-    flex-direction: column; /* Stack title and tabs */
-    align-items: flex-start; /* Align items to the start */
-    margin-bottom: 0; /* Remove bottom margin as tabs have their own */
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 0;
 }
 
 .admin-header h1 {
-    margin-bottom: 15px; /* Space between title and tabs */
+    margin-bottom: var(--space-base);
+    color: var(--color-primary);
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
 }
 
-/* --- Responsive Grid for Admin Cards --- */
+/* ── Admin Tabs ── */
+.admin-tabs {
+    display: flex;
+    margin-bottom: var(--space-lg);
+    border-bottom: 2px solid var(--color-border-light);
+}
+
+.admin-tabs button {
+    padding: 10px 20px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    position: relative;
+    top: 2px;
+    border-bottom: 2px solid transparent;
+}
+
+.admin-tabs button.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+.admin-tabs button:hover:not(.active) {
+    color: var(--color-primary);
+}
+
+/* ── Admin Grid ── */
 .admin-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 24px;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
 }
 
-/* --- Card Styling --- */
+/* ── Admin Card ── */
 .admin-card {
-    background-color: #ffffff;
-    border-radius: 12px;
-    border: 1px solid #dee2e6;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    padding: 24px;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-xl);
     display: flex;
     flex-direction: column;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .admin-card h2 {
-    font-size: 22px;
+    font-size: var(--font-size-xl);
     font-weight: 600;
-    color: #343a40;
+    color: var(--color-text);
     margin-top: 0;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 12px;
+    margin-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: var(--space-md);
 }
 
-/* --- Modern Form Styling --- */
+/* ── Admin Form ── */
 .admin-card form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-base);
 }
 
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.form-group label {
-    font-size: 14px;
+.admin-card .form-group label {
+    font-size: var(--font-size-base);
     font-weight: 500;
-    color: #495057;
+    color: var(--color-text-secondary);
 }
 
-.form-group input,
-.form-group select {
+.admin-card .form-group input,
+.admin-card .form-group select {
     width: 100%;
-    background-color: #f8f9fa;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    font-size: 15px;
+    background-color: #F8F9FA;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-md);
     padding: 12px 16px;
-    transition: all 0.2s;
+    transition: all var(--transition-base);
     box-sizing: border-box;
 }
 
-.form-group input:focus,
-.form-group select:focus {
+.admin-card .form-group input:focus,
+.admin-card .form-group select:focus {
     outline: none;
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
-    background-color: #fff;
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+    background-color: var(--color-surface);
 }
 
-/* --- Attractive CTA Button Styles --- */
-/* Primary "Add" button */
-.btn-primary {
-    background-color: #0d6efd;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 18px;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 8px; /* Space above the button */
-}
-
-.btn-primary:hover {
-    background-color: #0b5ed7;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Secondary "View Analytics" button */
-.btn-secondary {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-.btn-secondary:hover {
-    background-color: #5a6268;
-}
-
-/* --- Modern Table Styling --- */
+/* ── Admin Table ── */
 .admin-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 16px;
+    margin-top: var(--space-base);
 }
-.admin-table th, .admin-table td {
-    padding: 12px 16px;
+
+.admin-table th,
+.admin-table td {
+    padding: var(--space-md) var(--space-base);
     text-align: left;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--color-border-light);
     vertical-align: middle;
 }
+
 .admin-table th {
-    background-color: #f8f9fa;
-    font-size: 13px;
+    background-color: var(--color-primary);
+    color: var(--color-text-on-dark);
+    font-size: var(--font-size-sm);
     font-weight: 600;
-    color: #6c757d;
     text-transform: uppercase;
 }
+
 .admin-table tr:last-child td {
     border-bottom: none;
 }
-.admin-table input, .admin-table select {
+
+.admin-table input,
+.admin-table select {
     width: 100%;
     padding: 8px;
-    font-size: 14px;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
+    font-size: var(--font-size-base);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
 }
+
 .actions-group {
     display: flex;
-    gap: 8px;
+    gap: var(--space-sm);
 }
 
 .btn-update {
-    background-color: #d1e7dd;
-    color: #0f5132;
+    background-color: var(--color-success-bg);
+    color: var(--color-success-text);
     border: none;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 500;
+    transition: all var(--transition-base);
 }
+
+.btn-update:hover {
+    opacity: 0.85;
+}
+
 .btn-delete {
-    background-color: #f8d7da;
-    color: #58151c;
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-text);
     border: none;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 500;
+    transition: all var(--transition-base);
 }
-/* --- Password Field (matches Login page style) --- */
+
+.btn-delete:hover {
+    opacity: 0.85;
+}
+
+/* ── Password Field ── */
 .password-group {
-  position: relative;
+    position: relative;
 }
 
 .password-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .password-input-wrapper input {
-  width: 100%;
-  background-color: #f8f9fa;
-  border: 1px solid #ced4da;
-  border-radius: 8px;
-  font-size: 15px;
-  padding: 12px 40px 12px 16px; /* room for icon */
-  transition: all 0.2s;
-  box-sizing: border-box;
+    width: 100%;
+    background-color: #F8F9FA;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-md);
+    padding: 12px 40px 12px 16px;
+    transition: all var(--transition-base);
+    box-sizing: border-box;
 }
 
 .password-input-wrapper input:focus {
-  outline: none;
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
-  background-color: #fff;
+    outline: none;
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+    background-color: var(--color-surface);
 }
 
-/* --- Eye Button Centered --- */
 .toggle-password-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #6c757d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
 }
 
 .toggle-password-btn:hover {
-  color: #343a40;
+    color: var(--color-text);
 }
+
 .form-error {
-  color: red;
-  font-size: 0.9rem;
-  margin-top: 4px;
-  font-weight: 500;
+    color: var(--color-danger);
+    font-size: var(--font-size-sm);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* ── Admin Responsive ── */
+@media (max-width: 768px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-tabs {
+        flex-wrap: wrap;
+    }
+
+    .admin-tabs button {
+        font-size: var(--font-size-base);
+        padding: 8px 16px;
+    }
 }

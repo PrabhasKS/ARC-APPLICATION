@@ -1,33 +1,48 @@
+/* ── New Subscription ── */
 .new-subscription-container {
     animation: fadeIn 0.5s ease-in-out;
-    padding: 2rem;
+    padding: var(--space-xl);
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align to the top */
-    min-height: 80vh; /* Ensure it takes up significant screen height */
+    align-items: flex-start;
+    min-height: 80vh;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .subscription-form-content {
     width: 90%;
     max-width: 1100px;
-    padding: 2.5rem;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: var(--space-2xl);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
 }
 
 .new-subscription-container h3 {
     text-align: center;
-    color: #333;
-    margin-bottom: 2rem;
-    font-size: 1.8rem;
+    color: var(--color-primary);
+    margin-bottom: var(--space-2xl);
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
 }
 
+/* ── Stepper ── */
 .stepper-container {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-2xl);
     position: relative;
     width: 80%;
     margin-left: auto;
@@ -41,7 +56,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background-color: #e0e0e0;
+    background-color: var(--color-border);
     transform: translateY(-50%);
     z-index: 1;
 }
@@ -52,7 +67,7 @@
     align-items: center;
     position: relative;
     z-index: 2;
-    background-color: #fff; /* Match the new form content background */
+    background-color: var(--color-surface);
     padding: 0 10px;
 }
 
@@ -60,76 +75,77 @@
     height: 40px;
     width: 40px;
     border-radius: 50%;
-    background-color: #e0e0e0;
-    color: white;
+    background-color: var(--color-border);
+    color: var(--color-text-on-dark);
     display: flex;
     justify-content: center;
     align-items: center;
-    font-weight: bold;
-    border: 2px solid #e0e0e0;
-    transition: all 0.3s ease;
+    font-weight: 700;
+    border: 2px solid var(--color-border);
+    transition: all var(--transition-slow);
 }
 
 .step-name {
-    margin-top: 0.5rem;
-    color: #888;
+    margin-top: var(--space-sm);
+    color: var(--color-text-muted);
     font-weight: 500;
-    transition: color 0.3s ease;
+    transition: color var(--transition-slow);
 }
 
 .step-item.active .step-counter {
-    background-color: #007bff;
-    border-color: #007bff;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
 }
 
 .step-item.active .step-name {
-    color: #007bff;
+    color: var(--color-primary);
+    font-weight: 600;
 }
 
+/* ── Form Step ── */
 .form-step {
     animation: fadeIn 0.4s;
-    background-color: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    margin-top: 2rem;
+    background-color: #F8F9FA;
+    padding: var(--space-xl);
+    border-radius: var(--radius-base);
+    border: 1px solid var(--color-border-light);
+    margin-top: var(--space-2xl);
 }
 
 .form-step h4 {
-    font-size: 1.3rem;
-    color: #333;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
+    margin-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: var(--space-sm);
+    font-weight: 600;
 }
 
+/* ── Form Navigation ── */
 .form-navigation {
     display: flex;
     justify-content: space-between;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #eee;
+    margin-top: var(--space-2xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--color-border-light);
 }
 
-.team-management {
-    /* Styles for the container of the team list and add button */
-}
-
+/* ── Team Members ── */
 .team-member-list {
     list-style: none;
     padding: 0;
-    margin-top: 1.5rem;
+    margin-top: var(--space-xl);
 }
 
 .team-member-list li {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.8rem;
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 5px;
-    margin-bottom: 0.5rem;
+    padding: var(--space-md);
+    background-color: #F8F9FA;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
 }
 
 .team-member-list span {
@@ -139,79 +155,110 @@
 .remove-btn {
     background: none;
     border: none;
-    color: #dc3545;
-    font-size: 1.5rem;
+    color: var(--color-accent);
+    font-size: 1.4rem;
     font-weight: bold;
     cursor: pointer;
     line-height: 1;
+    transition: color var(--transition-fast);
+}
+
+.remove-btn:hover {
+    color: var(--color-accent-hover);
 }
 
 .no-members-text {
-    color: #888;
+    color: var(--color-text-muted);
     text-align: center;
-    margin-top: 2rem;
+    margin-top: var(--space-2xl);
     font-style: italic;
 }
 
-/* Styles for Step 3: Summary and Payment */
+/* ── Step 3: Summary & Payment ── */
 .step3-cards-container {
     display: flex;
-    flex-direction: row; /* Explicitly set to row */
-    gap: 2rem;
-    align-items: stretch; /* Make both cards stretch to the same height */
+    flex-direction: row;
+    gap: var(--space-2xl);
+    align-items: stretch;
 }
 
-.step3-cards-container > .summary-card,
-.step3-cards-container > .payment-card {
+.step3-cards-container>.summary-card,
+.step3-cards-container>.payment-card {
     flex: 1;
-    min-width: 0; /* Prevents flex items from overflowing */
-    margin-bottom: 0; /* Remove bottom margin as gap is now used */
+    min-width: 0;
+    margin-bottom: 0;
 }
 
-
-.summary-card, .payment-card {
-    background-color: #ffffff;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    margin-bottom: 1.5rem;
+.summary-card,
+.payment-card {
+    background-color: var(--color-surface);
+    padding: var(--space-xl);
+    border-radius: var(--radius-base);
+    border: 1px solid var(--color-border-light);
+    margin-bottom: var(--space-xl);
 }
 
-.summary-card h5, .payment-card h5 {
-    font-size: 1.2rem;
-    color: #333;
+.summary-card h5,
+.payment-card h5 {
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
     margin-top: 0;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 0.5rem;
+    margin-bottom: var(--space-base);
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: var(--space-sm);
+    font-weight: 600;
 }
 
 .summary-card p {
-    margin: 0.5rem 0;
-    color: #555;
+    margin: var(--space-sm) 0;
+    color: var(--color-text-secondary);
 }
 
 .summary-card p strong {
-    color: #333;
-    margin-right: 0.5rem;
+    color: var(--color-text);
+    margin-right: var(--space-sm);
 }
 
 .summary-card .final-price strong {
-    font-size: 1.2rem;
-    color: #007bff;
+    font-size: var(--font-size-xl);
+    color: var(--color-primary);
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-sm);
     font-weight: 500;
-    color: #555;
+    color: var(--color-text-secondary);
 }
 
-.form-group input, .form-group select {
-     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 1rem;
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    transition: all var(--transition-base);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .step3-cards-container {
+        flex-direction: column;
+    }
+
+    .stepper-container {
+        width: 100%;
+    }
+
+    .subscription-form-content {
+        padding: var(--space-base);
+    }
 }

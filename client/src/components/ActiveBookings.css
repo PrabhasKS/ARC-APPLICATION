@@ -1,149 +1,162 @@
-/* --- Container & Layout --- */
+/* ── Active Bookings Container ── */
 .active-bookings-container {
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: var(--space-base);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-sm);
 }
 
 .upcoming-container {
-    margin-top: 20px;
+    margin-top: var(--space-lg);
 }
 
 .active-bookings-container h4 {
     margin-top: 0;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
+    border-bottom: 2px solid var(--color-border-light);
+    padding-bottom: var(--space-md);
+    color: var(--color-text);
+    font-weight: 600;
 }
 
 .active-bookings-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: var(--space-base);
 }
 
-/* --- Card Styling --- */
+/* ── Booking Card ── */
 .active-booking-card {
-    background-color: #fff;
-    border-left: 5px solid #ccc;
-    padding: 12px 15px; /* Slightly more padding for breathability */
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-border);
+    padding: var(--space-md) var(--space-base);
+    border-radius: var(--radius-base);
+    box-shadow: var(--shadow-sm);
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
     display: flex;
     flex-direction: column;
 }
 
 .active-booking-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-md);
 }
 
-/* --- Status Colors --- */
+/* ── Status Colors ── */
 .active-booking-card.upcoming {
-    border-left-color: #17a2b8;
+    border-left-color: var(--color-info);
 }
 
 .active-booking-card.active {
-    border-left-color: #28a745;
+    border-left-color: var(--color-success);
     animation: pulse 2s infinite;
 }
 
 .active-booking-card.ended {
-    border-left-color: #dc3545;
+    border-left-color: var(--color-accent);
 }
 
-/* --- The Row Fix (Sport & Court Name) --- */
+/* ── Booking Info Row ── */
 .booking-info {
-    display: flex !important;      /* Forces children into a row */
+    display: flex !important;
     flex-direction: row !important;
-    justify-content: space-between; /* Pushes Sport to left, Court to right */
-    align-items: center;            /* Vertical alignment */
-    width: 100%;                    /* Spans full width of card */
-    font-weight: bold;
-    margin-bottom: 10px;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    font-weight: 600;
+    margin-bottom: var(--space-md);
     box-sizing: border-box;
 }
 
 .sport-name,
 .court-name {
-    flex-shrink: 0;                 /* Stops them from squishing */
-    white-space: nowrap;            /* Stops them from wrapping */
-    display: inline-block;          /* Ensures they behave as containers */
+    flex-shrink: 0;
+    white-space: nowrap;
+    display: inline-block;
 }
 
 .sport-name {
-    color: #333;
-    font-size: 1.1em;
+    color: var(--color-text);
+    font-size: 1.05em;
 }
 
 .court-name {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 0.9em;
-    text-align: right;              /* Aligns text within its own space */
+    text-align: right;
 }
 
-/* --- Centered Details --- */
+/* ── Centered Details ── */
 .booking-date {
     font-size: 0.9em;
-    font-weight: bold;
-    color: #333;
+    font-weight: 600;
+    color: var(--color-text);
     margin-bottom: 4px;
     text-align: center;
 }
 
 .booking-time {
     font-size: 1.1em;
-    color: #0056b3;
+    color: var(--color-primary);
+    font-weight: 600;
     margin-bottom: 8px;
     text-align: center;
 }
 
 .customer-name {
     font-size: 0.95em;
-    color: #555;
+    color: var(--color-text-secondary);
     text-align: center;
 }
 
-/* --- Action Buttons & Messages --- */
+/* ── Action Buttons ── */
 .ended-message {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #eee;
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border-light);
     text-align: center;
     font-size: 0.9em;
-    color: #c00;
+    color: var(--color-accent);
+    font-weight: 500;
 }
 
 .clear-btn {
-    margin-top: 8px;
+    margin-top: var(--space-sm);
     padding: 6px 12px;
-    border: 1px solid #ccc;
-    background-color: #f0f0f0;
+    border: 1px solid var(--color-border);
+    background-color: #F8F9FA;
     cursor: pointer;
-    border-radius: 4px;
-    font-size: 0.85em;
-    transition: background 0.2s;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    transition: background var(--transition-fast);
 }
 
 .clear-btn:hover {
-    background-color: #e2e2e2;
+    background-color: var(--color-border-light);
 }
 
 .mark-completed-btn {
-    background-color: #28a745;
-    color: white;
-    border-color: #28a745;
+    background-color: var(--color-success);
+    color: var(--color-text-on-dark);
+    border-color: var(--color-success);
 }
 
 .mark-completed-btn:hover {
-    background-color: #218838;
+    background-color: #196F3D;
 }
 
-/* --- Animations --- */
+/* ── Pulse Animation ── */
 @keyframes pulse {
-    0% { box-shadow: 0 1px 3px rgba(40, 167, 69, 0.2); }
-    50% { box-shadow: 0 1px 15px rgba(40, 167, 69, 0.5); }
-    100% { box-shadow: 0 1px 3px rgba(40, 167, 69, 0.2); }
+    0% {
+        box-shadow: 0 1px 3px rgba(30, 132, 73, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 1px 15px rgba(30, 132, 73, 0.45);
+    }
+
+    100% {
+        box-shadow: 0 1px 3px rgba(30, 132, 73, 0.2);
+    }
 }

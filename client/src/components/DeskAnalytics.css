@@ -1,91 +1,103 @@
-/* =================================== */
-/* Desk Analytics - Stats Bar Style     */
-/* =================================== */
-
+/* ── Desk Analytics Stats Bar ── */
 .desk-analytics-container {
     display: flex;
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    overflow: hidden; /* Ensures child borders don't poke out of the radius */
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-xl);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
 }
 
 .stat-item {
-    flex: 1 1 0; /* Distribute space evenly */
-    padding: 1rem;
+    flex: 1 1 0;
+    padding: var(--space-base);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 0.25rem;
+    gap: var(--space-xs);
     text-align: left;
-    border-right: 1px solid #e9ecef;
-    min-width: 0; /* Prevents flex items from overflowing */
+    border-right: 1px solid var(--color-border-light);
+    min-width: 0;
 }
 
 .desk-analytics-container .stat-item:last-child {
-    border-right: none; /* No divider on the last item */
+    border-right: none;
 }
 
 .stat-label {
-    font-size: 0.8rem; /* Compact label size */
-    color: #6c757d; /* Muted color for the label */
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
     text-transform: uppercase;
     font-weight: 600;
+    letter-spacing: 0.5px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .stat-value {
-    font-size: 1.5rem; /* Prominent but not huge value */
+    font-size: 1.5rem;
     font-weight: 700;
-    color: #212529;
+    color: var(--color-text);
     line-height: 1.2;
 }
 
 .stat-value.pending {
-    color: #dc3545; /* Highlight pending amount */
+    color: var(--color-accent);
 }
 
-/* Special styling for the 'Revenue by Mode' item */
 .stat-item.mode-details {
-    flex-grow: 1.5; /* Give slightly more space as it has more content */
+    flex-grow: 1.5;
 }
 
 .modes-wrapper {
     display: flex;
-    gap: 0.8rem; /* Horizontal gap between modes */
+    gap: var(--space-md);
     align-items: center;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
     margin-top: 2px;
 }
 
 .mode-item {
-    font-size: 0.85rem;
-    color: #495057;
-    background-color: #f8f9fa;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    background-color: #F4F6F9;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
 }
 
 .mode-value {
     font-weight: 600;
-    color: #000;
+    color: var(--color-text);
 }
 
 .no-data {
-    font-size: 0.85rem;
-    color: #6c757d;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
 }
 
-/* General Error Message Style (retained for consistency) */
-.error-message {
-    color: #721c24;
-    padding: 1rem;
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 8px;
+.desk-analytics-container .error-message {
+    color: var(--color-danger-text);
+    padding: var(--space-base);
+    background-color: var(--color-danger-bg);
+    border: 1px solid #F1948A;
+    border-radius: var(--radius-base);
     text-align: center;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .desk-analytics-container {
+        flex-direction: column;
+    }
+
+    .stat-item {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .desk-analytics-container .stat-item:last-child {
+        border-bottom: none;
+    }
 }

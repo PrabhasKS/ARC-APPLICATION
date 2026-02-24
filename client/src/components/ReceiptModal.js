@@ -15,18 +15,18 @@ const ReceiptModal = ({ booking, onClose }) => {
     }
 
     // IMPORTANT: Replace with your actual public server URL in a real deployment
-    const publicServerUrl = process.env.REACT_APP_RECIEPT_URL || 'http://localhost:5000'; 
+    const publicServerUrl = process.env.REACT_APP_RECIEPT_URL || 'http://localhost:5000';
     const receiptPdfUrl = `${publicServerUrl}/api/booking/${booking.id}/receipt.pdf`;
 
-        const handlePrint = () => {
+    const handlePrint = () => {
 
-            window.print();
+        window.print();
 
-        };
+    };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content">
+        <div className="receipt-overlay">
+            <div className="receipt-modal">
                 <div id="receipt-content-to-print">
                     <div className="receipt-header">
                         <h1>Booking Receipt</h1>
@@ -75,7 +75,7 @@ const ReceiptModal = ({ booking, onClose }) => {
                             )}
                         </div>
                         <div className="receipt-footer">
-                             <div className="qr-code">
+                            <div className="qr-code">
                                 <div style={{ height: "auto", margin: "0 auto", maxWidth: 100, width: "100%" }}>
                                     <QRCode
                                         size={256}

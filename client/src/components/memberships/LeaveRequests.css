@@ -1,7 +1,9 @@
+/* ── Leave Requests ── */
 .leave-requests-container h3 {
-    font-size: 1.5rem;
-    color: #333;
-    margin-bottom: 1.5rem;
+    font-size: var(--font-size-2xl);
+    color: var(--color-text);
+    margin-bottom: var(--space-xl);
+    font-weight: 600;
 }
 
 .team-cell {
@@ -12,32 +14,23 @@
 }
 
 .status-badge {
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
     font-weight: 600;
-    color: white;
+    color: var(--color-text-on-dark);
     text-transform: uppercase;
 }
 
 .status-pending {
-    background-color: #ffc107; /* Yellow */
-    color: #333;
+    background-color: var(--color-warning);
+    color: var(--color-text);
 }
 
 .status-approved {
-    background-color: #28a745; /* Green */
+    background-color: var(--color-success);
 }
 
 .status-rejected {
-    background-color: #dc3545; /* Red */
-}
-
-.btn-success {
-    background-color: #28a745;
-    color: white;
-}
-
-.btn-success:hover {
-    background-color: #218838;
+    background-color: var(--color-accent);
 }

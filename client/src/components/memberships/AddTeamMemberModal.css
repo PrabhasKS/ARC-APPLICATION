@@ -1,192 +1,123 @@
-.modal-overlay {
+/* ── Add Team Member Modal ── */
+/* Inherits base modal styles from PackageEditModal.css */
+
+.add-team-member-modal .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 1050;
 }
 
-.modal-content {
-    background: #fff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+.add-team-member-modal .modal-content {
     width: 90%;
-    max-width: 500px;
-    position: relative;
-    max-height: 90vh; /* Limit height for scrollability */
-    overflow-y: auto; /* Enable scrolling for long content */
+    max-width: 520px;
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 15px;
-    margin-bottom: 20px;
+/* ── Search Section ── */
+.add-team-member-modal .search-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-md);
+    background-color: #F8F9FA;
+    transition: all var(--transition-base);
+    box-sizing: border-box;
 }
 
-.modal-header h2 {
-    margin: 0;
-    font-size: 1.5em;
-    color: #333;
-}
-
-.close-button {
-    background: none;
-    border: none;
-    font-size: 1.8em;
-    cursor: pointer;
-    color: #666;
-    padding: 0;
-}
-
-.close-button:hover {
-    color: #333;
-}
-
-.modal-form .form-group {
-    margin-bottom: 15px;
-}
-
-.modal-form label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: #555;
-}
-
-.modal-form input[type="text"],
-.modal-form input[type="number"],
-.modal-form select,
-.modal-form textarea {
-    width: calc(100% - 20px); /* Adjust for padding */
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1em;
-    margin-top: 5px;
-}
-
-.modal-form textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.modal-form input:focus,
-.modal-form select:focus,
-.modal-form textarea:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+.add-team-member-modal .search-input:focus {
     outline: none;
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+    background-color: var(--color-surface);
 }
 
-.modal-footer {
-    border-top: 1px solid #eee;
-    padding-top: 15px;
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.btn {
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s ease;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    color: white;
-    border: 1px solid #007bff;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
-}
-
-.btn-secondary {
-    background-color: #6c757d;
-    color: white;
-    border: 1px solid #6c757d;
-}
-
-.btn-secondary:hover {
-    background-color: #545b62;
-    border-color: #545b62;
-}
-
-.btn-danger {
-    background-color: #dc3545;
-    color: white;
-    border: 1px solid #dc3545;
-}
-
-.btn-danger:hover {
-    background-color: #c82333;
-    border-color: #bd2130;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.error-message {
-    color: #dc3545;
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-}
-
-.search-results-list {
+.add-team-member-modal .search-results-list {
     list-style: none;
     padding: 0;
-    margin: 5px 0 15px 0;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    max-height: 150px;
+    margin: var(--space-xs) 0 var(--space-base) 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    max-height: 160px;
     overflow-y: auto;
-    background-color: #fff;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-md);
 }
 
-.search-results-list li {
-    padding: 10px;
+.add-team-member-modal .search-results-list li {
+    padding: 10px var(--space-base);
     cursor: pointer;
-    border-bottom: 1px solid #eee;
+    font-size: var(--font-size-base);
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background-color var(--transition-fast);
 }
 
-.search-results-list li:hover {
-    background-color: #f8f9fa;
+.add-team-member-modal .search-results-list li:last-child {
+    border-bottom: none;
 }
 
+.add-team-member-modal .search-results-list li:hover {
+    background-color: #EBF0F7;
+    color: var(--color-primary);
+}
+
+/* ── Selected Member Card ── */
 .selected-member-info {
-    background-color: #e9ecef;
-    padding: 10px;
-    border-radius: 4px;
-    margin-top: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ced4da;
-}
-.selected-member-info p {
-    margin: 5px 0;
-    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #EBF0F7;
+    border: 1px solid var(--color-primary-glow);
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--radius-base);
+    padding: var(--space-md) var(--space-base);
+    margin: var(--space-md) 0;
 }
 
-.team-full-message {
-    color: #dc3545;
-    font-weight: bold;
-    margin-top: 10px;
+.selected-member-info span {
+    font-weight: 500;
+    color: var(--color-primary);
+}
+
+.selected-member-info button {
+    background: none;
+    border: none;
+    color: var(--color-accent);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color var(--transition-fast);
+}
+
+.selected-member-info button:hover {
+    color: var(--color-accent-hover);
+}
+
+/* ── Team Full Warning ── */
+.team-full-warning {
+    background-color: var(--color-warning-bg);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-base);
+    padding: var(--space-md);
+    color: var(--color-warning-text);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: var(--space-base);
+}
+
+/* ── Payment Section ── */
+.add-team-member-modal .form-section h4 {
+    color: var(--color-primary);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin: 0 0 var(--space-base) 0;
 }

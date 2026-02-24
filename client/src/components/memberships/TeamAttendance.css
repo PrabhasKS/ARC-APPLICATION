@@ -1,22 +1,22 @@
+/* ── Team Attendance ── */
 .attendance-container {
-    padding: 20px;
+    padding: var(--space-lg);
 }
 
-/* Re-using status badges from other components */
 .status-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
     font-weight: 600;
     text-transform: uppercase;
 }
 
 .status-present {
-    background-color: #d4edda; /* Light green */
-    color: #155724; /* Dark green */
+    background-color: var(--color-success-bg);
+    color: var(--color-success-text);
 }
 
 .status-leave {
-    background-color: #fff3cd; /* Light yellow */
-    color: #856404; /* Dark yellow */
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
 }

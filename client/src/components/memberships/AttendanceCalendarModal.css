@@ -1,3 +1,4 @@
+/* ── Attendance Calendar Modal ── */
 .attendance-calendar-modal-overlay {
     position: fixed;
     top: 0;
@@ -5,6 +6,7 @@
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -12,55 +14,58 @@
 }
 
 .attendance-calendar-modal {
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
+    background: var(--color-surface);
+    padding: var(--space-2xl);
+    border-radius: var(--radius-xl);
     width: 90%;
-    max-width: 800px; /* Wider for calendar view */
+    max-width: 800px;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-xl);
+    animation: dsSlideIn 0.3s ease-out;
 }
 
 .calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-lg);
 }
 
 .calendar-header h3 {
     margin: 0;
-    color: #333;
+    color: var(--color-primary);
+    font-weight: 600;
 }
 
 .calendar-controls {
     display: flex;
-    gap: 10px;
+    gap: var(--space-md);
 }
 
 .calendar-grid-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: var(--space-lg);
     justify-content: center;
 }
 
 .calendar-month {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-base);
+    padding: var(--space-md);
     width: 220px;
 }
 
 .month-title {
     text-align: center;
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #555;
-    background-color: #f9f9f9;
+    font-weight: 600;
+    margin-bottom: var(--space-md);
+    color: var(--color-text);
+    background-color: #F4F6F9;
     padding: 5px;
+    border-radius: var(--radius-sm);
 }
 
 .days-grid {
@@ -74,54 +79,55 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 0.8rem;
-    border: 1px solid #eee;
+    font-size: var(--font-size-xs);
+    border: 1px solid var(--color-border-light);
     cursor: default;
     position: relative;
+    border-radius: 2px;
 }
 
 .day-cell.header {
-    font-weight: bold;
+    font-weight: 600;
     background-color: transparent;
     border: none;
     font-size: 0.7rem;
-    color: #777;
+    color: var(--color-text-muted);
 }
 
 /* Status Colors */
 .day-cell.present {
-    background-color: #d4edda; /* Green */
-    color: #155724;
+    background-color: var(--color-success-bg);
+    color: var(--color-success-text);
     font-weight: bold;
 }
 
 .day-cell.leave {
-    background-color: #fff3cd; /* Yellow */
-    color: #856404;
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
     font-weight: bold;
 }
 
 .day-cell.absent {
-    background-color: #f8d7da; /* Red */
-    color: #721c24;
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-text);
 }
 
 .day-cell.future {
-    background-color: #fff; /* White */
-    color: #333;
+    background-color: var(--color-surface);
+    color: var(--color-text);
 }
 
 .day-cell.today {
-    border: 2px solid #007bff; /* Highlight today */
+    border: 2px solid var(--color-primary);
 }
 
 /* Legend */
 .calendar-legend {
-    margin-top: 20px;
+    margin-top: var(--space-lg);
     display: flex;
     justify-content: center;
-    gap: 20px;
-    font-size: 0.9rem;
+    gap: var(--space-lg);
+    font-size: var(--font-size-sm);
 }
 
 .legend-item {
@@ -133,7 +139,7 @@
 .legend-color {
     width: 16px;
     height: 16px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
     border-radius: 3px;
 }
 
@@ -142,6 +148,7 @@
     body * {
         visibility: hidden;
     }
+
     .attendance-calendar-modal-overlay {
         position: absolute;
         top: 0;
@@ -152,6 +159,7 @@
         z-index: 9999;
         display: block;
     }
+
     .attendance-calendar-modal {
         box-shadow: none;
         width: 100%;
@@ -162,24 +170,25 @@
         overflow: visible;
         visibility: visible;
     }
+
     .attendance-calendar-modal * {
         visibility: visible;
     }
-    
+
     .calendar-controls button {
         display: none !important;
     }
-    
+
     .calendar-header {
         margin-bottom: 30px;
         text-align: center;
         display: block;
     }
-    
+
     .calendar-grid-container {
         gap: 30px;
     }
-    
+
     .calendar-month {
         page-break-inside: avoid;
     }

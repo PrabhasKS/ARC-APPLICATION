@@ -1,29 +1,25 @@
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+/* ── Confirmation Modal ── */
+/* .modal-overlay comes from design-system.css */
 
 .modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 5px;
-    width: 400px;
+    background-color: var(--color-surface);
+    padding: var(--space-xl);
+    border-radius: var(--radius-xl);
+    width: 90%;
+    max-width: 420px;
     text-align: center;
+    box-shadow: var(--shadow-xl);
+    animation: dsSlideIn 0.3s ease-out;
 }
 
 .booking-details {
-    margin: 20px 0;
+    margin: var(--space-lg) 0;
     text-align: left;
 }
 
 .modal-actions {
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
 }

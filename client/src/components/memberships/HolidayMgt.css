@@ -1,31 +1,42 @@
+/* ── Holiday Management ── */
 .holiday-mgt-container {
     display: grid;
     grid-template-columns: 1fr 2fr;
-    gap: 2rem;
+    gap: var(--space-2xl);
     align-items: start;
 }
 
-.holiday-form-card, .holiday-list-card {
-    background-color: #fff;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+.holiday-form-card,
+.holiday-list-card {
+    background-color: var(--color-surface);
+    padding: var(--space-xl);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-sm);
 }
 
 .holiday-mgt-container h3 {
-    font-size: 1.3rem;
-    color: #333;
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
     margin-top: 0;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.75rem;
+    margin-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: var(--space-md);
+    font-weight: 600;
 }
 
 .holiday-form .form-group {
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-base);
 }
 
 .holiday-form .btn {
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: var(--space-sm);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .holiday-mgt-container {
+        grid-template-columns: 1fr;
+    }
 }

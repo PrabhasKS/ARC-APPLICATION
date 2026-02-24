@@ -1,59 +1,62 @@
+/* ── Membership Dashboard ── */
 .membership-dashboard {
-    padding: 2rem;
-    background-color: #f9f9f9;
-    min-height: calc(100vh - 70px); /* Adjust based on header height */
+    padding: var(--space-xl);
+    background-color: var(--color-bg);
+    min-height: calc(100vh - 70px);
     max-width: 1600px;
     margin: 0 auto;
 }
 
 .membership-header {
-    color: #333;
-    font-size: 2rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 0.5rem;
+    color: var(--color-primary);
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    margin-bottom: var(--space-xl);
+    border-bottom: 3px solid var(--color-primary);
+    padding-bottom: var(--space-sm);
     display: inline-block;
 }
 
 .tab-navigation {
     display: flex;
-    flex-wrap: wrap; /* Allow tabs to wrap on smaller screens */
-    gap: 0.5rem;
-    border-bottom: 1px solid #ddd;
-    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    border-bottom: 2px solid var(--color-border-light);
+    margin-bottom: var(--space-xl);
 }
 
 .tab-btn {
-    padding: 0.8rem 1.5rem;
+    padding: var(--space-md) var(--space-xl);
     border: none;
     background-color: transparent;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: var(--font-size-lg);
     font-weight: 500;
-    color: #555;
+    color: var(--color-text-muted);
     border-bottom: 3px solid transparent;
-    transition: all 0.2s ease-in-out;
+    transition: all var(--transition-base);
     text-align: center;
 }
 
 .tab-btn:hover {
-    background-color: #f0f0f0;
-    color: #000;
+    background-color: rgba(0, 0, 0, 0.02);
+    color: var(--color-text);
 }
 
 .tab-btn.active {
-    color: #007bff;
-    border-bottom-color: #007bff;
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
 }
 
 .tab-content-container {
-    background-color: #fff;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background-color: var(--color-surface);
+    padding: var(--space-xl);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
 }
 
 .membership-tab-content {
-    font-size: 1.2rem;
-    color: #666;
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
 }

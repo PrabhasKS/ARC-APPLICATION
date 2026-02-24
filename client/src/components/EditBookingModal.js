@@ -85,7 +85,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
             const [startTime, endTime] = booking.time_slot.split(' - ');
             const parsedStartTime = parseTime(startTime);
             const parsedEndTime = parseTime(endTime);
-            
+
             const startDate = new Date(booking.date);
             startDate.setHours(parsedStartTime.hours, parsedStartTime.minutes);
 
@@ -137,19 +137,19 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 accessories: selectedAccessories,
                 discount_amount: formData.discount_amount
             })
-            .then(response => {
-                setFormData(prev => {
-                    const newTotal = response.data.total_price;
-                    const newBalance = newTotal - prev.amount_paid;
-                    if (prev.total_price !== newTotal || prev.balance_amount !== newBalance) {
-                        return { ...prev, total_price: newTotal, balance_amount: newBalance };
-                    }
-                    return prev;
+                .then(response => {
+                    setFormData(prev => {
+                        const newTotal = response.data.total_price;
+                        const newBalance = newTotal - prev.amount_paid;
+                        if (prev.total_price !== newTotal || prev.balance_amount !== newBalance) {
+                            return { ...prev, total_price: newTotal, balance_amount: newBalance };
+                        }
+                        return prev;
+                    });
+                })
+                .catch(error => {
+                    console.error("Error calculating price:", error.response || error);
                 });
-            })
-            .catch(error => {
-                console.error("Error calculating price:", error.response || error);
-            });
         };
 
         const handler = setTimeout(calculatePrice, 300);
@@ -179,7 +179,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-    
+
         // Clear previous errors for this field
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -193,7 +193,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                 return; // Prevent state update for negative values
             }
         }
-    
+
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -310,12 +310,12 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     if (!booking) return null;
 
     return (
-        <div className="modal-overlay" onClick={handleClose}>
-            <div className="edit-booking-modal-content" onClick={e => e.stopPropagation()}>
+        <div className="edit-booking-overlay" onClick={handleClose}>
+            <div className="edit-booking-modal" onClick={e => e.stopPropagation()}>
                 <h3>Edit Booking #{booking.id}</h3>
                 <div className="modal-body">
                     {generalError && <p style={{ color: 'red', fontSize: '14px', textAlign: 'center' }}>{generalError}</p>}
-                    
+
                     <div className="form-section">
                         <h4>Timing & Price</h4>
                         <p><strong>Date:</strong> {formatDate(formData.date)}</p>
@@ -427,7 +427,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                                 <button type="button" className="btn-link" onClick={() => {
                                     setShowDiscount(false);
                                     setFormData(prev => ({ ...prev, discount_amount: 0, discount_reason: '' }));
-                                    setErrors(prev => ({...prev, discount_amount: undefined, discount_reason: undefined}));
+                                    setErrors(prev => ({ ...prev, discount_amount: undefined, discount_reason: undefined }));
                                 }}>
                                     - Clear Discount
                                 </button>
@@ -471,7 +471,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                             </>
                         )}
                         {availabilityMessage && (
-                            <p style={{ color: availabilityMessage.includes('not') ? 'red' : 'green' }}>
+                            <p style={{ color: (availabilityMessage.includes('not') || availabilityMessage.includes('conflict') || availabilityMessage.includes('Could not')) ? 'red' : 'green' }}>
                                 {availabilityMessage}
                             </p>
                         )}
