@@ -1,90 +1,117 @@
 /* ── App Header ── */
 .app-header {
-    background: var(--color-primary-gradient);
+    background: linear-gradient(135deg, #1B3A6B 0%, #24477A 100%);
     color: var(--color-text-on-dark);
-    padding: 0 var(--space-lg) 0 var(--space-md);
+    padding: 0 var(--space-xl) 0 var(--space-lg);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 80px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    height: 72px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     position: sticky;
     top: 0;
     z-index: 900;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ── Logo ── */
 .header-logo {
-    height: 65px;
+    height: 52px;
     width: auto;
     object-fit: contain;
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.2s ease;
 }
 
+.header-logo:hover {
+    transform: scale(1.05);
+}
+
+/* ── Navigation ── */
 .header-nav {
     display: flex;
     align-items: center;
-    gap: var(--space-lg);
+    gap: 6px;
 }
 
 .header-nav a {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.75);
     text-decoration: none;
-    font-size: var(--font-size-base);
+    font-size: 0.9rem;
     font-weight: 500;
-    padding: 6px 0;
+    padding: 8px 16px;
     border-bottom: 2px solid transparent;
-    transition: all var(--transition-base);
+    transition: all 0.25s ease;
+    letter-spacing: 0.3px;
 }
 
 .header-nav a:hover {
-    color: var(--color-text-on-dark);
+    color: #fff;
+    border-bottom-color: rgba(255, 255, 255, 0.5);
 }
 
 .header-nav a.active {
-    color: var(--color-text-on-dark);
-    border-bottom-color: var(--color-text-on-dark);
+    color: #fff;
+    font-weight: 600;
+    border-bottom-color: #fff;
 }
 
 /* ── Logout Button ── */
 .logout-btn {
-    background: var(--color-accent);
-    color: var(--color-text-on-dark);
+    background: linear-gradient(135deg, #C0392B, #E74C3C);
+    color: #fff;
     border: none;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-base);
+    transition: all 0.25s ease;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35);
+    margin-left: 8px;
 }
 
 .logout-btn:hover {
-    background: var(--color-accent-hover);
+    background: linear-gradient(135deg, #A93226, #C0392B);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(192, 57, 43, 0.45);
+}
+
+.logout-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(192, 57, 43, 0.3);
 }
 
 /* ── Responsive Header ── */
 @media (max-width: 768px) {
     .app-header {
-        padding: 0 var(--space-base);
+        padding: var(--space-md);
         height: auto;
         flex-wrap: wrap;
-        padding-top: var(--space-md);
-        padding-bottom: var(--space-md);
+        gap: var(--space-sm);
+    }
+
+    .header-logo {
+        height: 40px;
     }
 
     .header-nav {
         width: 100%;
         flex-wrap: wrap;
-        gap: var(--space-sm);
-        margin-top: var(--space-sm);
+        gap: 4px;
     }
 
     .header-nav a {
-        font-size: var(--font-size-sm);
-        padding: 6px 10px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-sm);
-        border-bottom: none;
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+
+    .logout-btn {
+        width: 100%;
+        text-align: center;
+        margin-left: 0;
+        margin-top: 4px;
     }
 }
