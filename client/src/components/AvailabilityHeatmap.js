@@ -84,13 +84,21 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                                                         width: '50%',
                                                         height: '40px',
                                                         border: '1px solid rgba(27,58,107,0.3)',
-                                                        cursor: subSlot.availability === 'available' || subSlot.availability === 'partial' ? 'pointer' : 'not-allowed'
+                                                        cursor: subSlot.availability === 'available' || subSlot.availability === 'partial' ? 'pointer' : 'not-allowed',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: '10px',
+                                                        fontWeight: '600',
+                                                        color: '#1B3A6B',
+                                                        overflow: 'hidden',
+                                                        whiteSpace: 'nowrap'
                                                     }}
                                                     onClick={() => (subSlot.availability === 'available' || subSlot.availability === 'partial') && onSlotSelect(court, slot.time, index * 30)}
                                                     onMouseEnter={(e) => handleMouseEnter(e, subSlot)}
                                                     onMouseLeave={handleMouseLeave}
                                                 >
-                                                    {subSlot.availability === 'partial' ? `${court.capacity - totalSlotsBooked}/${court.capacity}` : ''}
+                                                    {subSlot.availability === 'partial' ? `${court.capacity - totalSlotsBooked}` : ''}
                                                 </div>
                                             )
                                         })}

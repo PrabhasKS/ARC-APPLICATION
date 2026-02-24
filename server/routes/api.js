@@ -466,7 +466,7 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
         const [attendances] = await db.query('SELECT membership_id FROM team_attendance WHERE attendance_date = ?', [date]);
         const attendedMembershipIds = attendances.map(a => a.membership_id);
 
-        const timeSlots = Array.from({ length: 18 }, (_, i) => {
+        const timeSlots = Array.from({ length: 19 }, (_, i) => {
             const hour = 5 + i;
             return `${String(hour).padStart(2, '0')}:00`;
         });
@@ -493,7 +493,9 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                         const overlappingBookings = courtBookings.filter(b => {
                             const [startStr, endStr] = b.time_slot.split(' - ');
                             const bookingStart = toMinutes(startStr);
-                            const bookingEnd = toMinutes(endStr);
+                            let bookingEnd = toMinutes(endStr);
+                            // Handle midnight crossing: "11:00 PM - 12:00 AM" gives end=0, treat as 1440
+                            if (bookingEnd <= bookingStart) bookingEnd = 1440;
                             return subSlotStartMinutes < bookingEnd && subSlotEndMinutes > bookingStart;
                         });
 
@@ -516,7 +518,8 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                             const overlappingMembership = courtMemberships.find(m => {
                                 const [startStr, endStr] = m.time_slot.split(' - ');
                                 const membershipStart = toMinutes(startStr);
-                                const membershipEnd = toMinutes(endStr);
+                                let membershipEnd = toMinutes(endStr);
+                                if (membershipEnd <= membershipStart) membershipEnd = 1440;
                                 return subSlotStartMinutes < membershipEnd && subSlotEndMinutes > membershipStart;
                             });
 
