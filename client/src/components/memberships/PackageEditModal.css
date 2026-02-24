@@ -13,6 +13,8 @@
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    overflow-y: auto;
+    padding: var(--space-lg) 0;
     animation: dsOverlayIn 0.2s ease;
 }
 
@@ -60,7 +62,8 @@
     color: var(--color-text);
 }
 
-.modal-body {
+.modal-body,
+.modal-form {
     padding: var(--space-xl);
     overflow-y: auto;
     flex: 1;
@@ -76,11 +79,13 @@
 }
 
 /* ── Form Controls ── */
-.modal-body .form-group {
+.modal-body .form-group,
+.modal-form .form-group {
     margin-bottom: var(--space-base);
 }
 
-.modal-body .form-group label {
+.modal-body .form-group label,
+.modal-form .form-group label {
     font-size: var(--font-size-base);
     font-weight: 500;
     color: var(--color-text-secondary);
@@ -89,7 +94,10 @@
 
 .modal-body .form-group input,
 .modal-body .form-group select,
-.modal-body .form-group textarea {
+.modal-body .form-group textarea,
+.modal-form .form-group input,
+.modal-form .form-group select,
+.modal-form .form-group textarea {
     width: 100%;
     padding: 10px 14px;
     border: 1px solid var(--color-border);
@@ -102,7 +110,10 @@
 
 .modal-body .form-group input:focus,
 .modal-body .form-group select:focus,
-.modal-body .form-group textarea:focus {
+.modal-body .form-group textarea:focus,
+.modal-form .form-group input:focus,
+.modal-form .form-group select:focus,
+.modal-form .form-group textarea:focus {
     outline: none;
     border-color: var(--color-primary-light);
     box-shadow: 0 0 0 3px var(--color-primary-glow);
@@ -110,7 +121,8 @@
 }
 
 /* ── Summary Card (within modals) ── */
-.modal-body .summary-card {
+.modal-body .summary-card,
+.modal-form .summary-card {
     background-color: #EBF0F7;
     border-left: 4px solid var(--color-primary);
     border-radius: var(--radius-base);

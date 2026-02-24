@@ -7,7 +7,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [reason, setReason] = useState('');
-    
+
     // UI and Error State
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -32,7 +32,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
         setShowCustomExtensionUI(false);
         setCustomExtensionStartDate('');
         setLeaveDuration(0);
-        if(clearDates) {
+        if (clearDates) {
             setStartDate('');
             setEndDate('');
         }
@@ -47,7 +47,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
         setEndDate(e.target.value);
         resetState();
     };
-    
+
     const handleReasonChange = (e) => {
         setReason(e.target.value);
     };
@@ -89,7 +89,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
         }
 
         setSubmitting(true);
-        
+
         const payload = {
             start_date: startDate,
             end_date: endDate,
@@ -105,7 +105,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
 
             if (response && response.status === 'conflict') {
                 const isExtConflict = response.conflicts.every(c => c.type.includes('_extension'));
-                
+
                 if (isExtConflict) {
                     const start = new Date(startDate.replace(/-/g, '/'));
                     const end = new Date(endDate.replace(/-/g, '/'));
@@ -114,7 +114,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                     setError(`The ${duration}-day leave is fine, but the automatic extension conflicts. Please select a new start date for the compensation period.`);
                     setShowCustomExtensionUI(true);
                 } else {
-                     setError('Could not grant leave. The leave period itself conflicts with existing bookings.');
+                    setError('Could not grant leave. The leave period itself conflicts with existing bookings.');
                 }
                 setConflicts(response.conflicts || []);
 
@@ -136,9 +136,9 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                     <h4>Mark Leave for Team (Membership ID: {membership.id})</h4>
                     <button className="close-button" onClick={onClose}>&times;</button>
                 </div>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} className="modal-form">
                     {error && <div className="error-message" style={{ marginBottom: '15px' }}>{error}</div>}
-                    
+
                     {conflicts.length > 0 && !isExtensionConflict && (
                         <div className="conflicts-section" style={{ marginBottom: '15px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #ffcccc', padding: '10px', borderRadius: '4px' }}>
                             <h5>Conflicts Found In Leave Period:</h5>
@@ -154,9 +154,9 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
 
                     <div className="form-group">
                         <label>Leave Start Date</label>
-                        <input 
-                            type="date" 
-                            required 
+                        <input
+                            type="date"
+                            required
                             name="startDate"
                             value={startDate}
                             onChange={handleStartDateChange}
@@ -166,9 +166,9 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                     </div>
                     <div className="form-group">
                         <label>Leave End Date</label>
-                        <input 
-                            type="date" 
-                            required 
+                        <input
+                            type="date"
+                            required
                             name="endDate"
                             value={endDate}
                             onChange={handleEndDateChange}
@@ -179,22 +179,22 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
 
                     {showCustomExtensionUI && (
                         <div className="custom-extension-section" style={{ border: '1px solid #cce5ff', padding: '15px', borderRadius: '4px', marginTop: '20px', backgroundColor: '#f7faff' }}>
-                             <h5 style={{marginTop: '0'}}>Resolve Extension Conflict</h5>
-                             <p>
-                                 The <strong>{leaveDuration}-day</strong> leave period is valid.
-                             </p>
+                            <h5 style={{ marginTop: '0' }}>Resolve Extension Conflict</h5>
+                            <p>
+                                The <strong>{leaveDuration}-day</strong> leave period is valid.
+                            </p>
                             <div className="form-group">
                                 <label><strong>New Extension Start Date</strong></label>
-                                <input 
-                                    type="date" 
-                                    required 
+                                <input
+                                    type="date"
+                                    required
                                     name="customExtensionStartDate"
                                     value={customExtensionStartDate}
                                     onChange={handleCustomExtensionDateChange}
                                     min={membership.current_end_date}
                                 />
                                 {calculatedCustomEndDate && (
-                                    <p className="form-text" style={{marginTop: '5px'}}>
+                                    <p className="form-text" style={{ marginTop: '5px' }}>
                                         This will extend the membership from <strong>{format(new Date(customExtensionStartDate.replace(/-/g, '/')), 'dd/MM/yyyy')}</strong> to <strong>{format(new Date(calculatedCustomEndDate.replace(/-/g, '/')), 'dd/MM/yyyy')}</strong>.
                                     </p>
                                 )}
@@ -202,16 +202,16 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
                         </div>
                     )}
 
-                    <div className="form-group" style={{marginTop: '20px'}}>
+                    <div className="form-group" style={{ marginTop: '20px' }}>
                         <label>Reason (Optional)</label>
-                        <textarea 
+                        <textarea
                             name="reason"
                             value={reason}
                             onChange={handleReasonChange}
                             placeholder="e.g. Health issues, travel, etc."
                         />
                     </div>
-                    
+
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>

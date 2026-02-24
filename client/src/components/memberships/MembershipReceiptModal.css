@@ -1,7 +1,7 @@
 /* ===========================
    MODAL OVERLAY
    =========================== */
-.modal-overlay {
+.membership-receipt-modal.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -9,24 +9,30 @@
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.7);
   display: flex;
+  justify-content: center;
+  align-items: flex-start;
   overflow-y: auto;
   z-index: 1000;
   padding: 40px 0;
 }
+
 /* ===========================
    MAIN RECEIPT CONTAINER
    =========================== */
-.modal-content {
+.membership-receipt-modal .modal-content {
   background-color: #fff;
   padding: 40px 50px;
   border-radius: 10px;
   width: 100%;
   max-width: 500px;
   height: auto;
+  flex-shrink: 0;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
   font-family: 'Courier New', Courier, monospace;
   color: #222;
-  margin: auto;
+  margin: 0 auto;
+  overflow: visible;
+  max-height: none;
 }
 
 /* ===========================
@@ -140,11 +146,13 @@
 }
 
 .booking-summary-info p {
-  margin-bottom: 5px; /* Add space between paragraphs */
+  margin-bottom: 5px;
+  /* Add space between paragraphs */
 }
 
 .booking-summary-info p:last-child {
-  margin-bottom: 0; /* No margin after the last paragraph */
+  margin-bottom: 0;
+  /* No margin after the last paragraph */
 }
 
 /* ===========================
@@ -212,9 +220,11 @@
     margin: 15mm;
   }
 
-  body, html {
+  body,
+  html {
     background: #fff;
-    font-size: 12pt; /* Set a base font size for the print document */
+    font-size: 12pt;
+    /* Set a base font size for the print document */
   }
 
   /* Hide everything by default */
@@ -223,17 +233,20 @@
   }
 
   /* Make only the receipt content and its parents visible */
-  .modal-overlay, .modal-content, #receipt-content-to-print, #receipt-content-to-print * {
+  .membership-receipt-modal.modal-overlay,
+  .membership-receipt-modal .modal-content,
+  #receipt-content-to-print,
+  #receipt-content-to-print * {
     visibility: visible;
   }
 
   /* Reset modal layout for printing */
-  .modal-overlay {
+  .membership-receipt-modal.modal-overlay {
     position: static;
     background: none;
   }
 
-  .modal-content {
+  .membership-receipt-modal .modal-content {
     position: absolute;
     left: 0;
     top: 0;
@@ -254,33 +267,43 @@
   .receipt-header h1 {
     font-size: 2.5rem;
   }
+
   .receipt-header p {
     font-size: 1.2rem;
   }
+
   .receipt-section {
     margin-bottom: 1.5rem;
     line-height: 1.6;
-    border-bottom: 1px solid #eee; /* Add separators for clarity */
+    border-bottom: 1px solid #eee;
+    /* Add separators for clarity */
     padding-bottom: 1rem;
   }
-  .receipt-section h2, .receipt-section h3 {
+
+  .receipt-section h2,
+  .receipt-section h3 {
     font-size: 1.5rem;
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
   }
+
   .receipt-section p {
     font-size: 1.1rem;
-    display: block; /* Override flexbox for a document-like flow */
+    display: block;
+    /* Override flexbox for a document-like flow */
   }
+
   .receipt-section strong {
-      display: inline-block;
-      width: 180px; /* Align labels neatly */
-      font-weight: bold;
+    display: inline-block;
+    width: 180px;
+    /* Align labels neatly */
+    font-weight: bold;
   }
 
   .receipt-section li {
     font-size: 1rem;
   }
+
   .qr-code div {
     max-width: 120px !important;
   }

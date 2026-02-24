@@ -16,7 +16,7 @@ const MembershipReceiptModal = ({ membership, onClose }) => {
         return null;
     }
 
-    const publicServerUrl = process.env.REACT_APP_RECIEPT_URL || 'http://localhost:5000'; 
+    const publicServerUrl = process.env.REACT_APP_RECIEPT_URL || 'http://localhost:5000';
     const receiptPdfUrl = `${publicServerUrl}/api/memberships/${membership.membership_id}/receipt.pdf`;
 
     const handlePrint = () => {
@@ -24,7 +24,7 @@ const MembershipReceiptModal = ({ membership, onClose }) => {
     };
 
     return (
-        <div className="modal-overlay">
+        <div className="membership-receipt-modal modal-overlay">
             <div className="modal-content">
                 <div id="receipt-content-to-print">
                     <div className="receipt-header">
@@ -53,7 +53,7 @@ const MembershipReceiptModal = ({ membership, onClose }) => {
                             <p><strong>Amount Paid:</strong> ₹{membership.amount_paid || 0}</p>
                             <p><strong>Balance:</strong> ₹{membership.balance_amount}</p>
                             <p><strong>Payment Status:</strong> <span className={`status ${membership.payment_status}`}>{membership.payment_status}</span></p>
-                             {membership.payments && membership.payments.length > 0 && (
+                            {membership.payments && membership.payments.length > 0 && (
                                 <div>
                                     <h4>Payment History:</h4>
                                     <ul>
@@ -67,7 +67,7 @@ const MembershipReceiptModal = ({ membership, onClose }) => {
                             )}
                         </div>
                         <div className="receipt-footer">
-                             <div className="qr-code">
+                            <div className="qr-code">
                                 <div style={{ height: "auto", margin: "0 auto", maxWidth: 100, width: "100%" }}>
                                     <QRCode
                                         size={256}
