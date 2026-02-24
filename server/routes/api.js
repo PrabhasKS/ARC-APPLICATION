@@ -1902,12 +1902,26 @@ router.get('/analytics/overall/summary', authenticateToken, isAdmin, async (req,
         // 1. Total Revenue (All payments)
         const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments WHERE 1=1 ${paymentDateFilterSql}`, paymentQueryParams);
 
-        // 2. Total Discount (Currently only tracked explicitly in bookings)
-        const [[{ total_discount }]] = await db.query(`SELECT SUM(discount_amount) as total_discount FROM bookings WHERE status != 'Cancelled' ${bookingDateFilterSql}`, bookingQueryParams);
+        // 2. Total Discount from bookings
+        const [[{ booking_discount }]] = await db.query(`SELECT SUM(discount_amount) as booking_discount FROM bookings WHERE status != 'Cancelled' ${bookingDateFilterSql}`, bookingQueryParams);
+
+        // 3. Total Discount from memberships (base_price - final_price)
+        const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('am.start_date', startDate, endDate, false);
+        const [[{ membership_discount }]] = await db.query(
+            `SELECT COALESCE(SUM((mp.per_person_price * tc.member_count) - am.final_price), 0) as membership_discount
+             FROM active_memberships am
+             JOIN membership_packages mp ON am.package_id = mp.id
+             JOIN (SELECT membership_id, COUNT(*) as member_count FROM membership_team GROUP BY membership_id) tc ON tc.membership_id = am.id
+             WHERE (mp.per_person_price * tc.member_count) > am.final_price
+             ${membershipDateFilterSql}`,
+            membershipQueryParams
+        );
+
+        const total_discount = (parseFloat(booking_discount) || 0) + (parseFloat(membership_discount) || 0);
 
         res.json({
             total_revenue: parseFloat(total_revenue) || 0,
-            total_discount: parseFloat(total_discount) || 0
+            total_discount: total_discount
         });
     } catch (err) {
         console.error("Error in /analytics/overall/summary:", err);
