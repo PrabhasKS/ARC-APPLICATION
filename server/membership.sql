@@ -112,15 +112,15 @@ CREATE TABLE membership_leave (
 -- 6. Membership Attendance Table
 -- Purpose: Records the daily attendance/check-in of each member of a team.
 --
-CREATE TABLE membership_attendance (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  membership_id INT NOT NULL,
-  member_id INT NOT NULL,
-  check_in_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id), -- Ensure a primary key for efficient lookups
-  FOREIGN KEY (membership_id) REFERENCES active_memberships(id) ON DELETE CASCADE,
-  FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
-);
+-- CREATE TABLE membership_attendance (
+--   id INT PRIMARY KEY AUTO_INCREMENT,
+--   membership_id INT NOT NULL,
+--   member_id INT NOT NULL,
+--   check_in_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--   PRIMARY KEY (id), -- Ensure a primary key for efficient lookups
+--   FOREIGN KEY (membership_id) REFERENCES active_memberships(id) ON DELETE CASCADE,
+--   FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+-- );
 
 -- 7. Facility Holidays Table
 -- Purpose: A record of dates when the facility is closed for maintenance, tournaments, etc.
