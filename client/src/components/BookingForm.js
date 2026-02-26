@@ -62,10 +62,10 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         const accessoryDetails = accessories.find(a => a.id === acc.id);
                         return total + ((accessoryDetails?.price || 0) * acc.quantity);
                     }, 0);
-                    
+
                     // totalPrice to display (undiscounted court + accessories)
                     const undiscountedTotalPrice = baseCourtPrice + accessoriesTotal;
-                    setTotalPrice(undiscountedTotalPrice); 
+                    setTotalPrice(undiscountedTotalPrice);
 
                     const currentDiscount = parseFloat(discountAmount) || 0;
                     // Effective total for balance calculation (discounted court + accessories)
@@ -263,16 +263,16 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 {selectedCourtDetails?.capacity > 1 && (
                     <div className="form-group">
                         <label>Number of People (Slots)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={slotsBooked}
-                                                        onChange={(e) => setSlotsBooked(e.target.value)}
-                                                        onWheel={(e) => e.currentTarget.blur()} // Blur to prevent scroll increment/decrement
-                                                        min="1"
-                                                        placeholder="Enter number of people"
-                                                        required
-                                                    />                        {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
-                             <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>Exceeds capacity ({selectedCourtDetails.available_slots} available)</p>
+                        <input
+                            type="number"
+                            value={slotsBooked}
+                            onChange={(e) => setSlotsBooked(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()} // Blur to prevent scroll increment/decrement
+                            min="1"
+                            placeholder="Enter number of people"
+                            required
+                        />                        {selectedCourtDetails.available_slots !== undefined && slotsBooked > selectedCourtDetails.available_slots && (
+                            <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>Exceeds capacity ({selectedCourtDetails.available_slots} available)</p>
                         )}
                         {errors.slotsBooked && <p style={{ color: 'red', fontSize: '12px' }}>{errors.slotsBooked}</p>}
                     </div>
@@ -296,7 +296,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     {errors.customerEmail && <p style={{ color: 'red', fontSize: '12px' }}>{errors.customerEmail}</p>}
                 </div>
 
-                 {!showAccessories ? (
+                {!showAccessories ? (
                     <div className="form-group">
                         <button
                             type="button"
@@ -309,45 +309,64 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                 ) : (
                     <>
                         <div className="form-group accessories-selector">
-                             <label>Select Accessories</label>
-                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
-                                <select id="accessory-select-input" defaultValue="">
-                                     <option value="" disabled>Choose...</option>
-                                     {accessories.map(acc => (
-                                         <option key={acc.id} value={acc.id}>
-                                             {acc.name} - ₹{acc.price}
-                                         </option>
-                                     ))}
-                                </select>
-                                <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, padding: '8px 12px', marginTop: 0 }}
-                                    onClick={() => {
-                                        const selectEl = document.getElementById('accessory-select-input');
-                                        if (selectEl.value) {
-                                            handleAddSelectedAccessory(parseInt(selectEl.value));
-                                            selectEl.value = "";
+                            <label>Select Accessories</label>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                                <select
+                                    id="accessory-select-input"
+                                    defaultValue=""
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            handleAddSelectedAccessory(parseInt(e.target.value));
+                                            e.target.value = ""; // Reset back to default
                                         }
-                                    }}>
-                                    Add
-                                </button>
-                             </div>
-                             {selectedAccessories.length > 0 && (
+                                    }}
+                                >
+                                    <option value="" disabled>Choose an accessory to add...</option>
+                                    {accessories.map(acc => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.name} - ₹{acc.price}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {selectedAccessories.length > 0 && (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '14px' }}>
                                     {selectedAccessories.map((acc, index) => {
                                         const details = accessories.find(a => a.id === acc.id);
                                         return (
-                                            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                                <span>{details?.name || 'Unknown'} (x{acc.quantity})</span>
-                                                <button type="button" onClick={() => handleRemoveAccessory(acc.id)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
+                                            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px solid #ebebeb', fontSize: '14px' }}>
+                                                <span>{details?.name || 'Unknown'} - ₹{details?.price || 0}</span>
+                                                <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', background: '#f1f3f5', borderRadius: '12px', padding: '2px 8px', gap: '6px', whiteSpace: 'nowrap' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (acc.quantity > 1) {
+                                                                setSelectedAccessories(selectedAccessories.map(a => a.id === acc.id ? { ...a, quantity: a.quantity - 1 } : a));
+                                                            } else {
+                                                                handleRemoveAccessory(acc.id);
+                                                            }
+                                                        }}
+                                                        style={{ display: 'inline-block', width: 'auto', margin: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', padding: '0 4px', color: '#495057', flexShrink: 0 }}>
+                                                        -
+                                                    </button>
+                                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#212529', minWidth: '16px', textAlign: 'center', display: 'inline-block' }}>{acc.quantity}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAddSelectedAccessory(acc.id)}
+                                                        style={{ display: 'inline-block', width: 'auto', margin: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', padding: '0 4px', color: '#495057', flexShrink: 0 }}>
+                                                        +
+                                                    </button>
+                                                </div>
                                             </li>
                                         );
                                     })}<button type="button" className="btn-link" onClick={() => {
                                         setShowAccessories(false);
                                         setSelectedAccessories([]);
                                     }}>
-                                    - Clear Accessories
-                                </button>
+                                        - Clear Accessories
+                                    </button>
                                 </ul>
-                             )}
+                            )}
                         </div>
                     </>
                 )}
@@ -357,7 +376,7 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                     <input type="number" value={totalPrice.toFixed(2)} readOnly onWheel={(e) => e.currentTarget.blur()} style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }} />
                 </div>
 
-               {!showDiscount ? (
+                {!showDiscount ? (
                     <div className="form-group">
                         <button
                             type="button"
@@ -414,14 +433,14 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSucces
                         {paymentMethod === 'Online' && (
                             <div className="form-group">
                                 <label>Online Payment Type</label>
-                                 <select value={onlinePaymentType} onChange={handleAmountChange(setOnlinePaymentType)}>
+                                <select value={onlinePaymentType} onChange={handleAmountChange(setOnlinePaymentType)}>
                                     <option value="UPI">UPI</option>
                                     <option value="Card">Card</option>
                                     <option value="Net Banking">Net Banking</option>
                                 </select>
                             </div>
                         )}
-                         <div className="form-group">
+                        <div className="form-group">
                             <label>Payment ID / Cheque ID</label>
                             <input type="text" value={paymentId} onChange={handleAmountChange(setPaymentId)} />
                             {errors.paymentId && <p style={{ color: 'red', fontSize: '12px' }}>{errors.paymentId}</p>}
