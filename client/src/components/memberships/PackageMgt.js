@@ -11,6 +11,7 @@ const PackageMgt = ({ user }) => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState(null);
+    const [openMenuId, setOpenMenuId] = useState(null);
 
     const isAdmin = user && user.role === 'admin';
 
@@ -31,6 +32,21 @@ const PackageMgt = ({ user }) => {
     useEffect(() => {
         fetchPackages();
     }, [fetchPackages]);
+
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setOpenMenuId(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
+
+    const handleToggleMenu = (pkgId, event) => {
+        event.stopPropagation();
+        setOpenMenuId(openMenuId === pkgId ? null : pkgId);
+    };
 
     const handleOpenModal = (pkg = null) => {
         setSelectedPackage(pkg);
@@ -109,8 +125,17 @@ const PackageMgt = ({ user }) => {
                                 <td>{pkg.max_team_size}</td>
                                 {isAdmin && (
                                     <td className="actions-cell">
-                                        <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal(pkg)}>Edit</button>
-                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(pkg.id)}>Delete</button>
+                                        <div className="actions-menu-container">
+                                            <button className="three-dots-btn" onClick={(e) => handleToggleMenu(pkg.id, e)}>
+                                                &#8285;
+                                            </button>
+                                            {openMenuId === pkg.id && (
+                                                <div className="actions-dropdown">
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal(pkg)}>Edit</button>
+                                                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(pkg.id)}>Delete</button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                 )}
                             </tr>
