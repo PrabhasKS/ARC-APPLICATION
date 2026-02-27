@@ -10,7 +10,7 @@ import './Ledger.css';
 
 const Ledger = ({ user }) => {
     const [bookings, setBookings] = useState([]);
-    const [filters, setFilters] = useState({ date: '', sport: '', search: '', startTime: '', endTime: '' });
+    const [filters, setFilters] = useState({ date: new Date().toISOString().slice(0, 10), sport: '', search: '', startTime: '', endTime: '' });
     const [sortOrder, setSortOrder] = useState('desc');
     const [activeTab, setActiveTab] = useState('active');
     const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);

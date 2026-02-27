@@ -34,14 +34,19 @@ const ManageActiveMembersModal = ({ membership, onClose, onMembersUpdated }) => 
     useEffect(() => {
         const fetchAndSetInitialData = async () => {
             setSubmitting(true);
-            const membersData = await fetchAllMembers();
-            if (membership?.team_members && membersData.length > 0) {
-                const initialMemberNames = membership.team_members.split(', ').map(name => name.trim());
-                const initialMembers = membersData.filter(member =>
-                    initialMemberNames.includes(member.full_name)
-                );
-                setCurrentTeamMembers(initialMembers);
-                setSelectedNewMembers(initialMembers); // Start with existing members selected
+            await fetchAllMembers();
+
+            // Fetch actual team members by membership ID (avoids name-based matching bugs)
+            if (membership?.id) {
+                try {
+                    const teamResponse = await api.get(`/memberships/active/${membership.id}/team-members`);
+                    const initialMembers = teamResponse.data;
+                    setCurrentTeamMembers(initialMembers);
+                    setSelectedNewMembers(initialMembers);
+                } catch (err) {
+                    console.error('Failed to fetch team members:', err);
+                    setError('Failed to load team member data.');
+                }
             }
             setSubmitting(false);
         };
@@ -111,7 +116,7 @@ const ManageActiveMembersModal = ({ membership, onClose, onMembersUpdated }) => 
 
             await fetchAllMembers(); // Refresh the allMembers list with the new member
             handleAddMember(newMember); // Add the newly created member to selected members
-            
+
             // Clear form
             setNewMemberFullName('');
             setNewMemberPhoneNumber('');
@@ -166,12 +171,12 @@ const ManageActiveMembersModal = ({ membership, onClose, onMembersUpdated }) => 
                 <form onSubmit={handleSubmit} className="modal-form">
                     {error && <div className="error-message">{error}</div>}
 
-                    <div className="summary-card" style={{padding: '1rem', marginBottom: '1rem'}}>
-                         <p><strong>Package:</strong> {membership?.package_name}</p>
-                         <p><strong>Current Team Size:</strong> {currentTeamMembers.length}</p>
-                         <p><strong>Max Team Size:</strong> {membership?.max_team_size}</p>
-                         <p><strong>Current Final Price:</strong> Rs. {membership?.final_price}</p>
-                         {priceIncrease > 0 && <p style={{color: 'green'}}><strong>Potential Price Increase:</strong> Rs. {priceIncrease}</p>}
+                    <div className="summary-card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+                        <p><strong>Package:</strong> {membership?.package_name}</p>
+                        <p><strong>Current Team Size:</strong> {currentTeamMembers.length}</p>
+                        <p><strong>Max Team Size:</strong> {membership?.max_team_size}</p>
+                        <p><strong>Current Final Price:</strong> Rs. {membership?.final_price}</p>
+                        {priceIncrease > 0 && <p style={{ color: 'green' }}><strong>Potential Price Increase:</strong> Rs. {priceIncrease}</p>}
                     </div>
 
                     <div className="form-group">
@@ -276,7 +281,7 @@ const ManageActiveMembersModal = ({ membership, onClose, onMembersUpdated }) => 
                             </div>
                         )}
                     </div>
-                    
+
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>Update Team</button>
