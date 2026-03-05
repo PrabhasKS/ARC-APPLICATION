@@ -79,9 +79,9 @@ router.get('/bookings/all', authenticateToken, async (req, res) => {
             if (status === 'closed') {
                 whereClauses.push('b.payment_status = ?');
                 queryParams.push('Completed');
-                whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW()`);
+                whereClauses.push(`STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < DATE_ADD(NOW(), INTERVAL '5:30' HOUR_MINUTE)`);
             } else if (status === 'active') {
-                whereClauses.push(`NOT (b.payment_status = 'Completed' AND STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < NOW())`);
+                whereClauses.push(`NOT (b.payment_status = 'Completed' AND STR_TO_DATE(CONCAT(b.date, ' ', SUBSTRING_INDEX(b.time_slot, ' - ', -1)), '%Y-%m-%d %h:%i %p') < DATE_ADD(NOW(), INTERVAL '5:30' HOUR_MINUTE))`);
             }
             // Note: No specific 'else' for 'cancelled' is needed if we assume the frontend sends 'cancelled' as a status.
             // However, to be robust:
