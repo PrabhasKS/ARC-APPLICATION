@@ -71,7 +71,7 @@ const Ledger = ({ user }) => {
     useEffect(() => {
         fetchBookings(currentPage);
 
-        const eventSource = new EventSource('http://localhost:5000/api/events');
+        const eventSource = new EventSource(`${process.env.REACT_APP_API_URL}/events`);
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.message === 'bookings_updated') {
