@@ -133,7 +133,7 @@ const MarkLeaveModal = ({ membership, onGrantLeave, onClose }) => {
         <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '600px' }}>
                 <div className="modal-header">
-                    <h4>Mark Leave for Team (Membership ID: {membership.id})</h4>
+                    <h4>Mark Leave for Member: {membership.member_name}</h4>
                     <button className="close-button" onClick={onClose}>&times;</button>
                 </div>
                 <form onSubmit={handleSubmit} className="modal-form">

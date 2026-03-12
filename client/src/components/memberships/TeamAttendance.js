@@ -27,6 +27,9 @@ const TeamAttendance = () => {
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [selectedMembershipForLeave, setSelectedMembershipForLeave] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [openTeamMenuId, setOpenTeamMenuId] = useState(null);
+
+    const [expandedTeams, setExpandedTeams] = useState(new Set()); // New state for collapsible teams
 
     const [filterText, setFilterText] = useState('');
     const [showColumnMenu, setShowColumnMenu] = useState(false);
@@ -71,6 +74,7 @@ const TeamAttendance = () => {
         const handleClickOutside = () => {
             setShowColumnMenu(false);
             setOpenMenuId(null);
+            setOpenTeamMenuId(null);
         };
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
@@ -83,6 +87,13 @@ const TeamAttendance = () => {
     const handleToggleMenu = (membershipId, event) => {
         event.stopPropagation();
         setOpenMenuId(openMenuId === membershipId ? null : membershipId);
+        setOpenTeamMenuId(null);
+    };
+
+    const handleToggleTeamMenu = (teamId, event) => {
+        event.stopPropagation();
+        setOpenTeamMenuId(openTeamMenuId === teamId ? null : teamId);
+        setOpenMenuId(null);
     };
 
     const handleMarkAttendance = async (membership_id) => {
@@ -144,16 +155,73 @@ const TeamAttendance = () => {
         }
     };
 
+    const handleMarkTeamAttendance = async (group) => {
+        try {
+            // Filter out members who are on leave or already marked present
+            const membersToMark = group.members.filter(mem => !onLeave.has(mem.id) && !attended.has(mem.id));
+            if (membersToMark.length === 0) {
+                alert('All eligible members are already marked present or on leave.');
+                return;
+            }
+
+            await Promise.all(membersToMark.map(mem => 
+                api.post('/memberships/team-attendance', {
+                    membership_id: mem.id,
+                    attendance_date: date
+                })
+            ));
+            fetchData();
+        } catch (err) {
+            setError('Failed to mark attendance for the whole team.');
+        }
+    };
+
+    const toggleTeamExpand = (teamId) => {
+        setExpandedTeams(prev => {
+            const next = new Set(prev);
+            if (next.has(teamId)) {
+                next.delete(teamId);
+            } else {
+                next.add(teamId);
+            }
+            return next;
+        });
+    };
+
     const filteredMemberships = memberships.filter(mem => {
         const search = filterText.toLowerCase();
         return (
             mem.id.toString().includes(search) ||
             mem.package_name?.toLowerCase().includes(search) ||
             mem.court_name?.toLowerCase().includes(search) ||
-            mem.team_members?.toLowerCase().includes(search) ||
+            mem.member_name?.toLowerCase().includes(search) ||
+            mem.team_name?.toLowerCase().includes(search) ||
             mem.created_by?.toLowerCase().includes(search)
         );
     });
+
+    // Group memberships by team
+    const groupedMemberships = React.useMemo(() => {
+        const groups = {};
+        filteredMemberships.forEach(mem => {
+            const teamId = mem.team_id || 'unassigned';
+            if (!groups[teamId]) {
+                groups[teamId] = {
+                    team_id: teamId,
+                    team_name: mem.team_name || 'Individual / No Team',
+                    court_name: mem.court_name,
+                    time_slot: mem.time_slot,
+                    members: []
+                };
+            }
+            groups[teamId].members.push(mem);
+        });
+        return Object.values(groups).sort((a, b) => {
+            if (a.team_id === 'unassigned') return 1;
+            if (b.team_id === 'unassigned') return -1;
+            return b.team_id - a.team_id;
+        });
+    }, [filteredMemberships]);
 
     return (
         <div className="attendance-container">
@@ -200,79 +268,117 @@ const TeamAttendance = () => {
             {loading && !selectedMembership && !isLeaveModalOpen && <p>Loading...</p>}
             {error && <p className="error-message">{error}</p>}
             
-            <table className="dashboard-table">
-                <thead>
-                    <tr>
-                        {visibleColumns.id && <th>ID</th>}
-                        {visibleColumns.package && <th>Package</th>}
-                        {visibleColumns.court && <th>Court</th>}
-                        {visibleColumns.team && <th>Team</th>}
-                        {visibleColumns.time_slot && <th>Time Slot</th>}
-                        {visibleColumns.status && <th>Status</th>}
-                        {visibleColumns.created_by && <th>Created By</th>}
-                        {visibleColumns.payment_info && <th>Payment Info</th>}
-                        {visibleColumns.discount_details && <th>Discount Reason</th>}
-                        {visibleColumns.action && <th>Action</th>}
-                    </tr>
-                </thead>
-                <tbody>
-                    {!loading && filteredMemberships.length > 0 ? (
-                        filteredMemberships.map(mem => (
-                            <tr key={mem.id}>
-                                {visibleColumns.id && <td>{mem.id}</td>}
-                                {visibleColumns.package && <td>{mem.package_name}</td>}
-                                {visibleColumns.court && <td>{mem.court_name}</td>}
-                                {visibleColumns.team && <td className="team-cell">{mem.team_members}</td>}
-                                {visibleColumns.time_slot && <td>{mem.time_slot}</td>}
-                                {visibleColumns.status && (
-                                    <td>
-                                        {onLeave.has(mem.id) ? (
-                                            <span className="status-badge status-leave">ON LEAVE</span>
-                                        ) : attended.has(mem.id) ? (
-                                            <span className="status-badge status-present">PRESENT</span>
-                                        ) : (
-                                            <button 
-                                                className="btn btn-success btn-sm"
-                                                onClick={() => handleMarkAttendance(mem.id)}
-                                            >
-                                                Mark Present
-                                            </button>
+            <div className="package-mgt-container" style={{ padding: 0 }}>
+                {!loading && groupedMemberships.length > 0 ? (
+                    groupedMemberships.map(group => (
+                        <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                            <div 
+                                className="team-group-header" 
+                                style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expandedTeams.has(group.team_id) ? '1px solid #eee' : 'none' }}
+                                onClick={() => toggleTeamExpand(group.team_id)}
+                            >
+                                <div className="team-info-main" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span className="team-badge" style={{ backgroundColor: '#007bff', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>TEAM</span>
+                                    <h4 style={{ margin: 0 }}>{group.team_name}</h4>
+                                </div>
+                                <div className="team-location-details" style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '14px', color: '#555' }}>
+                                    <span><strong>Court:</strong> {group.court_name}</span>
+                                    <span><strong>Slot:</strong> {group.time_slot}</span>
+                                    <span className="member-count-badge" style={{ backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }}>{group.members.length} Members</span>
+                                    <span style={{ fontSize: '12px', color: '#888', marginRight: '10px' }}>{expandedTeams.has(group.team_id) ? '▲ Collapse' : '▼ Expand'}</span>
+                                    {/* Team Actions Menu */}
+                                    <div className="actions-menu-container" style={{ position: 'relative' }}>
+                                        <button 
+                                            className="three-dots-btn" 
+                                            onClick={(e) => handleToggleTeamMenu(group.team_id, e)}
+                                            style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 5px' }}
+                                        >
+                                            &#8285;
+                                        </button>
+                                        {openTeamMenuId === group.team_id && (
+                                            <div className="actions-dropdown" style={{ right: 0, left: 'auto', zIndex: 10 }}>
+                                                <button onClick={(e) => { e.stopPropagation(); handleMarkTeamAttendance(group); setOpenTeamMenuId(null); }}>
+                                                    Mark Present for Whole Team
+                                                </button>
+                                            </div>
                                         )}
-                                    </td>
-                                )}
-                                {visibleColumns.created_by && <td>{mem.created_by || '-'}</td>}
-                                {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
-                                {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
-                                {visibleColumns.action && (
-                                    <td className="actions-cell">
-                                        <div className="actions-menu-container">
-                                            <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
-                                                &#8285;
-                                            </button>
-                                            {openMenuId === mem.id && (
-                                                <div className="actions-dropdown">
-                                                    <button onClick={() => handleViewCalendar(mem)}>
-                                                        View Calendar
-                                                    </button>
-                                                    <button onClick={() => handleOpenLeaveModal(mem)}>
-                                                        Mark Leave
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                )}
-                            </tr>
-                        ))
-                    ) : (
-                        !loading && (
-                            <tr>
-                                <td colSpan={Object.values(visibleColumns).filter(Boolean).length}>No active memberships for the selected date.</td>
-                            </tr>
-                        )
-                    )}
-                </tbody>
-            </table>
+                                    </div>
+                                </div>
+                            </div>
+    
+                            {expandedTeams.has(group.team_id) && (
+                                <div className="team-members-table-wrapper" style={{ padding: '0' }}>
+                                    <table className="dashboard-table membership-nested-table" style={{ margin: 0, borderTop: 'none' }}>
+                                        <thead>
+                                            <tr>
+                                                {visibleColumns.id && <th>ID</th>}
+                                                {visibleColumns.package && <th>Package</th>}
+                                                {visibleColumns.member && <th>Member</th>}
+                                                {visibleColumns.status && <th>Status</th>}
+                                                {visibleColumns.created_by && <th>Created By</th>}
+                                                {visibleColumns.payment_info && <th>Payment Info</th>}
+                                                {visibleColumns.discount_details && <th>Discount Reason</th>}
+                                                {visibleColumns.action && <th>Action</th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {group.members.map(mem => (
+                                                <tr key={mem.id}>
+                                                    {visibleColumns.id && <td>{mem.id}</td>}
+                                                    {visibleColumns.package && <td>{mem.package_name}</td>}
+                                                    {visibleColumns.member && <td>{mem.member_name} <br/><small>{mem.member_contact || mem.phone_number || ''}</small></td>}
+                                                    {visibleColumns.status && (
+                                                        <td>
+                                                            {onLeave.has(mem.id) ? (
+                                                                <button className="btn btn-warning btn-sm" disabled style={{ opacity: 1, cursor: 'default' }}>On Leave</button>
+                                                            ) : attended.has(mem.id) ? (
+                                                                <button className="btn btn-success btn-sm" disabled style={{ opacity: 0.7, cursor: 'default' }}>Marked Present</button>
+                                                            ) : (
+                                                                <button 
+                                                                    className="btn btn-success btn-sm"
+                                                                    onClick={() => handleMarkAttendance(mem.id)}
+                                                                >
+                                                                    Mark Present
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    )}
+                                                    {visibleColumns.created_by && <td>{mem.created_by || '-'}</td>}
+                                                    {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
+                                                    {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
+                                                    {visibleColumns.action && (
+                                                        <td className="actions-cell">
+                                                            <div className="actions-menu-container">
+                                                                <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                                                    &#8285;
+                                                                </button>
+                                                                {openMenuId === mem.id && (
+                                                                    <div className="actions-dropdown">
+                                                                        <button onClick={() => handleViewCalendar(mem)}>
+                                                                            View Calendar
+                                                                        </button>
+                                                                        <button onClick={() => handleOpenLeaveModal(mem)}>
+                                                                            Mark Leave
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    ))
+                ) : (
+                    !loading && (
+                        <div className="no-membership-message">No active memberships for the selected date.</div>
+                    )
+                )}
+            </div>
 
             {selectedMembership && (
                 <AttendanceCalendarModal 

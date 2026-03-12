@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { format } from 'date-fns';
 import api from '../../api'; // Assuming 'api' is configured for HTTP requests
 import './PackageEditModal.css';
 
@@ -28,10 +29,10 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
         );
     }, [searchTerm, allMembers, selectedRenewMembers]);
 
-    // Calculate display price (per person price * current members) for display purposes
+    // Calculate display price (per person price) for display purposes
     const displayBasePrice = useMemo(() => {
-        return (membership?.package_price || 0) * (selectedRenewMembers.length || 0);
-    }, [membership, selectedRenewMembers]);
+        return (membership?.package_price || 0);
+    }, [membership]);
 
     const displayFinalPrice = useMemo(() => {
         return displayBasePrice - (discountAmount || 0);
@@ -51,22 +52,15 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
 
         fetchMembers();
 
-        // Initialize selectedRenewMembers with existing members from the 'membership' prop
-        // This assumes membership.team_members is a comma-separated string of full_names
-        // A more robust solution would have membership.member_objects as an array of objects
-        if (membership?.team_members) {
-            // Split the string, trim each name, then find corresponding full member objects
-            const initialMemberNames = membership.team_members.split(', ').map(name => name.trim());
-            
-            // Wait for allMembers to be fetched before attempting to match
-            if (allMembers.length > 0) {
-                const initialMembers = allMembers.filter(member =>
-                    initialMemberNames.includes(member.full_name)
-                );
-                setSelectedRenewMembers(initialMembers);
-            }
+        // Initialize selectedRenewMembers with the single member from the 'membership' prop
+        if (membership?.member_id) {
+            setSelectedRenewMembers([{
+                id: membership.member_id,
+                full_name: membership.member_name,
+                phone_number: membership.member_contact
+            }]);
         }
-    }, [membership, allMembers]);
+    }, [membership]);
 
 
     // Member management handlers
@@ -75,7 +69,7 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
     };
 
     const handleAddRenewMember = (member) => {
-        if (selectedRenewMembers.length < membership?.max_team_size &&
+        if (selectedRenewMembers.length < (membership?.max_players || 1) &&
             !selectedRenewMembers.some(m => m.id === member.id)) {
             setSelectedRenewMembers([...selectedRenewMembers, member]);
             setSearchTerm('');
@@ -84,7 +78,7 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
         } else if (selectedRenewMembers.some(m => m.id === member.id)) {
             setErrors(prev => ({ ...prev, members: 'Member is already selected.' }));
         } else {
-            setErrors(prev => ({ ...prev, members: `Maximum team size (${membership.max_team_size}) reached.` }));
+            setErrors(prev => ({ ...prev, members: `Maximum team size (${membership.max_players}) reached.` }));
         }
     };
 
@@ -147,13 +141,13 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
             await onRenew(membership.id, {
                 start_date: startDate,
                 discount_amount: parseFloat(discountAmount) || 0,
-                discount_details: discountDetails, // Pass new discount details
+                discount_details: discountDetails,
+                package_id: membership.package_id, // Ensure package ID is passed
                 initial_payment: {
                     amount: parseFloat(paymentAmount) || 0,
                     payment_mode: finalPaymentMode,
                     payment_id: finalPaymentId
-                },
-                new_member_ids: selectedRenewMembers.map(member => member.id)
+                }
             });
             onClose();
         } catch (err) {
@@ -179,10 +173,11 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
                         </div>
                     )}
                     <div className="summary-card" style={{padding: '1rem', marginBottom: '1rem'}}>
+                         <p><strong>Member:</strong> {membership?.member_name}</p>
+                         <p><strong>Team:</strong> {membership?.team_name}</p>
                          <p><strong>Package:</strong> {membership?.package_name}</p>
-                         <p><strong>Max Team Size:</strong> {membership?.max_team_size}</p>
-                         <p><strong>Per Person Price:</strong> Rs. {membership?.package_price || 0}</p>
-                         <p><strong>Total for {selectedRenewMembers.length} Members:</strong> Rs. {displayBasePrice}</p>
+                         <p><strong>Current End Date:</strong> {membership?.current_end_date ? format(new Date(membership.current_end_date), 'dd/MM/yyyy') : 'N/A'}</p>
+                         <p><strong>Price:</strong> Rs. {membership?.package_price || 0}</p>
                     </div>
 
                     <div className="form-group">
@@ -191,7 +186,7 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
                     </div>
 
                     <div className="form-group">
-                        <label>Team Members for Renewal ({selectedRenewMembers.length} / {membership?.max_team_size})</label>
+                        <label>Team Members for Renewal ({selectedRenewMembers.length} / {(membership?.max_players || 1)})</label>
                         <div className="selected-members-list">
                             {selectedRenewMembers.map(member => (
                                 <span key={member.id} className="member-tag">
@@ -201,7 +196,7 @@ const RenewModal = ({ membership, onRenew, onClose }) => { // Removed 'error' fr
                             ))}
                         </div>
                         {errors.members && <p style={{ color: 'red', fontSize: '12px' }}>{errors.members}</p>}
-                        {selectedRenewMembers.length < membership?.max_team_size && (
+                        {selectedRenewMembers.length < (membership?.max_players || 1) && (
                             <div className="member-search-container">
                                 <input
                                     type="text"

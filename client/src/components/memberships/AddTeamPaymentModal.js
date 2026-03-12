@@ -1,14 +1,26 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import api from '../../api';
 import './PackageEditModal.css'; // Re-use styles
 
-const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error }) => {
+const AddTeamPaymentModal = ({ group, onPaymentAdded, onClose, error }) => {
     const [amount, setAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
-    const [onlinePaymentType, setOnlinePaymentType] = useState('UPI'); // New state
+    const [onlinePaymentType, setOnlinePaymentType] = useState('UPI');
     const [paymentId, setPaymentId] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [errors, setErrors] = useState({}); // New state
+    const [errors, setErrors] = useState({});
+
+    // Calculate total balance across all active members in the group
+    const totalBalance = useMemo(() => {
+        return group.members
+            .filter(mem => mem.status === 'active' || mem.status === 'ended' || mem.status === 'Expired') // Wait, we just check balance
+            .reduce((sum, mem) => sum + parseFloat(mem.balance_amount || 0), 0);
+    }, [group]);
+
+    const activeMembersCount = useMemo(() => {
+        return group.members.filter(mem => parseFloat(mem.balance_amount || 0) > 0).length;
+    }, [group]);
+
 
     // Validation function
     const validateForm = useCallback(() => {
@@ -16,10 +28,10 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
 
         if (amount === '' || amount === null) {
             newErrors.amount = 'Amount is required.';
-        } else if (isNaN(amount) || parseFloat(amount) < 0) {
-            newErrors.amount = 'Amount must be a non-negative number.';
-        } else if (parseFloat(amount) > membership.balance_amount) {
-            newErrors.amount = `Amount cannot exceed balance amount (Rs. ${membership.balance_amount}).`;
+        } else if (isNaN(amount) || parseFloat(amount) <= 0) {
+            newErrors.amount = 'Amount must be a positive number.';
+        } else if (parseFloat(amount) > totalBalance) {
+            newErrors.amount = `Amount cannot exceed total team balance (Rs. ${totalBalance}).`;
         }
 
         if ((paymentMode === 'Online' || paymentMode === 'Cheque') && !paymentId.trim()) {
@@ -30,7 +42,7 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    }, [amount, membership.balance_amount, paymentMode, paymentId]);
+    }, [amount, totalBalance, paymentMode, paymentId]);
 
 
     const handleSubmit = async (e) => {
@@ -51,48 +63,65 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
                 payment_mode: finalPaymentMode,
                 payment_id: finalPaymentId,
             };
-            const response = await api.post(`/memberships/active/${membership.id}/payments`, payload);
-            alert('Payment added successfully!');
-            onPaymentAdded(response.data.membership); // Pass the updated membership back to the parent
+            await api.post(`/memberships/team-payments/${group.team_id}`, payload);
+            alert('Team payment distributed successfully!');
+            onPaymentAdded(); // Trigger a refetch
             onClose();
         } catch (err) {
-            setErrors({ general: err.response?.data?.message || 'Failed to add payment.' });
-            console.error('Failed to add payment:', err);
+            setErrors({ general: err.response?.data?.message || 'Failed to process team payment.' });
+            console.error('Failed to add team payment:', err);
         } finally {
             setSubmitting(false);
         }
     };
 
+    if (totalBalance <= 0) {
+         return (
+             <div className="modal-overlay">
+                 <div className="modal-content">
+                     <div className="modal-header">
+                         <h2>Add Bulk Payment for Team</h2>
+                         <button onClick={onClose} className="close-button">&times;</button>
+                     </div>
+                     <div style={{ padding: '20px', textAlign: 'center' }}>
+                         <p>There are no outstanding balances for any active members in this team.</p>
+                         <button className="btn btn-secondary" onClick={onClose}>Close</button>
+                     </div>
+                 </div>
+             </div>
+         );
+    }
+
     return (
         <div className="modal-overlay">
             <div className="modal-content">
                 <div className="modal-header">
-                    <h2>Add Payment for Member: {membership.member_name}</h2>
+                    <h2>Add Bulk Payment for Team: {group.team_name}</h2>
                     <button onClick={onClose} className="close-button">&times;</button>
                 </div>
                 <form onSubmit={handleSubmit} className="modal-form">
                     {error && <div className="error-message">{error}</div>}
                     {errors.general && <div className="error-message">{errors.general}</div>}
                     
-                    <div className="summary-card" style={{padding: '1rem', marginBottom: '1rem'}}>
-                         <p><strong>Member:</strong> {membership.member_name}</p>
-                         <p><strong>Team:</strong> {membership.team_name}</p>
-                         <p><strong>Package:</strong> {membership.package_name}</p>
-                         <p><strong>Total Price:</strong> Rs. {membership.final_price_calc || '0'}</p>
-                         <p><strong>Amount Paid:</strong> Rs. {membership.amount_paid || '0'}</p>
-                         <p style={{ fontWeight: 'bold', color: '#dc3545' }}>
-                            <strong>Balance Amount:</strong> Rs. {membership.balance_amount || '0'}
+                    <div className="summary-card" style={{padding: '1rem', marginBottom: '1rem', backgroundColor: '#e9ecef', borderRadius: '8px'}}>
+                         <p><strong>Team:</strong> {group.team_name || 'Individual / No Team'}</p>
+                         <p><strong>Members with Balance:</strong> {activeMembersCount}</p>
+                         <p style={{ fontWeight: 'bold', color: '#dc3545', fontSize: '18px', marginTop: '10px' }}>
+                            <strong>Total Team Balance:</strong> Rs. {totalBalance}
+                         </p>
+                         <p style={{ fontSize: '12px', color: '#555' }}>
+                            The payment amount will be automatically distributed across members' individual balances until exhausted.
                          </p>
                     </div>
 
                     <div className="form-group">
-                        <label>Payment Amount</label>
+                        <label>Lump Sum Payment Amount</label>
                         <input
                             type="number"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            max={membership.balance_amount}
-                            min="0.01"
+                            max={totalBalance}
+                            min="1"
                             step="0.01"
                             required
                         />
@@ -134,7 +163,7 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>
-                            {submitting ? 'Submitting...' : 'Submit Payment'}
+                            {submitting ? 'Processing...' : 'Submit Bulk Payment'}
                         </button>
                     </div>
                 </form>
@@ -143,5 +172,4 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
     );
 };
 
-export default AddMembershipPaymentModal;
-
+export default AddTeamPaymentModal;

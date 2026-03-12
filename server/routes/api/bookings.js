@@ -170,9 +170,24 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
     try {
         const [courts] = await db.query('SELECT c.id, c.name, c.status, s.name as sport_name, s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id ORDER BY s.name, c.name');
         const [bookings] = await db.query('SELECT * FROM bookings WHERE date = ? AND status != ?', [date, 'Cancelled']);
-        const [memberships] = await db.query('SELECT * FROM active_memberships WHERE ? BETWEEN start_date AND current_end_date', [date]);
-        const [attendances] = await db.query('SELECT membership_id FROM team_attendance WHERE attendance_date = ?', [date]);
-        const attendedMembershipIds = attendances.map(a => a.membership_id);
+        
+        // Use the new team structure
+        const membershipQuery = `
+            SELECT 
+                tm.id as membership_id,
+                t.court_id,
+                t.time_slot,
+                tm.member_id
+            FROM team_memberships tm
+            JOIN teams t ON tm.team_id = t.id
+            WHERE tm.status = 'active' 
+              AND t.status = 'active'
+              AND ? BETWEEN tm.start_date AND tm.current_end_date
+        `;
+        const [memberships] = await db.query(membershipQuery, [date]);
+        
+        const [attendances] = await db.query('SELECT team_membership_id FROM team_attendance WHERE attendance_date = ?', [date]);
+        const attendedMembershipIds = attendances.map(a => a.team_membership_id);
 
         const timeSlots = Array.from({ length: 19 }, (_, i) => {
             const hour = 5 + i;
@@ -232,7 +247,7 @@ router.get('/availability/heatmap', authenticateToken, async (req, res) => {
                             });
 
                             if (overlappingMembership) {
-                                const isAttended = attendedMembershipIds.includes(overlappingMembership.id);
+                                const isAttended = attendedMembershipIds.includes(overlappingMembership.membership_id);
                                 if (isAttended) {
                                     availability = 'attended'; // This will be colored yellow on the frontend
                                 }
@@ -601,10 +616,13 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         const [existingBookings] = await connection.query('SELECT time_slot, slots_booked FROM bookings WHERE court_id = ? AND date = ? AND status != ? FOR UPDATE', [court_id, date, 'Cancelled']);
 
         const [activeMemberships] = await connection.query(
-            `SELECT time_slot 
-             FROM active_memberships 
-             WHERE court_id = ? 
-             AND ? BETWEEN start_date AND current_end_date FOR UPDATE`,
+            `SELECT t.time_slot 
+             FROM team_memberships tm
+             JOIN teams t ON tm.team_id = t.id
+             WHERE t.court_id = ? 
+             AND tm.status = 'active'
+             AND t.status = 'active'
+             AND ? BETWEEN tm.start_date AND tm.current_end_date FOR UPDATE`,
             [court_id, date]
         );
 
@@ -1152,10 +1170,13 @@ router.post('/bookings/check-clash', authenticateToken, async (req, res) => {
 
         // 2. Check for overlapping active memberships
         const [conflictingMemberships] = await db.query(
-            `SELECT time_slot 
-             FROM active_memberships 
-             WHERE court_id = ? 
-             AND ? BETWEEN start_date AND current_end_date`,
+            `SELECT t.time_slot 
+             FROM team_memberships tm
+             JOIN teams t ON tm.team_id = t.id
+             WHERE t.court_id = ? 
+             AND tm.status = 'active'
+             AND t.status = 'active'
+             AND ? BETWEEN tm.start_date AND tm.current_end_date`,
             [court_id, date]
         );
 

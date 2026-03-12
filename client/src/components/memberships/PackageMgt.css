@@ -229,3 +229,89 @@
     cursor: pointer;
     padding: 0 5px;
 }
+
+/* ── Team Grouping Display ── */
+.team-group-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.team-group-header {
+    background-color: #F8F9FA;
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 2px solid var(--color-primary-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.team-info-main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.team-badge {
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.5px;
+}
+
+.team-group-header h4 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.team-location-details {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.member-count-badge {
+    background-color: var(--color-border-light);
+    color: var(--color-primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.membership-nested-table.dashboard-table {
+    margin-bottom: 0;
+    border: none;
+    border-radius: 0;
+}
+
+.membership-nested-table.dashboard-table thead th {
+    background-color: white;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.no-membership-message {
+    text-align: center;
+    padding: var(--space-2xl);
+    color: var(--color-text-secondary);
+    background-color: #F8F9FA;
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-border);
+}

@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../api';
 import RenewModal from './RenewModal';
 import AddMembershipPaymentModal from './AddMembershipPaymentModal';
+import AddTeamPaymentModal from './AddTeamPaymentModal';
 import MarkLeaveModal from './MarkLeaveModal';
-import MembershipReceiptModal from './MembershipReceiptModal';
 import RenewalConfirmationModal from './RenewalConfirmationModal';
-import ManageActiveMembersModal from './ManageActiveMembersModal'; // New Import
 import './PackageMgt.css';
 import { format } from 'date-fns';
 
@@ -24,30 +23,30 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [selectedMembershipForLeave, setSelectedMembershipForLeave] = useState(null);
 
-    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-    const [selectedMembershipForReceipt, setSelectedMembershipForReceipt] = useState(null);
+    const [isAddTeamPaymentModalOpen, setIsAddTeamPaymentModalOpen] = useState(false);
+    const [selectedTeamForPayment, setSelectedTeamForPayment] = useState(null);
 
     const [isRenewalConfirmationModalOpen, setIsRenewalConfirmationModalOpen] = useState(false);
     const [renewedMembershipDetails, setRenewedMembershipDetails] = useState(null);
 
-    const [isManageMembersModalOpen, setIsManageMembersModalOpen] = useState(false); // New state
-    const [membershipToManageMembersFor, setMembershipToManageMembersFor] = useState(null); // New state
+    const [expandedTeams, setExpandedTeams] = useState(new Set()); // New state for collapsible teams
 
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [openTeamMenuId, setOpenTeamMenuId] = useState(null);
     const [filterText, setFilterText] = useState('');
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [visibleColumns, setVisibleColumns] = useState({
         id: true,
+        member: true,
+        team: true,
         package: true,
         court: true,
-        team: true,
         time_slot: true,
         start_date: true,
         end_date: true,
         price: true,
         paid: true,
         balance: true,
-        created_by: true,
         payment_info: false,
         discount_details: false,
         actions: true
@@ -58,7 +57,6 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             setLoading(true);
             const response = await api.get(`/memberships/${status}`);
             setMemberships(response.data);
-            // setError(null); // Let's not clear previous errors on fetch
         } catch (err) {
             setError(`Failed to fetch ${status} memberships.`);
             console.error(err);
@@ -82,12 +80,11 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         };
     }, []);
 
-    // Effect to auto-clear the error after some time
     useEffect(() => {
         if (error) {
             const timer = setTimeout(() => {
                 setError(null);
-            }, 5000); // 5 seconds
+            }, 5000);
             return () => clearTimeout(timer);
         }
     }, [error]);
@@ -108,19 +105,6 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const handleCloseRenewalConfirmationModal = () => {
         setIsRenewalConfirmationModalOpen(false);
         setRenewedMembershipDetails(null);
-    };
-
-    const handleOpenManageMembersModal = (membership) => { // New handler
-        setMembershipToManageMembersFor(membership);
-        setIsManageMembersModalOpen(true);
-        setModalError(null);
-        setOpenMenuId(null);
-    };
-
-    const handleCloseManageMembersModal = () => { // New handler
-        setIsManageMembersModalOpen(false);
-        setMembershipToManageMembersFor(null);
-        setModalError(null);
     };
 
     const handleRenewSubmit = async (membershipId, renewalData) => {
@@ -149,6 +133,19 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         setModalError(null);
     };
 
+    const handleOpenAddTeamPaymentModal = (group) => {
+        setSelectedTeamForPayment(group);
+        setIsAddTeamPaymentModalOpen(true);
+        setModalError(null);
+        setOpenTeamMenuId(null);
+    };
+
+    const handleCloseAddTeamPaymentModal = () => {
+        setIsAddTeamPaymentModalOpen(false);
+        setSelectedTeamForPayment(null);
+        setModalError(null);
+    };
+
     const handleOpenLeaveModal = (membership) => {
         setSelectedMembershipForLeave(membership);
         setIsLeaveModalOpen(true);
@@ -162,29 +159,9 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         setModalError(null);
     };
 
-    const handleOpenReceiptModal = async (membership) => {
-        try {
-            const response = await api.get(`/memberships/${membership.id}/details`);
-            setSelectedMembershipForReceipt(response.data);
-            setIsReceiptModalOpen(true);
-            setModalError(null);
-            setOpenMenuId(null);
-        } catch (err) {
-            setError('Failed to fetch membership details for receipt.');
-            console.error(err);
-        }
-    };
-
-    const handleCloseReceiptModal = () => {
-        setIsReceiptModalOpen(false);
-        setSelectedMembershipForReceipt(null);
-        setModalError(null);
-    };
-
     const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
         try {
             const response = await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
-            
             if (response && response.data.status === 'success') {
                 fetchMemberships();
                 handleCloseLeaveModal();
@@ -233,30 +210,103 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         }
     };
 
+    const handleTerminateTeam = async (group) => {
+        if (window.confirm(`Are you sure you want to terminate all ${group.members.length} active members in team ${group.team_name}? This action cannot be undone.`)) {
+            try {
+                await Promise.all(group.members.map(mem => api.delete(`/memberships/active/${mem.id}`)));
+                fetchMemberships();
+            } catch (err) {
+                setError('Failed to terminate one or more memberships in the team.');
+            }
+        }
+    };
+
+    const handleTerminateEndedTeam = async (group) => {
+        if (window.confirm(`Are you sure you want to terminate all ${group.members.length} ended members in team ${group.team_name}? This will move them to the terminated list.`)) {
+            try {
+                await Promise.all(group.members.map(mem => api.put(`/memberships/ended/${mem.id}/terminate`)));
+                fetchMemberships();
+            } catch (err) {
+                setError('Failed to terminate one or more ended memberships in the team.');
+            }
+        }
+    };
+
+    const toggleTeamExpand = (teamId) => {
+        setExpandedTeams(prev => {
+            const next = new Set(prev);
+            if (next.has(teamId)) {
+                next.delete(teamId);
+            } else {
+                next.add(teamId);
+            }
+            return next;
+        });
+    };
+
     const handleToggleMenu = (membershipId, event) => {
         event.stopPropagation();
         setOpenMenuId(openMenuId === membershipId ? null : membershipId);
+        setOpenTeamMenuId(null);
     };
+
+    const handleToggleTeamMenu = (teamId, event) => {
+        event.stopPropagation();
+        setOpenTeamMenuId(openTeamMenuId === teamId ? null : teamId);
+        setOpenMenuId(null);
+    };
+
+    // Close menus when clicking outside
+    useEffect(() => {
+        const closeMenus = () => {
+            setOpenMenuId(null);
+            setOpenTeamMenuId(null);
+        };
+        document.addEventListener('click', closeMenus);
+        return () => document.removeEventListener('click', closeMenus);
+    }, []);
 
     const toggleColumn = (key) => {
         setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    const filteredMemberships = memberships.filter(mem => {
-        const search = filterText.toLowerCase();
-        return (
-            mem.id.toString().includes(search) ||
-            mem.package_name?.toLowerCase().includes(search) ||
-            mem.court_name?.toLowerCase().includes(search) ||
-            mem.team_members?.toLowerCase().includes(search) ||
-            mem.created_by?.toLowerCase().includes(search)
-        );
-    });
+    const groupedMemberships = useMemo(() => {
+        const groups = {};
+        memberships.forEach(mem => {
+            const search = filterText.toLowerCase();
+            const matchesSearch = (
+                mem.id.toString().includes(search) ||
+                mem.package_name?.toLowerCase().includes(search) ||
+                mem.court_name?.toLowerCase().includes(search) ||
+                mem.member_name?.toLowerCase().includes(search) ||
+                mem.team_name?.toLowerCase().includes(search)
+            );
+
+            if (matchesSearch) {
+                const teamId = mem.team_id || 'unassigned';
+                if (!groups[teamId]) {
+                    groups[teamId] = {
+                        team_id: teamId,
+                        team_name: mem.team_name || 'Individual / No Team',
+                        court_name: mem.court_name,
+                        time_slot: mem.time_slot,
+                        members: []
+                    };
+                }
+                groups[teamId].members.push(mem);
+            }
+        });
+        return Object.values(groups).sort((a, b) => {
+            if (a.team_id === 'unassigned') return 1;
+            if (b.team_id === 'unassigned') return -1;
+            return b.team_id - a.team_id;
+        });
+    }, [memberships, filterText]);
 
     const pageTitle = `${status.charAt(0).toUpperCase() + status.slice(1)} Memberships`;
 
     if (loading) {
-        return <div>Loading {status} memberships...</div>;
+        return <div className="loading-state">Loading {status} memberships...</div>;
     }
 
     return (
@@ -298,96 +348,132 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                     </div>
                 </div>
             </div>
-            <table className="dashboard-table">
-                <thead>
-                    <tr>
-                        {visibleColumns.id && <th>ID</th>}
-                        {visibleColumns.package && <th>Package</th>}
-                        {visibleColumns.court && <th>Court</th>}
-                        {visibleColumns.team && <th>Team</th>}
-                        {visibleColumns.time_slot && <th>Time Slot</th>}
-                        {visibleColumns.start_date && <th>Start Date</th>}
-                        {visibleColumns.end_date && <th>End Date</th>}
-                        {visibleColumns.price && <th>Total Price</th>}
-                        {visibleColumns.paid && <th>Paid</th>}
-                        {visibleColumns.balance && <th>Balance</th>}
-                        {visibleColumns.created_by && <th>Created By</th>}
-                        {visibleColumns.payment_info && <th>Payment Info</th>}
-                        {visibleColumns.discount_details && <th>Discount Reason</th>}
-                        {visibleColumns.actions && <th>Actions</th>}
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredMemberships.length > 0 ? (
-                        filteredMemberships.map(mem => (
-                            <tr key={mem.id}>
-                                {visibleColumns.id && <td>{mem.id}</td>}
-                                {visibleColumns.package && <td>{mem.package_name}</td>}
-                                {visibleColumns.court && <td>{mem.court_name}</td>}
-                                {visibleColumns.team && <td className="team-cell">{mem.current_members_count || 0} / {mem.max_team_size || 'N/A'}</td>}
-                                {visibleColumns.time_slot && <td>{mem.time_slot}</td>}
-                                {visibleColumns.start_date && <td>{format(new Date(mem.start_date), 'dd/MM/yyyy')}</td>}
-                                {visibleColumns.end_date && <td>{format(new Date(mem.current_end_date), 'dd/MM/yyyy')}</td>}
-                                {visibleColumns.price && <td>Rs. {mem.final_price}</td>}
-                                {visibleColumns.paid && <td>Rs. {mem.amount_paid}</td>}
-                                {visibleColumns.balance && <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount}</td>}
-                                {visibleColumns.created_by && <td>{mem.created_by || '-'}</td>}
-                                {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
-                                {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
-                                {visibleColumns.actions && (
-                                    <td className="actions-cell">
-                                        {status === 'active' && (
-                                            <div className="actions-menu-container">
-                                                <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
-                                                    &#8285;
-                                                </button>
-                                                {openMenuId === mem.id && (
-                                                    <div className="actions-dropdown">
-                                                        {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenManageMembersModal(mem)}>Manage Members</button>
-                                                        <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
-                                                        <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
-                                                        <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+            
+            {groupedMemberships.length > 0 ? (
+                groupedMemberships.map(group => (
+                    <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div 
+                            className="team-group-header" 
+                            style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expandedTeams.has(group.team_id) ? '1px solid #eee' : 'none' }}
+                            onClick={() => toggleTeamExpand(group.team_id)}
+                        >
+                            <div className="team-info-main" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span className="team-badge" style={{ backgroundColor: '#007bff', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>TEAM</span>
+                                <h4 style={{ margin: 0 }}>{group.team_name}</h4>
+                            </div>
+                            <div className="team-location-details" style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '14px', color: '#555' }}>
+                                <span><strong>Court:</strong> {group.court_name}</span>
+                                <span><strong>Slot:</strong> {group.time_slot}</span>
+                                <span className="member-count-badge" style={{ backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }}>{group.members.length} Members</span>
+                                <span style={{ fontSize: '12px', color: '#888', marginRight: '10px' }}>{expandedTeams.has(group.team_id) ? '▲ Collapse' : '▼ Expand'}</span>
+                                {/* Team Actions Menu */}
+                                <div className="actions-menu-container" style={{ position: 'relative' }}>
+                                    <button 
+                                        className="three-dots-btn" 
+                                        onClick={(e) => handleToggleTeamMenu(group.team_id, e)}
+                                        style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 5px' }}
+                                    >
+                                        &#8285;
+                                    </button>
+                                    {openTeamMenuId === group.team_id && (
+                                        <div className="actions-dropdown" style={{ right: 0, left: 'auto', zIndex: 10 }}>
+                                            <button onClick={(e) => { e.stopPropagation(); handleOpenAddTeamPaymentModal(group); setOpenTeamMenuId(null); }}>Add Team Payment</button>
+                                            <button onClick={(e) => { e.stopPropagation(); alert('Team Receipt coming soon!'); setOpenTeamMenuId(null); }}>Complete Team Receipt</button>
+                                            {status === 'active' && (
+                                                <button onClick={(e) => { e.stopPropagation(); handleTerminateTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
+                                            )}
+                                            {status === 'ended' && (
+                                                <>
+                                                    <button onClick={(e) => { e.stopPropagation(); alert('Bulk Renew Team coming soon!'); setOpenTeamMenuId(null); }}>Renew Whole Team</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleTerminateEndedTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {expandedTeams.has(group.team_id) && (
+                            <div className="team-members-table-wrapper" style={{ padding: '0' }}>
+                                <table className="dashboard-table membership-nested-table" style={{ margin: 0, borderTop: 'none' }}>
+                                <thead>
+                                    <tr>
+                                        {visibleColumns.id && <th>ID</th>}
+                                        {visibleColumns.member && <th>Member</th>}
+                                        {visibleColumns.package && <th>Package</th>}
+                                        {visibleColumns.start_date && <th>Start Date</th>}
+                                        {visibleColumns.end_date && <th>End Date</th>}
+                                        {visibleColumns.price && <th>Total Price</th>}
+                                        {visibleColumns.paid && <th>Paid</th>}
+                                        {visibleColumns.balance && <th>Balance</th>}
+                                        {visibleColumns.payment_info && <th>Payment Info</th>}
+                                        {visibleColumns.discount_details && <th>Discount Reason</th>}
+                                        {visibleColumns.actions && <th>Actions</th>}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {group.members.map(mem => (
+                                        <tr key={mem.id}>
+                                            {visibleColumns.id && <td>{mem.id}</td>}
+                                            {visibleColumns.member && <td>{mem.member_name} <br/><small>{mem.member_contact || mem.phone_number || ''}</small></td>}
+                                            {visibleColumns.package && <td>{mem.package_name}</td>}
+                                            {visibleColumns.start_date && <td>{format(new Date(mem.start_date), 'dd/MM/yyyy')}</td>}
+                                            {visibleColumns.end_date && <td>{format(new Date(mem.current_end_date), 'dd/MM/yyyy')}</td>}
+                                            {visibleColumns.price && <td>Rs. {mem.final_price_calc || mem.package_price || '0'}</td>}
+                                            {visibleColumns.paid && <td>Rs. {mem.amount_paid || '0'}</td>}
+                                            {visibleColumns.balance && <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount || '0'}</td>}
+                                            {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
+                                            {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
+                                            {visibleColumns.actions && (
+                                                <td className="actions-cell">
+                                                    <div className="actions-menu-container">
+                                                        <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                                            &#8285;
+                                                        </button>
+                                                        {openMenuId === mem.id && (
+                                                            <div className="actions-dropdown">
+                                                                {status === 'active' && (
+                                                                    <>
+                                                                        {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                                        <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
+                                                                        <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+                                                                    </>
+                                                                )}
+                                                                {status === 'ended' && (
+                                                                    <>
+                                                                        {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
+                                                                        <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
+                                                                    </>
+                                                                )}
+                                                                {status === 'terminated' && (
+                                                                     <span>No actions</span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                                                                 )}
-                                                                                {status === 'ended' && (
-                                                                                    <div className="actions-menu-container">
-                                                                                        <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
-                                                                                            &#8285;
-                                                                                        </button>
-                                                                                        {openMenuId === mem.id && (
-                                                                                            <div className="actions-dropdown">
-                                                                                                {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                                                                <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
-                                                                                                <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
-                                                                                                <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                )}
-                                                                                {status === 'terminated' && (
-                                                                                    <button className="btn btn-secondary btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
-                                                                                )}
-                                                                            </td>
-                                                                        )}
-                                                                    </tr>
-                                                                ))
-                                                            ) : (
-                                                                <tr>
-                                                                    <td colSpan={Object.values(visibleColumns).filter(Boolean).length}>No {pageTitle} found.</td>
-                                                                </tr>
-                                                            )}
-                                                        </tbody>
-                                                    </table>
-                                                    {isRenewModalOpen && (
-                                                        <RenewModal 
-                                                            membership={selectedMembership}
-                                                            onRenew={handleRenewSubmit}
-                                                            onClose={handleCloseRenewModal}
-                                                        />
-                                                    )}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        )}
+                    </div>
+                ))
+            ) : (
+                <div className="no-membership-message">No {pageTitle} found.</div>
+            )}
+
+            {isRenewModalOpen && (
+                <RenewModal 
+                    membership={selectedMembership}
+                    onRenew={handleRenewSubmit}
+                    onClose={handleCloseRenewModal}
+                />
+            )}
             {isAddPaymentModalOpen && selectedMembershipForPayment && (
                 <AddMembershipPaymentModal
                     membership={selectedMembershipForPayment}
@@ -404,27 +490,22 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                     error={modalError}
                 />
             )}
-            {isReceiptModalOpen && (
-                <MembershipReceiptModal
-                    membership={selectedMembershipForReceipt}
-                    onClose={handleCloseReceiptModal}
+            {isAddTeamPaymentModalOpen && selectedTeamForPayment && (
+                <AddTeamPaymentModal
+                    group={selectedTeamForPayment}
+                    onPaymentAdded={() => fetchMemberships()}
+                    onClose={handleCloseAddTeamPaymentModal}
+                    error={modalError}
                 />
             )}
-            {isRenewalConfirmationModalOpen && renewedMembershipDetails && ( // Conditionally render the new modal
+            {isRenewalConfirmationModalOpen && renewedMembershipDetails && (
                 <RenewalConfirmationModal
                     renewedMembership={renewedMembershipDetails}
                     onClose={handleCloseRenewalConfirmationModal}
-                />
-            )}
-            {isManageMembersModalOpen && membershipToManageMembersFor && ( // New modal rendering
-                <ManageActiveMembersModal
-                    membership={membershipToManageMembersFor}
-                    onClose={handleCloseManageMembersModal}
-                    onMembersUpdated={fetchMemberships} // Callback to refresh the list after update
                 />
             )}
         </div>
     );
 };
 
-export default ActiveMembershipsMgt;
+export default ActiveMembershipsMgt;

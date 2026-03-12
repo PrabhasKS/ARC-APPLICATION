@@ -8,6 +8,7 @@ router.use(authenticateToken);
 // Import sub-routers
 const packagesRoutes = require('./packages');
 const membersRoutes = require('./members');
+const teamsRoutes = require('./teams'); // [NEW] Added teams router
 const subscriptionsRoutes = require('./subscriptions');
 const leavesRoutes = require('./leaves');
 const holidaysRoutes = require('./holidays');
@@ -18,6 +19,7 @@ const attendanceRoutes = require('./attendance');
 // so they are mounted at '/' to preserve the /api/memberships/* paths.
 router.use('/', packagesRoutes);
 router.use('/', membersRoutes);
+router.use('/', teamsRoutes); // [NEW] Mount teams routes
 router.use('/', subscriptionsRoutes);
 router.use('/', leavesRoutes);
 router.use('/', holidaysRoutes);

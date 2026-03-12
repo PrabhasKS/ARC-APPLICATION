@@ -123,11 +123,92 @@
 
 /* ── Form Navigation ── */
 .form-navigation {
-    display: flex;
-    justify-content: space-between;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-md);
     margin-top: var(--space-2xl);
     padding-top: var(--space-xl);
     border-top: 1px solid var(--color-border-light);
+}
+
+.form-navigation .btn {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    display: inline-block !important;
+}
+
+/* ── Mode Toggle ── */
+.onboarding-mode-toggle {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.onboarding-mode-toggle .mode-btn {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    display: block !important;
+    text-align: center;
+    padding: 12px 20px;
+    background-color: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.onboarding-mode-toggle .mode-btn:hover {
+    border-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.onboarding-mode-toggle .mode-btn.active {
+    background-color: rgba(0, 123, 255, 0.05);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.1);
+}
+
+/* ── Team Select Box ── */
+.team-select-box {
+    width: 100%;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+    padding: var(--space-sm);
+    font-size: var(--font-size-md);
+    color: var(--color-text);
+    outline: none;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.team-select-box option {
+    padding: 12px 15px;
+    margin-bottom: 5px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.team-select-box option:hover {
+    background-color: #f8f9fa;
+    border-color: var(--color-border-light);
+}
+
+.team-select-box option:checked {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: var(--color-primary);
+    font-weight: 600;
+    border-color: var(--color-primary-light);
 }
 
 /* ── Team Members ── */

@@ -230,17 +230,17 @@ router.get('/analytics/membership/summary', authenticateToken, isAdmin, async (r
     try {
         const { startDate, endDate } = req.query;
 
-        const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('am.start_date', startDate, endDate, false); // active_memberships.start_date is DATE
+        const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('tm.start_date', startDate, endDate, false); // team_memberships.start_date is DATE
         const { filterSql: paymentDateFilterSql, queryParams: paymentQueryParams } = buildDateFilter('p.payment_date', startDate, endDate, true); // payments.payment_date is DATETIME
 
         // 1. Total Active Memberships (snapshot: currently active, regardless of date range)
-        const [[{ total_active }]] = await db.query('SELECT COUNT(*) as total_active FROM active_memberships WHERE current_end_date >= CURDATE()');
+        const [[{ total_active }]] = await db.query('SELECT COUNT(*) as total_active FROM team_memberships WHERE current_end_date >= CURDATE() AND status = "active"');
 
         // 2. New Memberships (Started in range)
-        const [[{ new_memberships }]] = await db.query(`SELECT COUNT(*) as new_memberships FROM active_memberships am WHERE 1=1 ${membershipDateFilterSql}`, membershipQueryParams);
+        const [[{ new_memberships }]] = await db.query(`SELECT COUNT(*) as new_memberships FROM team_memberships tm WHERE 1=1 ${membershipDateFilterSql}`, membershipQueryParams);
 
         // 3. Total Revenue (Payments made in range)
-        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments p WHERE p.membership_id IS NOT NULL ${paymentDateFilterSql}`, paymentQueryParams);
+        const [[{ total_revenue }]] = await db.query(`SELECT SUM(amount) as total_revenue FROM payments p WHERE p.team_membership_id IS NOT NULL ${paymentDateFilterSql}`, paymentQueryParams);
 
         res.json({
             total_active,
@@ -262,10 +262,10 @@ router.get('/analytics/membership/revenue-by-sport', authenticateToken, isAdmin,
         const [rows] = await db.query(`
             SELECT s.name, SUM(p.amount) as revenue
             FROM payments p
-            JOIN active_memberships am ON p.membership_id = am.id
-            JOIN membership_packages mp ON am.package_id = mp.id
+            JOIN team_memberships tm ON p.team_membership_id = tm.id
+            JOIN membership_packages mp ON tm.package_id = mp.id
             JOIN sports s ON mp.sport_id = s.id
-            WHERE p.membership_id IS NOT NULL
+            WHERE p.team_membership_id IS NOT NULL
             ${paymentDateFilterSql}
             GROUP BY s.name
             ORDER BY revenue DESC
@@ -286,7 +286,7 @@ router.get('/analytics/membership/revenue-by-payment-mode', authenticateToken, i
         const [rows] = await db.query(`
             SELECT payment_mode, SUM(amount) as revenue
             FROM payments
-            WHERE membership_id IS NOT NULL
+            WHERE team_membership_id IS NOT NULL
             ${paymentDateFilterSql}
             GROUP BY payment_mode
             ORDER BY revenue DESC
@@ -313,13 +313,13 @@ router.get('/analytics/overall/summary', authenticateToken, isAdmin, async (req,
         const [[{ booking_discount }]] = await db.query(`SELECT SUM(discount_amount) as booking_discount FROM bookings WHERE status != 'Cancelled' ${bookingDateFilterSql}`, bookingQueryParams);
 
         // 3. Total Discount from memberships (base_price - final_price)
-        const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('am.start_date', startDate, endDate, false);
+        // We calculate this as (per_person_price - amount_to_be_paid_per_person)
+        const { filterSql: membershipDateFilterSql, queryParams: membershipQueryParams } = buildDateFilter('tm.start_date', startDate, endDate, false);
         const [[{ membership_discount }]] = await db.query(
-            `SELECT COALESCE(SUM((mp.per_person_price * tc.member_count) - am.final_price), 0) as membership_discount
-             FROM active_memberships am
-             JOIN membership_packages mp ON am.package_id = mp.id
-             JOIN (SELECT membership_id, COUNT(*) as member_count FROM membership_team GROUP BY membership_id) tc ON tc.membership_id = am.id
-             WHERE (mp.per_person_price * tc.member_count) > am.final_price
+            `SELECT COALESCE(SUM(mp.per_person_price - (tm.amount_paid + tm.balance_amount)), 0) as membership_discount
+             FROM team_memberships tm
+             JOIN membership_packages mp ON tm.package_id = mp.id
+             WHERE 1=1
              ${membershipDateFilterSql}`,
             membershipQueryParams
         );
@@ -360,10 +360,10 @@ router.get('/analytics/overall/revenue-by-sport', authenticateToken, isAdmin, as
                 -- Membership Revenue
                 SELECT s.name as sport_name, SUM(p.amount) as revenue
                 FROM payments p
-                JOIN active_memberships am ON p.membership_id = am.id
-                JOIN membership_packages mp ON am.package_id = mp.id
+                JOIN team_memberships tm ON p.team_membership_id = tm.id
+                JOIN membership_packages mp ON tm.package_id = mp.id
                 JOIN sports s ON mp.sport_id = s.id
-                WHERE p.membership_id IS NOT NULL
+                WHERE p.team_membership_id IS NOT NULL
                 ${paymentDateFilterSql}
                 GROUP BY s.name
             ) as combined
@@ -413,8 +413,8 @@ router.get('/analytics/overall/revenue-distribution', authenticateToken, isAdmin
             SELECT 
                 CASE 
                     WHEN booking_id IS NOT NULL THEN 'Daily Bookings'
-                    WHEN membership_id IS NOT NULL THEN 'Memberships'
-                    ELSE 'Terminated Memberships (Unlinked)'
+                    WHEN team_membership_id IS NOT NULL THEN 'Memberships'
+                    ELSE 'Other'
                 END as source,
                 SUM(amount) as revenue
             FROM payments

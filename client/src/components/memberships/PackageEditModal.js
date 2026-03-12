@@ -8,7 +8,6 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
         sport_id: '',
         duration_days: 30,
         per_person_price: '',
-        max_team_size: 1,
         details: ''
     });
     const [sports, setSports] = useState([]);
@@ -23,7 +22,6 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
                 sport_id: pkg.sport_id || '',
                 duration_days: pkg.duration_days || 30,
                 per_person_price: pkg.per_person_price || '',
-                max_team_size: pkg.max_team_size || 1,
                 details: pkg.details || ''
             });
         }
@@ -63,9 +61,6 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
         }
         if (isNaN(formData.per_person_price) || parseFloat(formData.per_person_price) < 0) {
             newErrors.per_person_price = 'Price must be a non-negative number.';
-        }
-        if (isNaN(formData.max_team_size) || parseInt(formData.max_team_size) <= 0) {
-            newErrors.max_team_size = 'Max team size must be a positive number.';
         }
 
         setErrors(newErrors);
@@ -116,11 +111,6 @@ const PackageEditModal = ({ pkg, onSave, onClose, error }) => {
                         <label>Per Person Price (Rs.)</label>
                         <input type="number" name="per_person_price" value={formData.per_person_price} onChange={handleChange} required min="0" />
                         {errors.per_person_price && <p style={{ color: 'red', fontSize: '12px' }}>{errors.per_person_price}</p>}
-                    </div>
-                    <div className="form-group">
-                        <label>Max Team Size</label>
-                        <input type="number" name="max_team_size" value={formData.max_team_size} onChange={handleChange} required min="1" />
-                        {errors.max_team_size && <p style={{ color: 'red', fontSize: '12px' }}>{errors.max_team_size}</p>}
                     </div>
                     <div className="form-group">
                         <label>Details / Description</label>

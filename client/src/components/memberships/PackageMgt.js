@@ -111,7 +111,6 @@ const PackageMgt = ({ user }) => {
                         <th>Name</th>
                         <th>Duration (Days)</th>
                         <th>Per Person Price (Rs.)</th>
-                        <th>Max Team Size</th>
                         {isAdmin && <th>Actions</th>}
                     </tr>
                 </thead>
@@ -122,7 +121,6 @@ const PackageMgt = ({ user }) => {
                                 <td>{pkg.name}</td>
                                 <td>{pkg.duration_days}</td>
                                 <td>{pkg.per_person_price}</td>
-                                <td>{pkg.max_team_size}</td>
                                 {isAdmin && (
                                     <td className="actions-cell">
                                         <div className="actions-menu-container">

@@ -33,13 +33,13 @@ router.get('/packages/:id', async (req, res) => {
 // POST a new membership package
 router.post('/packages', isAdmin, async (req, res) => {
     try {
-        const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
-        if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
+        const { name, sport_id, duration_days, per_person_price, details } = req.body;
+        if (!name || !sport_id || !duration_days || per_person_price === undefined) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
         const [result] = await db.query(
-            'INSERT INTO membership_packages (name, sport_id, duration_days, per_person_price, max_team_size, details) VALUES (?, ?, ?, ?, ?, ?)',
-            [name, sport_id, duration_days, per_person_price, max_team_size, details]
+            'INSERT INTO membership_packages (name, sport_id, duration_days, per_person_price, details) VALUES (?, ?, ?, ?, ?)',
+            [name, sport_id, duration_days, per_person_price, details]
         );
         res.status(201).json({ id: result.insertId, message: 'Membership package created successfully.' });
     } catch (error) {
@@ -52,13 +52,13 @@ router.post('/packages', isAdmin, async (req, res) => {
 router.put('/packages/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, sport_id, duration_days, per_person_price, max_team_size, details } = req.body;
-        if (!name || !sport_id || !duration_days || per_person_price === undefined || !max_team_size) {
+        const { name, sport_id, duration_days, per_person_price, details } = req.body;
+        if (!name || !sport_id || !duration_days || per_person_price === undefined) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
         const [result] = await db.query(
-            'UPDATE membership_packages SET name = ?, sport_id = ?, duration_days = ?, per_person_price = ?, max_team_size = ?, details = ? WHERE id = ?',
-            [name, sport_id, duration_days, per_person_price, max_team_size, details, id]
+            'UPDATE membership_packages SET name = ?, sport_id = ?, duration_days = ?, per_person_price = ?, details = ? WHERE id = ?',
+            [name, sport_id, duration_days, per_person_price, details, id]
         );
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Membership package not found or no changes made' });
