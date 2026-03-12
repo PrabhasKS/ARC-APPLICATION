@@ -318,8 +318,8 @@ const NewSubscription = () => {
                     }} required size="8" className="team-select-box">
                         <option value="" disabled>Select an available team below...</option>
                         {activeTeams.map(t => (
-                            <option key={t.id} value={t.id} disabled={t.current_members >= t.max_players}>
-                                {t.name} | {t.court_name} | {t.time_slot} ({t.current_members}/{t.max_players} members) {t.current_members >= t.max_players ? '- FULL' : ''}
+                            <option key={t.id} value={t.id} disabled={t.active_members_count >= t.max_players}>
+                                {t.name} | {t.court_name} | {t.time_slot} ({t.active_members_count}/{t.max_players} members) {t.active_members_count >= t.max_players ? '- FULL' : ''}
                             </option>
                         ))}
                     </select>
@@ -331,7 +331,7 @@ const NewSubscription = () => {
     const renderStep2 = () => {
         let maxAllowed = parseInt(maxPlayers) || 5; // Default to maxPlayers state if new team
         if (onboardingMode === 'existing_team' && selectedTeam) {
-             maxAllowed = selectedTeam.max_players - selectedTeam.current_members;
+             maxAllowed = selectedTeam.max_players - selectedTeam.active_members_count;
         }
 
         const teamIsFull = teamMembers.length >= maxAllowed;

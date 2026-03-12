@@ -40,9 +40,10 @@ const LeaveRequests = () => {
             <table className="dashboard-table">
                 <thead>
                     <tr>
-                        <th>Team ID</th>
+                        <th>ID</th>
+                        <th>Member Name</th>
+                        <th>Team Name</th>
                         <th>Package</th>
-                        <th>Team</th>
                         <th>Leave Period</th>
                         <th>Days</th>
                         <th>Reason</th>
@@ -54,9 +55,10 @@ const LeaveRequests = () => {
                     {requests.length > 0 ? (
                         requests.map(req => (
                             <tr key={req.id}>
-                                <td>{req.membership_id}</td>
+                                <td>{req.id}</td>
+                                <td>{req.member_name}</td>
+                                <td className="team-cell">{req.team_name}</td>
                                 <td>{req.package_name}</td>
-                                <td className="team-cell">{req.team_members}</td>
                                 <td>
                                     {req.start_date && req.end_date ? 
                                         `${format(new Date(req.start_date), 'dd/MM/yyyy')} - ${format(new Date(req.end_date), 'dd/MM/yyyy')}` : 

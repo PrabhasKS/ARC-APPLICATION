@@ -32,10 +32,12 @@ const TeamAttendance = () => {
     const [expandedTeams, setExpandedTeams] = useState(new Set()); // New state for collapsible teams
 
     const [filterText, setFilterText] = useState('');
+    const [selectedFilterTeamId, setSelectedFilterTeamId] = useState(''); // New team filter state
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [visibleColumns, setVisibleColumns] = useState({
         id: true, // Added Team ID
         package: true,
+        member: true,
         court: true,
         team: true,
         time_slot: true,
@@ -55,7 +57,7 @@ const TeamAttendance = () => {
                 api.get(`/memberships/on-leave?date=${date}`) // Fetch memberships on leave
             ]);
             setMemberships(mems.data);
-            setAttended(new Set(atts.data.map(a => a.membership_id)));
+            setAttended(new Set(atts.data.map(a => a.team_membership_id)));
             setOnLeave(new Set(leaves.data)); // Set the new state
             setError(null);
         } catch (err) {
@@ -102,7 +104,12 @@ const TeamAttendance = () => {
                 membership_id,
                 attendance_date: date
             });
-            fetchData(); // Refresh list
+            // Instant UI Update instead of refetching
+            setAttended(prev => {
+                const newAttended = new Set(prev);
+                newAttended.add(membership_id);
+                return newAttended;
+            });
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to mark attendance.');
         }
@@ -170,7 +177,13 @@ const TeamAttendance = () => {
                     attendance_date: date
                 })
             ));
-            fetchData();
+            
+            // Instant UI Update
+            setAttended(prev => {
+                const newAttended = new Set(prev);
+                membersToMark.forEach(mem => newAttended.add(mem.id));
+                return newAttended;
+            });
         } catch (err) {
             setError('Failed to mark attendance for the whole team.');
         }
@@ -189,6 +202,9 @@ const TeamAttendance = () => {
     };
 
     const filteredMemberships = memberships.filter(mem => {
+        if (selectedFilterTeamId && mem.team_id !== parseInt(selectedFilterTeamId)) {
+            return false;
+        }
         const search = filterText.toLowerCase();
         return (
             mem.id.toString().includes(search) ||
@@ -199,6 +215,16 @@ const TeamAttendance = () => {
             mem.created_by?.toLowerCase().includes(search)
         );
     });
+
+    const uniqueTeams = React.useMemo(() => {
+        const teamsMap = new Map();
+        memberships.forEach(mem => {
+            if (mem.team_id) {
+                teamsMap.set(mem.team_id, mem.team_name);
+            }
+        });
+        return Array.from(teamsMap.entries()).map(([id, name]) => ({ id, name }));
+    }, [memberships]);
 
     // Group memberships by team
     const groupedMemberships = React.useMemo(() => {
@@ -236,6 +262,19 @@ const TeamAttendance = () => {
                     />
                 </div>
                 <div className="header-controls-right">
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <select 
+                            value={selectedFilterTeamId} 
+                            onChange={e => setSelectedFilterTeamId(e.target.value)}
+                            className="search-input"
+                            style={{ minWidth: '200px' }}
+                        >
+                            <option value="">All Teams ({uniqueTeams.length})</option>
+                            {uniqueTeams.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                        </select>
+                    </div>
                     <input 
                         type="text" 
                         placeholder="Search..." 
@@ -271,7 +310,7 @@ const TeamAttendance = () => {
             <div className="package-mgt-container" style={{ padding: 0 }}>
                 {!loading && groupedMemberships.length > 0 ? (
                     groupedMemberships.map(group => (
-                        <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
                             <div 
                                 className="team-group-header" 
                                 style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expandedTeams.has(group.team_id) ? '1px solid #eee' : 'none' }}

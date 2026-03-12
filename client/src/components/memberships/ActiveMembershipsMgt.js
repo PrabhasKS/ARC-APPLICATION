@@ -351,7 +351,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             
             {groupedMemberships.length > 0 ? (
                 groupedMemberships.map(group => (
-                    <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
                         <div 
                             className="team-group-header" 
                             style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expandedTeams.has(group.team_id) ? '1px solid #eee' : 'none' }}

@@ -80,6 +80,7 @@ router.get('/teams', async (req, res) => {
                 c.name as court_name,
                 c.id as court_id,
                 s.name as sport_name,
+                s.id as sport_id,
                 s.capacity as sport_capacity,
                 (SELECT COUNT(*) FROM team_memberships tm WHERE tm.team_id = t.id AND tm.status = 'active') as active_members_count
             FROM teams t
