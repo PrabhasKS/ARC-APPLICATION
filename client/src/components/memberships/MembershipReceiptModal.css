@@ -110,6 +110,35 @@
   margin: 0.3rem 0;
 }
 
+.court-slot-box {
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  margin: 10px 0;
+}
+
+.court-slot-box p {
+  margin: 5px 0 !important;
+  justify-content: flex-start !important;
+}
+
+.payment-history-list {
+  background-color: #fff9db;
+  padding: 10px 15px !important;
+  border-radius: 6px;
+  border-left: 4px solid #fab005;
+}
+
+.payment-history-list li {
+  border-bottom: 1px dashed #ffe066;
+  padding: 4px 0;
+}
+
+.payment-history-list li:last-child {
+  border-bottom: none;
+}
+
 /* ===========================
    FOOTER
    =========================== */

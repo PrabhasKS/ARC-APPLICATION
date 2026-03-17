@@ -158,16 +158,19 @@ const baseMembershipQuery = `
         c.name as court_name,
         mp.name as package_name, mp.per_person_price as package_price, mp.duration_days,
         (mp.per_person_price - tm.discount_amount) as final_price_calc,
+        u.username as created_by,
         (
-             SELECT GROUP_CONCAT(CONCAT(p.amount, ': ', p.payment_mode, IF(p.payment_id IS NOT NULL, CONCAT(' (', p.payment_id, ')'), '')) SEPARATOR '; ')
+             SELECT GROUP_CONCAT(CONCAT('₹', p.amount, ' via ', p.payment_mode, ' on ', DATE_FORMAT(p.payment_date, '%d/%m/%Y'), ' by ', u.username) SEPARATOR '; ')
              FROM payments p
-             WHERE p.team_membership_id = tm.id
+             LEFT JOIN users u ON p.created_by_user_id = u.id
+             WHERE p.team_membership_id = tm.id AND p.payment_date >= tm.start_date
         ) as payment_info
     FROM team_memberships tm
     JOIN members m ON tm.member_id = m.id
     JOIN teams t ON tm.team_id = t.id
     JOIN courts c ON t.court_id = c.id
     JOIN membership_packages mp ON tm.package_id = mp.id
+    LEFT JOIN users u ON t.created_by_user_id = u.id
 `;
 
 router.get('/active', isPrivilegedUser, async (req, res) => {
@@ -313,6 +316,165 @@ router.put('/ended/:id/terminate', isPrivilegedUser, async (req, res) => {
 // ---------------------------------------------------------
 // PAYMENTS & RECEIPT
 // ---------------------------------------------------------
+
+// Individual Membership Receipt (PDF)
+router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
+    const { id: team_membership_id } = req.params;
+    try {
+        const query = `
+            ${baseMembershipQuery}
+            WHERE tm.id = ?
+        `;
+        const [rows] = await db.query(query, [team_membership_id]);
+        if (rows.length === 0) return res.status(404).send('Membership not found');
+        const membership = rows[0];
+
+        const [payments] = await db.query(`
+            SELECT p.amount, p.payment_mode, DATE_FORMAT(p.payment_date, '%d/%m/%Y') as payment_date, u.username, p.payment_id
+            FROM payments p 
+            LEFT JOIN users u ON p.created_by_user_id = u.id 
+            WHERE p.team_membership_id = ? AND p.payment_date >= ?
+        `, [team_membership_id, membership.start_date]);
+
+        const doc = new PDFDocument({ size: [302, 450], margin: 10 });
+        const buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfData = Buffer.concat(buffers);
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="membership-receipt-${membership.id}.pdf"`,
+                'Content-Length': pdfData.length
+            });
+            res.end(pdfData);
+        });
+
+        // Header
+        doc.fontSize(14).text('ARC SportsZone', { align: 'center' });
+        doc.fontSize(10).text('Membership Receipt', { align: 'center' });
+        doc.moveDown();
+
+        // Details
+        doc.fontSize(8).text(`Receipt ID: M-${membership.id}`);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`);
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).text('Member Details', { underline: true });
+        doc.fontSize(8).text(`Name: ${membership.member_name}`);
+        doc.text(`Contact: ${membership.member_contact}`);
+        doc.text(`Registered By: ${membership.created_by || 'N/A'}`);
+        doc.text(`Status: ${membership.status}`);
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).text('Package & Team', { underline: true });
+        doc.fontSize(8).text(`Team: ${membership.team_name}`);
+        doc.text(`Package: ${membership.package_name}`);
+        doc.text(`Court: ${membership.court_name} | Slot: ${membership.time_slot}`);
+        doc.text(`Validity: ${new Date(membership.start_date).toLocaleDateString()} to ${new Date(membership.current_end_date).toLocaleDateString()}`);
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).text('Financial Summary', { underline: true });
+        doc.fontSize(8).text(`Package Price: Rs. ${membership.package_price}`);
+        if (membership.discount_amount > 0) {
+            doc.fontSize(8).text(`Discount: Rs. ${membership.discount_amount} (${membership.discount_details || 'N/A'})`);
+        }
+        doc.fontSize(8).text(`Final Price: Rs. ${membership.final_price_calc}`);
+        doc.fontSize(8).text(`Total Paid: Rs. ${membership.amount_paid}`);
+        doc.fontSize(8).text(`Balance: Rs. ${membership.balance_amount}`);
+        doc.moveDown(0.5);
+
+        if (payments.length > 0) {
+            doc.fontSize(10).text('Payment History', { underline: true });
+            payments.forEach(p => {
+                doc.fontSize(8).text(`₹${p.amount} via ${p.payment_mode} on ${p.payment_date} ${p.payment_id ? '(' + p.payment_id + ')' : ''}`);
+            });
+            doc.moveDown();
+        }
+
+        doc.fontSize(8).text('Thank you for being a member!', { align: 'center' });
+        doc.end();
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error generating PDF');
+    }
+});
+
+// Team Membership Receipt (PDF) - Aggregated
+router.get('/teams/:team_id/receipt.pdf', isPrivilegedUser, async (req, res) => {
+    const { team_id } = req.params;
+    try {
+        const [teamRows] = await db.query(`
+            SELECT t.*, c.name as court_name, u.username as created_by
+            FROM teams t 
+            JOIN courts c ON t.court_id = c.id 
+            LEFT JOIN users u ON t.created_by_user_id = u.id
+            WHERE t.id = ?
+        `, [team_id]);
+        if (teamRows.length === 0) return res.status(404).send('Team not found');
+        const team = teamRows[0];
+
+        const [members] = await db.query(`
+            SELECT tm.*, m.full_name, mp.name as package_name
+            FROM team_memberships tm
+            JOIN members m ON tm.member_id = m.id
+            JOIN membership_packages mp ON tm.package_id = mp.id
+            WHERE tm.team_id = ? AND tm.status = 'active'
+        `, [team_id]);
+
+        const doc = new PDFDocument({ size: 'A4', margin: 30 });
+        const buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfData = Buffer.concat(buffers);
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="team-receipt-${team.id}.pdf"`,
+                'Content-Length': pdfData.length
+            });
+            res.end(pdfData);
+        });
+
+        // Header
+        doc.fontSize(20).text('ARC SportsZone', { align: 'center' });
+        doc.fontSize(14).text('Team Membership Receipt', { align: 'center' });
+        doc.moveDown();
+
+        doc.fontSize(12).text(`Team: ${team.name}`);
+        doc.text(`Court: ${team.court_name} | Slot: ${team.time_slot}`);
+        doc.text(`Booked By: ${team.created_by || 'N/A'}`);
+        doc.text(`Status: ${team.status}`);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`);
+        doc.moveDown();
+
+        doc.fontSize(14).text('Member Breakdown', { underline: true });
+        doc.moveDown(0.5);
+
+        let totalTeamPaid = 0;
+        let totalTeamBalance = 0;
+
+        members.forEach((m, index) => {
+            doc.fontSize(10).text(`${index + 1}. ${m.full_name} - ${m.package_name}`);
+            doc.fontSize(9).text(`   Paid: Rs. ${m.amount_paid} | Balance: Rs. ${m.balance_amount} | Status: ${m.payment_status}`, { indent: 20 });
+            totalTeamPaid += parseFloat(m.amount_paid);
+            totalTeamBalance += parseFloat(m.balance_amount);
+            doc.moveDown(0.5);
+        });
+
+        doc.moveDown();
+        doc.fontSize(12).text(`Total Team Collection: Rs. ${totalTeamPaid}`, { bold: true });
+        doc.text(`Total Outstanding Team Balance: Rs. ${totalTeamBalance}`, { bold: true });
+
+        doc.moveDown(2);
+        doc.fontSize(10).text('Authorized Signature', { align: 'right' });
+        
+        doc.end();
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error generating PDF');
+    }
+});
 
 // Add a partial payment to an existing individual subscription
 router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {

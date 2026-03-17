@@ -5,6 +5,7 @@ import AddMembershipPaymentModal from './AddMembershipPaymentModal';
 import AddTeamPaymentModal from './AddTeamPaymentModal';
 import MarkLeaveModal from './MarkLeaveModal';
 import RenewalConfirmationModal from './RenewalConfirmationModal';
+import MembershipReceiptModal from './MembershipReceiptModal';
 import './PackageMgt.css';
 import { format } from 'date-fns';
 
@@ -28,6 +29,10 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
 
     const [isRenewalConfirmationModalOpen, setIsRenewalConfirmationModalOpen] = useState(false);
     const [renewedMembershipDetails, setRenewedMembershipDetails] = useState(null);
+
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [selectedMembershipForReceipt, setSelectedMembershipForReceipt] = useState(null);
+    const [isTeamReceipt, setIsTeamReceipt] = useState(false);
 
     // Renew Whole Team state
     const [isRenewTeamModalOpen, setIsRenewTeamModalOpen] = useState(false);
@@ -113,6 +118,25 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const handleCloseRenewalConfirmationModal = () => {
         setIsRenewalConfirmationModalOpen(false);
         setRenewedMembershipDetails(null);
+    };
+
+    const handleOpenReceiptModal = (membership) => {
+        setSelectedMembershipForReceipt(membership);
+        setIsTeamReceipt(false);
+        setIsReceiptModalOpen(true);
+        setOpenMenuId(null);
+    };
+
+    const handleOpenTeamReceiptModal = (group) => {
+        setSelectedMembershipForReceipt(group);
+        setIsTeamReceipt(true);
+        setIsReceiptModalOpen(true);
+        setOpenTeamMenuId(null);
+    };
+
+    const handleCloseReceiptModal = () => {
+        setIsReceiptModalOpen(false);
+        setSelectedMembershipForReceipt(null);
     };
 
     const handleRenewSubmit = async (membershipId, renewalData) => {
@@ -331,6 +355,8 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                         team_name: mem.team_name || 'Individual / No Team',
                         court_name: mem.court_name,
                         time_slot: mem.time_slot,
+                        created_by: mem.created_by,
+                        status: mem.status,
                         members: []
                     };
                 }
@@ -420,7 +446,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                         {openTeamMenuId === group.team_id && (
                                             <div className="actions-dropdown" style={{ right: 0, left: 'auto', zIndex: 10 }}>
                                                 <button onClick={(e) => { e.stopPropagation(); handleOpenAddTeamPaymentModal(group); setOpenTeamMenuId(null); }}>Add Team Payment</button>
-                                                <button onClick={(e) => { e.stopPropagation(); alert('Team Receipt coming soon!'); setOpenTeamMenuId(null); }}>Complete Team Receipt</button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleOpenTeamReceiptModal(group); }}>Team Receipt</button>
                                                 {status === 'active' && (
                                                     <button onClick={(e) => { e.stopPropagation(); handleTerminateTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
                                                 )}
@@ -478,6 +504,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                             <div className="actions-dropdown">
                                                                 {status === 'active' && (
                                                                     <>
+                                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                                         {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
                                                                         <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
                                                                         <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
@@ -485,6 +512,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                                                 )}
                                                                 {status === 'ended' && (
                                                                     <>
+                                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
                                                                         {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
                                                                         <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
                                                                         <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
@@ -545,6 +573,14 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                 <RenewalConfirmationModal
                     renewedMembership={renewedMembershipDetails}
                     onClose={handleCloseRenewalConfirmationModal}
+                />
+            )}
+
+            {isReceiptModalOpen && (
+                <MembershipReceiptModal
+                    membership={selectedMembershipForReceipt}
+                    onClose={handleCloseReceiptModal}
+                    isTeam={isTeamReceipt}
                 />
             )}
 
