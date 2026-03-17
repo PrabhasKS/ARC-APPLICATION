@@ -29,6 +29,14 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const [isRenewalConfirmationModalOpen, setIsRenewalConfirmationModalOpen] = useState(false);
     const [renewedMembershipDetails, setRenewedMembershipDetails] = useState(null);
 
+    // Renew Whole Team state
+    const [isRenewTeamModalOpen, setIsRenewTeamModalOpen] = useState(false);
+    const [selectedGroupForRenew, setSelectedGroupForRenew] = useState(null);
+    const [renewTeamStartDate, setRenewTeamStartDate] = useState(new Date().toISOString().slice(0, 10));
+    const [renewTeamPaymentAmount, setRenewTeamPaymentAmount] = useState(0);
+    const [renewTeamPaymentMode, setRenewTeamPaymentMode] = useState('Cash');
+    const [renewTeamSubmitting, setRenewTeamSubmitting] = useState(false);
+
     const [expandedTeams, setExpandedTeams] = useState(new Set()); // New state for collapsible teams
 
     const [openMenuId, setOpenMenuId] = useState(null);
@@ -227,8 +235,38 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                 await Promise.all(group.members.map(mem => api.put(`/memberships/ended/${mem.id}/terminate`)));
                 fetchMemberships();
             } catch (err) {
-                setError('Failed to terminate one or more ended memberships in the team.');
+                setError(err.response?.data?.message || 'Failed to terminate one or more ended memberships in the team.');
             }
+        }
+    };
+
+    const handleOpenRenewTeamModal = (group) => {
+        setSelectedGroupForRenew(group);
+        setRenewTeamStartDate(new Date().toISOString().slice(0, 10));
+        setRenewTeamPaymentAmount(0);
+        setRenewTeamPaymentMode('Cash');
+        setIsRenewTeamModalOpen(true);
+        setOpenTeamMenuId(null);
+    };
+
+    const handleRenewWholeTeam = async () => {
+        if (!selectedGroupForRenew) return;
+        setRenewTeamSubmitting(true);
+        try {
+            await api.post(`/memberships/teams/${selectedGroupForRenew.team_id}/renew-all`, {
+                start_date: renewTeamStartDate,
+                initial_payment: {
+                    amount: parseFloat(renewTeamPaymentAmount) || 0,
+                    payment_mode: renewTeamPaymentMode,
+                }
+            });
+            setIsRenewTeamModalOpen(false);
+            setSelectedGroupForRenew(null);
+            fetchMemberships();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to renew team.');
+        } finally {
+            setRenewTeamSubmitting(false);
         }
     };
 
@@ -273,6 +311,9 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     const groupedMemberships = useMemo(() => {
         const groups = {};
         memberships.forEach(mem => {
+            // Guard against undefined/null rows from the API
+            if (!mem || mem.id == null) return;
+
             const search = filterText.toLowerCase();
             const matchesSearch = (
                 mem.id.toString().includes(search) ||
@@ -384,7 +425,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                             )}
                                             {status === 'ended' && (
                                                 <>
-                                                    <button onClick={(e) => { e.stopPropagation(); alert('Bulk Renew Team coming soon!'); setOpenTeamMenuId(null); }}>Renew Whole Team</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleOpenRenewTeamModal(group); }}>Renew Whole Team</button>
                                                     <button onClick={(e) => { e.stopPropagation(); handleTerminateEndedTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
                                                 </>
                                             )}
@@ -503,6 +544,45 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                     renewedMembership={renewedMembershipDetails}
                     onClose={handleCloseRenewalConfirmationModal}
                 />
+            )}
+
+            {/* Renew Whole Team Inline Modal */}
+            {isRenewTeamModalOpen && selectedGroupForRenew && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ maxWidth: '480px' }}>
+                        <div className="modal-header">
+                            <h2>Renew Team: {selectedGroupForRenew.team_name}</h2>
+                            <button onClick={() => setIsRenewTeamModalOpen(false)} className="close-button">&times;</button>
+                        </div>
+                        <div className="modal-form">
+                            <p style={{ marginBottom: '1rem', color: '#555' }}>
+                                Renewing <strong>{selectedGroupForRenew.members.length} member(s)</strong> — each keeps their own package duration.
+                            </p>
+                            <div className="form-group">
+                                <label>New Start Date (for all)</label>
+                                <input type="date" value={renewTeamStartDate} onChange={e => setRenewTeamStartDate(e.target.value)} required />
+                            </div>
+                            <div className="form-group">
+                                <label>Initial Payment per member (Rs.)</label>
+                                <input type="number" value={renewTeamPaymentAmount} onChange={e => setRenewTeamPaymentAmount(e.target.value)} min="0" />
+                            </div>
+                            <div className="form-group">
+                                <label>Payment Mode</label>
+                                <select value={renewTeamPaymentMode} onChange={e => setRenewTeamPaymentMode(e.target.value)}>
+                                    <option>Cash</option>
+                                    <option>Online</option>
+                                    <option>Cheque</option>
+                                </select>
+                            </div>
+                            <div className="modal-footer" style={{ marginTop: '1.5rem' }}>
+                                <button className="btn btn-secondary" onClick={() => setIsRenewTeamModalOpen(false)} disabled={renewTeamSubmitting}>Cancel</button>
+                                <button className="btn btn-primary" onClick={handleRenewWholeTeam} disabled={renewTeamSubmitting || !renewTeamStartDate}>
+                                    {renewTeamSubmitting ? 'Renewing...' : `Renew ${selectedGroupForRenew.members.length} Member(s)`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -65,7 +65,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
             [team_id, member_id]
         );
         if (existing.length > 0) {
-           throw new Error('This member is already an active participant in this Team.');
+            throw new Error('This member is already an active participant in this Team.');
         }
 
         // 2. Validate the team exists and has capacity
@@ -74,17 +74,17 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         if (teams[0].status !== 'active') throw new Error('Cannot add a member to an expired or terminated team.');
 
         const [currentMembers] = await connection.query(
-            'SELECT COUNT(*) as active_count FROM team_memberships WHERE team_id = ? AND status = "active"', 
+            'SELECT COUNT(*) as active_count FROM team_memberships WHERE team_id = ? AND status = "active"',
             [team_id]
         );
         if (currentMembers[0].active_count >= teams[0].max_players) {
-             throw new Error('This Team is already at maximum capacity.');
+            throw new Error('This Team is already at maximum capacity.');
         }
 
         // 3. Get Package Details
         const [packages] = await connection.query('SELECT duration_days, per_person_price FROM membership_packages WHERE id = ?', [package_id]);
         if (packages.length === 0) throw new Error('Membership package not found.');
-        
+
         const { duration_days, per_person_price } = packages[0];
         const final_price = parseFloat(per_person_price) - parseFloat(discount_amount || 0);
 
@@ -92,10 +92,10 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
 
         const amount_paid = parseFloat(initial_payment?.amount || 0);
         const balance_amount = final_price - amount_paid;
-        
+
         // Ensure paid amount isn't greater than final price
         if (amount_paid > final_price) {
-             throw new Error('Initial payment cannot be greater than the final discounted price.');
+            throw new Error('Initial payment cannot be greater than the final discounted price.');
         }
 
         let payment_status = 'Pending';
@@ -129,10 +129,10 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         }
 
         await connection.commit();
-        res.status(201).json({ 
+        res.status(201).json({
             success: true,
-            id: new_team_membership_id, 
-            message: 'Member successfully added to the team.' 
+            id: new_team_membership_id,
+            message: 'Member successfully added to the team.'
         });
 
     } catch (error) {
@@ -254,19 +254,25 @@ cron.schedule('0 1 * * *', async () => { // Runs every day at 1:00 AM
             )
         `);
         if (teamResult.affectedRows > 0) {
-             console.log(`Updated ${teamResult.affectedRows} entirely empty Teams to 'expired'.`);
+            console.log(`Updated ${teamResult.affectedRows} entirely empty Teams to 'expired'.`);
         }
 
     } catch (error) {
         console.error('Error in daily membership status update cron job:', error);
     }
 });
-
-// Terminate a single member's subscription
+// Terminate a single member's subscription (balance must be cleared first)
 router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
     const { id } = req.params; // ID of the team_memberships row
 
     try {
+        const [rows] = await db.query('SELECT balance_amount FROM team_memberships WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Active membership not found.' });
+
+        if (parseFloat(rows[0].balance_amount) > 0) {
+            return res.status(403).json({ message: 'Cannot terminate membership with an outstanding balance. Please clear the balance first.' });
+        }
+
         const [result] = await db.query(
             "UPDATE team_memberships SET status = 'terminated' WHERE id = ?",
             [id]
@@ -281,6 +287,25 @@ router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
     } catch (error) {
         console.error('Error terminating membership:', error);
         res.status(500).json({ message: 'Error terminating membership.' });
+    }
+});
+
+// Move an ended/expired member to 'terminated' status
+router.put('/ended/:id/terminate', isPrivilegedUser, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await db.query('SELECT balance_amount, status FROM team_memberships WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Membership not found.' });
+
+        if (parseFloat(rows[0].balance_amount) > 0) {
+            return res.status(403).json({ message: 'Cannot terminate membership with an outstanding balance. Please clear the balance first.' });
+        }
+
+        await db.query("UPDATE team_memberships SET status = 'terminated' WHERE id = ?", [id]);
+        res.json({ message: 'Membership terminated successfully.' });
+    } catch (error) {
+        console.error('Error terminating ended membership:', error);
+        res.status(500).json({ message: 'Error terminating ended membership.' });
     }
 });
 
@@ -305,7 +330,7 @@ router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {
         await connection.beginTransaction();
 
         const [memberships] = await connection.query(
-            'SELECT tm.*, mp.per_person_price FROM team_memberships tm JOIN membership_packages mp ON tm.package_id = mp.id WHERE tm.id = ? FOR UPDATE', 
+            'SELECT tm.*, mp.per_person_price FROM team_memberships tm JOIN membership_packages mp ON tm.package_id = mp.id WHERE tm.id = ? FOR UPDATE',
             [team_membership_id]
         );
         if (memberships.length === 0) {
@@ -320,7 +345,7 @@ router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {
         );
 
         const new_amount_paid = parseFloat(membership.amount_paid) + parseFloat(amount);
-        
+
         // Final price logic simplified as we removed final_price column from team_memberships 
         // We calculate balance amount directly based on the package price minus their specific discount amount recorded.
         // For simplicity, we just subtract the payment from the existing balance_amount
@@ -333,7 +358,7 @@ router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {
         );
 
         await connection.commit();
-        res.status(200).json({ success: true, message: 'Payment added successfully.'});
+        res.status(200).json({ success: true, message: 'Payment added successfully.' });
 
     } catch (error) {
         if (connection) await connection.rollback();
@@ -344,45 +369,40 @@ router.post('/active/:id/payments', isPrivilegedUser, async (req, res) => {
     }
 });
 
-// For renewing an existing specific membership, you'd insert a new row 
-// To renew an expired member
+// Renew a single expired member
 router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
-     // NOTE: Because each member has their own lifecycle now, renewing simply means extending their end date
-     // and generating a new payment record, OR creating a brand new row for them in team_memberships.
-     // For tracking purposes, extending current end date and adding to amount_paid and balance_amount is easiest.
-     
-     const { id: team_membership_id } = req.params;
-     const { start_date, discount_details, initial_payment, package_id } = req.body;
-     const created_by_user_id = req.user.id;
+    const { id: team_membership_id } = req.params;
+    const { start_date, discount_amount, discount_details, initial_payment, package_id } = req.body;
+    const created_by_user_id = req.user.id;
 
-     let connection;
-     try {
-         connection = await db.getConnection();
-         await connection.beginTransaction();
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
 
-         const [memberships] = await connection.query('SELECT * FROM team_memberships WHERE id = ? FOR UPDATE', [team_membership_id]);
-         if (memberships.length === 0) throw new Error('Subscription not found.');
-         const oldMembership = memberships[0];
+        const [memberships] = await connection.query('SELECT * FROM team_memberships WHERE id = ? FOR UPDATE', [team_membership_id]);
+        if (memberships.length === 0) throw new Error('Subscription not found.');
+        const oldMembership = memberships[0];
 
-         if (parseFloat(oldMembership.balance_amount) > 0) {
-             throw new Error('Subscription cannot be renewed due to an outstanding balance.');
-         }
+        if (parseFloat(oldMembership.balance_amount) > 0) {
+            throw new Error('Subscription cannot be renewed due to an outstanding balance.');
+        }
 
-         const [packages] = await connection.query('SELECT duration_days, per_person_price FROM membership_packages WHERE id = ?', [package_id || oldMembership.package_id]);
-         if (packages.length === 0) throw new Error('Package not found.');
-         const { duration_days, per_person_price } = packages[0];
+        const [packages] = await connection.query('SELECT duration_days, per_person_price FROM membership_packages WHERE id = ?', [package_id || oldMembership.package_id]);
+        if (packages.length === 0) throw new Error('Package not found.');
+        const { duration_days, per_person_price } = packages[0];
 
-         const final_price = parseFloat(per_person_price); // Discount logic needs refinement if applying again
-         const amount_paid = parseFloat(initial_payment?.amount || 0);
-         const balance_amount = final_price - amount_paid;
-         let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
+        const final_price = parseFloat(per_person_price); // Discount logic needs refinement if applying again
+        const amount_paid = parseFloat(initial_payment?.amount || 0);
+        const balance_amount = final_price - amount_paid;
+        let payment_status = balance_amount <= 0 ? 'Completed' : (amount_paid > 0 ? 'Received' : 'Pending');
 
-         const startDate = new Date(start_date);
-         const endDate = new Date(startDate);
-         endDate.setDate(startDate.getDate() + duration_days - 1);
+        const startDate = new Date(start_date);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + duration_days - 1);
 
-         await connection.query(
-             `UPDATE team_memberships 
+        await connection.query(
+            `UPDATE team_memberships 
             SET package_id = ?,
                 start_date = ?, 
                 original_end_date = ?, 
@@ -394,28 +414,114 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
                 discount_amount = ?,
                 discount_details = ?
             WHERE id = ?`,
-             [package_id || oldMembership.package_id, start_date, endDate.toISOString().slice(0, 10), endDate.toISOString().slice(0, 10), 
-              amount_paid, balance_amount, payment_status, discount_amount || 0, discount_details, team_membership_id]
-         );
+            [package_id || oldMembership.package_id, start_date, endDate.toISOString().slice(0, 10), endDate.toISOString().slice(0, 10),
+                amount_paid, balance_amount, payment_status, discount_amount || 0, discount_details, team_membership_id]
+        );
 
-         if (initial_payment && initial_payment.amount > 0) {
-             await connection.query(
-                 'INSERT INTO payments (team_membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
-                 [team_membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
-             );
-         }
+        if (initial_payment && initial_payment.amount > 0) {
+            await connection.query(
+                'INSERT INTO payments (team_membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+                [team_membership_id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id, created_by_user_id]
+            );
+        }
 
-         await connection.commit();
-         res.status(200).json({ success: true, message: 'Subscription successfully renewed.' });
+        await connection.commit();
+        res.status(200).json({ success: true, message: 'Subscription successfully renewed.' });
 
-     } catch (error) {
-         if (connection) await connection.rollback();
-         console.error('Error renewing membership:', error);
-         res.status(500).json({ message: error.message });
-     } finally {
-         if (connection) connection.release();
-     }
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error renewing membership:', error);
+        res.status(500).json({ message: error.message });
+    } finally {
+        if (connection) connection.release();
+    }
 });
+// ---------------------------------------------------------
+// BULK TEAM ACTIONS
+// ---------------------------------------------------------
+
+// Renew all expired members in a team with their same package
+router.post('/teams/:team_id/renew-all', isPrivilegedUser, async (req, res) => {
+    const { team_id } = req.params;
+    const { start_date, discount_amount, discount_details, initial_payment } = req.body;
+    const created_by_user_id = req.user.id;
+
+    if (!start_date) return res.status(400).json({ message: 'start_date is required.' });
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Get all expired/active-but-ended members in this team
+        const [members] = await connection.query(
+            `SELECT tm.*, mp.duration_days, mp.per_person_price 
+             FROM team_memberships tm 
+             JOIN membership_packages mp ON tm.package_id = mp.id
+             WHERE tm.team_id = ? AND (tm.status = 'expired' OR (tm.status = 'active' AND tm.current_end_date < CURDATE()))`,
+            [team_id]
+        );
+
+        if (members.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'No ended/expired members found in this team to renew.' });
+        }
+
+        // Check no one has an outstanding balance
+        const anyWithBalance = members.find(m => parseFloat(m.balance_amount) > 0);
+        if (anyWithBalance) {
+            await connection.rollback();
+            return res.status(403).json({ message: `Cannot renew: member "${anyWithBalance.member_id}" has an outstanding balance. Clear all balances first.` });
+        }
+
+        const startDateObj = new Date(start_date);
+        const renewedIds = [];
+
+        for (const member of members) {
+            const { duration_days, per_person_price } = member;
+            const disc = parseFloat(discount_amount || 0);
+            const final_price = parseFloat(per_person_price) - disc;
+            const paid = parseFloat(initial_payment?.amount || 0);
+            const balance = final_price - paid;
+            const payStatus = balance <= 0 ? 'Completed' : (paid > 0 ? 'Received' : 'Pending');
+
+            const endDateObj = new Date(startDateObj);
+            endDateObj.setDate(startDateObj.getDate() + duration_days - 1);
+            const end_date = endDateObj.toISOString().slice(0, 10);
+
+            await connection.query(
+                `UPDATE team_memberships 
+                 SET start_date = ?, original_end_date = ?, current_end_date = ?,
+                     amount_paid = ?, balance_amount = ?, payment_status = ?,
+                     discount_amount = ?, discount_details = ?, status = 'active'
+                 WHERE id = ?`,
+                [start_date, end_date, end_date, paid, balance, payStatus,
+                    disc, discount_details || null, member.id]
+            );
+
+            if (initial_payment && initial_payment.amount > 0) {
+                await connection.query(
+                    'INSERT INTO payments (team_membership_id, amount, payment_mode, payment_id, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
+                    [member.id, initial_payment.amount, initial_payment.payment_mode, initial_payment.payment_id || null, created_by_user_id]
+                );
+            }
+            renewedIds.push(member.id);
+        }
+
+        // Re-activate the team itself if it was expired
+        await connection.query("UPDATE teams SET status = 'active' WHERE id = ?", [team_id]);
+
+        await connection.commit();
+        res.status(200).json({ success: true, message: `Successfully renewed ${renewedIds.length} member(s).`, renewed_ids: renewedIds });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error renewing whole team:', error);
+        res.status(500).json({ message: error.message || 'Failed to renew team.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 // ---------------------------------------------------------
 // BULK TEAM PAYMENTS
 // ---------------------------------------------------------
@@ -445,12 +551,12 @@ router.post('/team-payments/:team_id', isPrivilegedUser, async (req, res) => {
         );
 
         if (memberships.length === 0) {
-             throw new Error('No active members with outstanding balances found in this team.');
+            throw new Error('No active members with outstanding balances found in this team.');
         }
 
         let totalBalance = memberships.reduce((sum, m) => sum + parseFloat(m.balance_amount), 0);
         if (paymentAmount > totalBalance) {
-             throw new Error(`Amount exceeds the total team balance of Rs. ${totalBalance}.`);
+            throw new Error(`Amount exceeds the total team balance of Rs. ${totalBalance}.`);
         }
 
         // Iterate and distribute payment
