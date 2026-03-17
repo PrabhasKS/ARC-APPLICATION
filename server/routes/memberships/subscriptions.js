@@ -336,18 +336,12 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
             WHERE p.team_membership_id = ? AND p.payment_date >= ?
         `, [team_membership_id, membership.start_date]);
 
-        const doc = new PDFDocument({ size: [302, 450], margin: 10 });
-        const buffers = [];
-        doc.on('data', buffers.push.bind(buffers));
-        doc.on('end', () => {
-            const pdfData = Buffer.concat(buffers);
-            res.writeHead(200, {
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="membership-receipt-${membership.id}.pdf"`,
-                'Content-Length': pdfData.length
-            });
-            res.end(pdfData);
-        });
+        const doc = new PDFDocument({ size: [302, 600], margin: 10 }); // Increased height slightly
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="membership-receipt-${membership.id}.pdf"`);
+        
+        doc.pipe(res);
 
         // Header
         doc.fontSize(14).text('ARC SportsZone', { align: 'center' });
@@ -386,7 +380,7 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
         if (payments.length > 0) {
             doc.fontSize(10).text('Payment History', { underline: true });
             payments.forEach(p => {
-                doc.fontSize(8).text(`₹${p.amount} via ${p.payment_mode} on ${p.payment_date} ${p.payment_id ? '(' + p.payment_id + ')' : ''}`);
+                doc.fontSize(8).text(`Rs. ${p.amount} via ${p.payment_mode} on ${p.payment_date} ${p.payment_id ? '(' + p.payment_id + ')' : ''}`);
             });
             doc.moveDown();
         }
@@ -395,8 +389,10 @@ router.get('/:id/receipt.pdf', isPrivilegedUser, async (req, res) => {
         doc.end();
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Error generating PDF');
+        console.error("PDF Generation Error:", err);
+        if (!res.headersSent) {
+            res.status(500).send('Error generating PDF');
+        }
     }
 });
 
@@ -423,17 +419,11 @@ router.get('/teams/:team_id/receipt.pdf', isPrivilegedUser, async (req, res) => 
         `, [team_id]);
 
         const doc = new PDFDocument({ size: 'A4', margin: 30 });
-        const buffers = [];
-        doc.on('data', buffers.push.bind(buffers));
-        doc.on('end', () => {
-            const pdfData = Buffer.concat(buffers);
-            res.writeHead(200, {
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="team-receipt-${team.id}.pdf"`,
-                'Content-Length': pdfData.length
-            });
-            res.end(pdfData);
-        });
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="team-receipt-${team.id}.pdf"`);
+        
+        doc.pipe(res);
 
         // Header
         doc.fontSize(20).text('ARC SportsZone', { align: 'center' });
@@ -462,8 +452,8 @@ router.get('/teams/:team_id/receipt.pdf', isPrivilegedUser, async (req, res) => 
         });
 
         doc.moveDown();
-        doc.fontSize(12).text(`Total Team Collection: Rs. ${totalTeamPaid}`, { bold: true });
-        doc.text(`Total Outstanding Team Balance: Rs. ${totalTeamBalance}`, { bold: true });
+        doc.fontSize(12).text(`Total Team Collection: Rs. ${totalTeamPaid.toFixed(2)}`, { bold: true });
+        doc.text(`Total Outstanding Team Balance: Rs. ${totalTeamBalance.toFixed(2)}`, { bold: true });
 
         doc.moveDown(2);
         doc.fontSize(10).text('Authorized Signature', { align: 'right' });
@@ -471,8 +461,10 @@ router.get('/teams/:team_id/receipt.pdf', isPrivilegedUser, async (req, res) => 
         doc.end();
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Error generating PDF');
+        console.error("Team PDF Generation Error:", err);
+        if (!res.headersSent) {
+            res.status(500).send('Error generating PDF');
+        }
     }
 });
 
