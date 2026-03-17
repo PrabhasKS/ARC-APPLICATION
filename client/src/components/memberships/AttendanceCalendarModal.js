@@ -27,16 +27,16 @@ const AttendanceCalendarModal = ({ membership, attendanceHistory, leaveHistory =
     const getDayStatus = (date) => {
         if (!date) return 'empty';
         
-        // Manually format local date objects to string to avoid timezone shifts
         const pad = (n) => String(n).padStart(2, '0');
-        const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        const toLocalDateStr = (dateInput) => {
+            const d = new Date(dateInput);
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        };
 
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-        
-        // Server dates are likely 'YYYY-MM-DDTHH:mm:ss.sssZ', so slicing is safe
-        const startDateStr = membership.start_date.slice(0, 10);
-        const endDateStr = membership.current_end_date.slice(0, 10);
+        const dateStr = toLocalDateStr(date);
+        const todayStr = toLocalDateStr(new Date());
+        const startDateStr = toLocalDateStr(membership.start_date);
+        const endDateStr = toLocalDateStr(membership.current_end_date);
 
         // Before membership start
         if (dateStr < startDateStr) return 'disabled';

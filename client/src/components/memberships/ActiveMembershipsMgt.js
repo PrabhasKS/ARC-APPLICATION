@@ -408,30 +408,32 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                 <span className="member-count-badge" style={{ backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }}>{group.members.length} Members</span>
                                 <span style={{ fontSize: '12px', color: '#888', marginRight: '10px' }}>{expandedTeams.has(group.team_id) ? '▲ Collapse' : '▼ Expand'}</span>
                                 {/* Team Actions Menu */}
-                                <div className="actions-menu-container" style={{ position: 'relative' }}>
-                                    <button 
-                                        className="three-dots-btn" 
-                                        onClick={(e) => handleToggleTeamMenu(group.team_id, e)}
-                                        style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 5px' }}
-                                    >
-                                        &#8285;
-                                    </button>
-                                    {openTeamMenuId === group.team_id && (
-                                        <div className="actions-dropdown" style={{ right: 0, left: 'auto', zIndex: 10 }}>
-                                            <button onClick={(e) => { e.stopPropagation(); handleOpenAddTeamPaymentModal(group); setOpenTeamMenuId(null); }}>Add Team Payment</button>
-                                            <button onClick={(e) => { e.stopPropagation(); alert('Team Receipt coming soon!'); setOpenTeamMenuId(null); }}>Complete Team Receipt</button>
-                                            {status === 'active' && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleTerminateTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
-                                            )}
-                                            {status === 'ended' && (
-                                                <>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleOpenRenewTeamModal(group); }}>Renew Whole Team</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleTerminateEndedTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
+                                {status !== 'terminated' && (
+                                    <div className="actions-menu-container" style={{ position: 'relative' }}>
+                                        <button 
+                                            className="three-dots-btn" 
+                                            onClick={(e) => handleToggleTeamMenu(group.team_id, e)}
+                                            style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 5px' }}
+                                        >
+                                            &#8285;
+                                        </button>
+                                        {openTeamMenuId === group.team_id && (
+                                            <div className="actions-dropdown" style={{ right: 0, left: 'auto', zIndex: 10 }}>
+                                                <button onClick={(e) => { e.stopPropagation(); handleOpenAddTeamPaymentModal(group); setOpenTeamMenuId(null); }}>Add Team Payment</button>
+                                                <button onClick={(e) => { e.stopPropagation(); alert('Team Receipt coming soon!'); setOpenTeamMenuId(null); }}>Complete Team Receipt</button>
+                                                {status === 'active' && (
+                                                    <button onClick={(e) => { e.stopPropagation(); handleTerminateTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
+                                                )}
+                                                {status === 'ended' && (
+                                                    <>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleOpenRenewTeamModal(group); }}>Renew Whole Team</button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleTerminateEndedTeam(group); setOpenTeamMenuId(null); }}>Terminate Whole Team</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

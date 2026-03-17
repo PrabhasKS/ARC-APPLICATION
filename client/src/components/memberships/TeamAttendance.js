@@ -147,7 +147,7 @@ const TeamAttendance = () => {
     const handleGrantLeaveSubmit = async (membershipId, leaveData) => {
         try {
             const response = await api.post('/memberships/grant-leave', { membership_id: membershipId, ...leaveData });
-            
+
             if (response.data.status === 'success') {
                 fetchData();
                 handleCloseLeaveModal();
@@ -171,13 +171,13 @@ const TeamAttendance = () => {
                 return;
             }
 
-            await Promise.all(membersToMark.map(mem => 
+            await Promise.all(membersToMark.map(mem =>
                 api.post('/memberships/team-attendance', {
                     membership_id: mem.id,
                     attendance_date: date
                 })
             ));
-            
+
             // Instant UI Update
             setAttended(prev => {
                 const newAttended = new Set(prev);
@@ -255,16 +255,16 @@ const TeamAttendance = () => {
             <div className="package-mgt-header shared-header">
                 <div className="form-group attendance-datepicker">
                     <label>Select Date</label>
-                    <input 
-                        type="date" 
-                        value={date} 
+                    <input
+                        type="date"
+                        value={date}
                         onChange={e => setDate(e.target.value)}
                     />
                 </div>
                 <div className="header-controls-right">
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <select 
-                            value={selectedFilterTeamId} 
+                        <select
+                            value={selectedFilterTeamId}
                             onChange={e => setSelectedFilterTeamId(e.target.value)}
                             className="search-input"
                             style={{ minWidth: '200px' }}
@@ -275,9 +275,9 @@ const TeamAttendance = () => {
                             ))}
                         </select>
                     </div>
-                    <input 
-                        type="text" 
-                        placeholder="Search..." 
+                    <input
+                        type="text"
+                        placeholder="Search..."
                         value={filterText}
                         onChange={e => setFilterText(e.target.value)}
                         className="search-input"
@@ -290,10 +290,10 @@ const TeamAttendance = () => {
                             <div className="column-menu-dropdown">
                                 {Object.keys(visibleColumns).map(key => (
                                     <label key={key} className="column-option">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={visibleColumns[key]} 
-                                            onChange={() => toggleColumn(key)} 
+                                        <input
+                                            type="checkbox"
+                                            checked={visibleColumns[key]}
+                                            onChange={() => toggleColumn(key)}
                                         />
                                         {key.replace('_', ' ').toUpperCase()}
                                     </label>
@@ -306,13 +306,13 @@ const TeamAttendance = () => {
 
             {loading && !selectedMembership && !isLeaveModalOpen && <p>Loading...</p>}
             {error && <p className="error-message">{error}</p>}
-            
+
             <div className="package-mgt-container" style={{ padding: 0 }}>
                 {!loading && groupedMemberships.length > 0 ? (
                     groupedMemberships.map(group => (
                         <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
-                            <div 
-                                className="team-group-header" 
+                            <div
+                                className="team-group-header"
                                 style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expandedTeams.has(group.team_id) ? '1px solid #eee' : 'none' }}
                                 onClick={() => toggleTeamExpand(group.team_id)}
                             >
@@ -324,11 +324,11 @@ const TeamAttendance = () => {
                                     <span><strong>Court:</strong> {group.court_name}</span>
                                     <span><strong>Slot:</strong> {group.time_slot}</span>
                                     <span className="member-count-badge" style={{ backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }}>{group.members.length} Members</span>
-                                    <span style={{ fontSize: '12px', color: '#888', marginRight: '10px' }}>{expandedTeams.has(group.team_id) ? '▲ Collapse' : '▼ Expand'}</span>
+                                    <span style={{ fontSize: '12px', color: '#888', marginRight: '10px' }}>{expandedTeams.has(group.team_id) ? '▲ ' : '▼ '}</span>
                                     {/* Team Actions Menu */}
                                     <div className="actions-menu-container" style={{ position: 'relative' }}>
-                                        <button 
-                                            className="three-dots-btn" 
+                                        <button
+                                            className="three-dots-btn"
                                             onClick={(e) => handleToggleTeamMenu(group.team_id, e)}
                                             style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 5px' }}
                                         >
@@ -344,7 +344,7 @@ const TeamAttendance = () => {
                                     </div>
                                 </div>
                             </div>
-    
+
                             {expandedTeams.has(group.team_id) && (
                                 <div className="team-members-table-wrapper" style={{ padding: '0' }}>
                                     <table className="dashboard-table membership-nested-table" style={{ margin: 0, borderTop: 'none' }}>
@@ -365,7 +365,7 @@ const TeamAttendance = () => {
                                                 <tr key={mem.id}>
                                                     {visibleColumns.id && <td>{mem.id}</td>}
                                                     {visibleColumns.package && <td>{mem.package_name}</td>}
-                                                    {visibleColumns.member && <td>{mem.member_name} <br/><small>{mem.member_contact || mem.phone_number || ''}</small></td>}
+                                                    {visibleColumns.member && <td>{mem.member_name} <br /><small>{mem.member_contact || mem.phone_number || ''}</small></td>}
                                                     {visibleColumns.status && (
                                                         <td>
                                                             {onLeave.has(mem.id) ? (
@@ -373,7 +373,7 @@ const TeamAttendance = () => {
                                                             ) : attended.has(mem.id) ? (
                                                                 <button className="btn btn-success btn-sm" disabled style={{ opacity: 0.7, cursor: 'default' }}>Marked Present</button>
                                                             ) : (
-                                                                <button 
+                                                                <button
                                                                     className="btn btn-success btn-sm"
                                                                     onClick={() => handleMarkAttendance(mem.id)}
                                                                 >
@@ -420,7 +420,7 @@ const TeamAttendance = () => {
             </div>
 
             {selectedMembership && (
-                <AttendanceCalendarModal 
+                <AttendanceCalendarModal
                     membership={selectedMembership}
                     attendanceHistory={attendanceHistory}
                     leaveHistory={leaveHistory}
