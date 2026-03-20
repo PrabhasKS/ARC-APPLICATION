@@ -208,13 +208,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
         }
     };
 
-    const handlePaymentAdded = (updatedMembership) => {
-        setMemberships(prevMemberships =>
-            prevMemberships.map(mem =>
-                mem.id === updatedMembership.id ? updatedMembership : mem
-            )
-        );
-    };
+
 
     const handleTerminate = async (id) => {
         if (window.confirm('Are you sure you want to terminate this membership? This action cannot be undone.')) {
@@ -387,9 +381,9 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             <div className="package-mgt-header shared-header">
                 <h3>{pageTitle}</h3>
                 <div className="header-controls-right">
-                    <input 
-                        type="text" 
-                        placeholder="Search memberships..." 
+                    <input
+                        type="text"
+                        placeholder="Search memberships..."
                         value={filterText}
                         onChange={e => setFilterText(e.target.value)}
                         className="search-input"
@@ -402,10 +396,10 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                             <div className="column-menu-dropdown">
                                 {Object.keys(visibleColumns).map(key => (
                                     <label key={key} className="column-option">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={visibleColumns[key]} 
-                                            onChange={() => toggleColumn(key)} 
+                                        <input
+                                            type="checkbox"
+                                            checked={visibleColumns[key]}
+                                            onChange={() => toggleColumn(key)}
                                         />
                                         {key.replace('_', ' ').toUpperCase()}
                                     </label>
@@ -415,12 +409,12 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                     </div>
                 </div>
             </div>
-            
+
             {groupedMemberships.length > 0 ? (
                 groupedMemberships.map(group => (
                     <div key={group.team_id} className="team-group-card" style={{ marginBottom: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
-                        <div 
-                            className="team-group-header" 
+                        <div
+                            className="team-group-header"
                             style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expandedTeams.has(group.team_id) ? '1px solid #eee' : 'none' }}
                             onClick={() => toggleTeamExpand(group.team_id)}
                         >
@@ -436,8 +430,8 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                                 {/* Team Actions Menu */}
                                 {status !== 'terminated' && (
                                     <div className="actions-menu-container" style={{ position: 'relative' }}>
-                                        <button 
-                                            className="three-dots-btn" 
+                                        <button
+                                            className="three-dots-btn"
                                             onClick={(e) => handleToggleTeamMenu(group.team_id, e)}
                                             style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 5px' }}
                                         >
@@ -466,71 +460,71 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
                         {expandedTeams.has(group.team_id) && (
                             <div className="team-members-table-wrapper" style={{ padding: '0' }}>
                                 <table className="dashboard-table membership-nested-table" style={{ margin: 0, borderTop: 'none' }}>
-                                <thead>
-                                    <tr>
-                                        {visibleColumns.id && <th>ID</th>}
-                                        {visibleColumns.member && <th>Member</th>}
-                                        {visibleColumns.package && <th>Package</th>}
-                                        {visibleColumns.start_date && <th>Start Date</th>}
-                                        {visibleColumns.end_date && <th>End Date</th>}
-                                        {visibleColumns.price && <th>Total Price</th>}
-                                        {visibleColumns.paid && <th>Paid</th>}
-                                        {visibleColumns.balance && <th>Balance</th>}
-                                        {visibleColumns.payment_info && <th>Payment Info</th>}
-                                        {visibleColumns.discount_details && <th>Discount Reason</th>}
-                                        {visibleColumns.actions && <th>Actions</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {group.members.map(mem => (
-                                        <tr key={mem.id}>
-                                            {visibleColumns.id && <td>{mem.id}</td>}
-                                            {visibleColumns.member && <td>{mem.member_name} <br/><small>{mem.member_contact || mem.phone_number || ''}</small></td>}
-                                            {visibleColumns.package && <td>{mem.package_name}</td>}
-                                            {visibleColumns.start_date && <td>{format(new Date(mem.start_date), 'dd/MM/yyyy')}</td>}
-                                            {visibleColumns.end_date && <td>{format(new Date(mem.current_end_date), 'dd/MM/yyyy')}</td>}
-                                            {visibleColumns.price && <td>Rs. {mem.final_price_calc || mem.package_price || '0'}</td>}
-                                            {visibleColumns.paid && <td>Rs. {mem.amount_paid || '0'}</td>}
-                                            {visibleColumns.balance && <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount || '0'}</td>}
-                                            {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
-                                            {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
-                                            {visibleColumns.actions && (
-                                                <td className="actions-cell">
-                                                    <div className="actions-menu-container">
-                                                        <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
-                                                            &#8285;
-                                                        </button>
-                                                        {openMenuId === mem.id && (
-                                                            <div className="actions-dropdown">
-                                                                {status === 'active' && (
-                                                                    <>
-                                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
-                                                                        {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                                        <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
-                                                                        <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
-                                                                    </>
-                                                                )}
-                                                                {status === 'ended' && (
-                                                                    <>
-                                                                        <button className="btn btn-info btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
-                                                                        {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
-                                                                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
-                                                                        <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
-                                                                    </>
-                                                                )}
-                                                                {status === 'terminated' && (
-                                                                     <span>No actions</span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            )}
+                                    <thead>
+                                        <tr>
+                                            {visibleColumns.id && <th>ID</th>}
+                                            {visibleColumns.member && <th>Member</th>}
+                                            {visibleColumns.package && <th>Package</th>}
+                                            {visibleColumns.start_date && <th>Start Date</th>}
+                                            {visibleColumns.end_date && <th>End Date</th>}
+                                            {visibleColumns.price && <th>Total Price</th>}
+                                            {visibleColumns.paid && <th>Paid</th>}
+                                            {visibleColumns.balance && <th>Balance</th>}
+                                            {visibleColumns.payment_info && <th>Payment Info</th>}
+                                            {visibleColumns.discount_details && <th>Discount Reason</th>}
+                                            {visibleColumns.actions && <th>Actions</th>}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {group.members.map(mem => (
+                                            <tr key={mem.id}>
+                                                {visibleColumns.id && <td>{mem.id}</td>}
+                                                {visibleColumns.member && <td>{mem.member_name} <br /><small>{mem.member_contact || mem.phone_number || ''}</small></td>}
+                                                {visibleColumns.package && <td>{mem.package_name}</td>}
+                                                {visibleColumns.start_date && <td>{format(new Date(mem.start_date), 'dd/MM/yyyy')}</td>}
+                                                {visibleColumns.end_date && <td>{format(new Date(mem.current_end_date), 'dd/MM/yyyy')}</td>}
+                                                {visibleColumns.price && <td>Rs. {mem.final_price_calc || mem.package_price || '0'}</td>}
+                                                {visibleColumns.paid && <td>Rs. {mem.amount_paid || '0'}</td>}
+                                                {visibleColumns.balance && <td style={{ color: mem.balance_amount > 0 ? 'red' : 'green' }}>Rs. {mem.balance_amount || '0'}</td>}
+                                                {visibleColumns.payment_info && <td className="small-text" title={mem.payment_info}>{mem.payment_info || '-'}</td>}
+                                                {visibleColumns.discount_details && <td>{mem.discount_details || '-'}</td>}
+                                                {visibleColumns.actions && (
+                                                    <td className="actions-cell">
+                                                        <div className="actions-menu-container">
+                                                            <button className="three-dots-btn" onClick={(e) => handleToggleMenu(mem.id, e)}>
+                                                                &#8285;
+                                                            </button>
+                                                            {openMenuId === mem.id && (
+                                                                <div className="actions-dropdown">
+                                                                    {status === 'active' && (
+                                                                        <>
+                                                                            <button className="btn btn-info btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
+                                                                            {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                                            <button className="btn btn-warning btn-sm" onClick={() => handleOpenLeaveModal(mem)}>Mark Leave</button>
+                                                                            <button className="btn btn-danger btn-sm" onClick={() => handleTerminate(mem.id)}>Terminate</button>
+                                                                        </>
+                                                                    )}
+                                                                    {status === 'ended' && (
+                                                                        <>
+                                                                            <button className="btn btn-info btn-sm" onClick={() => handleOpenReceiptModal(mem)}>Receipt</button>
+                                                                            {mem.balance_amount > 0 && <button className="btn btn-success btn-sm" onClick={() => handleOpenAddPaymentModal(mem)}>Add Payment</button>}
+                                                                            <button className="btn btn-primary btn-sm" onClick={() => handleOpenRenewModal(mem)}>Renew</button>
+                                                                            <button className="btn btn-danger btn-sm" onClick={() => handleTerminateEnded(mem.id)}>Terminate</button>
+                                                                        </>
+                                                                    )}
+                                                                    {status === 'terminated' && (
+                                                                        <span>No actions</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 ))
@@ -539,7 +533,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             )}
 
             {isRenewModalOpen && (
-                <RenewModal 
+                <RenewModal
                     membership={selectedMembership}
                     onRenew={handleRenewSubmit}
                     onClose={handleCloseRenewModal}
@@ -548,7 +542,7 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
             {isAddPaymentModalOpen && selectedMembershipForPayment && (
                 <AddMembershipPaymentModal
                     membership={selectedMembershipForPayment}
-                    onPaymentAdded={handlePaymentAdded}
+                    onPaymentAdded={() => fetchMemberships()}
                     onClose={handleCloseAddPaymentModal}
                     error={modalError}
                 />
@@ -626,4 +620,4 @@ const ActiveMembershipsMgt = ({ status = 'active' }) => {
     );
 };
 
-export default ActiveMembershipsMgt;
+export default ActiveMembershipsMgt;

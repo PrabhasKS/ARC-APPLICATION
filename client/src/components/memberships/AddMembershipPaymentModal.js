@@ -40,7 +40,7 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
         if (!validateForm()) {
             return;
         }
-        
+
         setSubmitting(true);
         try {
             const finalPaymentMode = paymentMode === 'Online' ? onlinePaymentType : paymentMode;
@@ -51,9 +51,9 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
                 payment_mode: finalPaymentMode,
                 payment_id: finalPaymentId,
             };
-            const response = await api.post(`/memberships/active/${membership.id}/payments`, payload);
+            await api.post(`/memberships/active/${membership.id}/payments`, payload);
             alert('Payment added successfully!');
-            onPaymentAdded(response.data.membership); // Pass the updated membership back to the parent
+            onPaymentAdded(); // Refetch will be handled by the parent
             onClose();
         } catch (err) {
             setErrors({ general: err.response?.data?.message || 'Failed to add payment.' });
@@ -73,16 +73,16 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
                 <form onSubmit={handleSubmit} className="modal-form">
                     {error && <div className="error-message">{error}</div>}
                     {errors.general && <div className="error-message">{errors.general}</div>}
-                    
-                    <div className="summary-card" style={{padding: '1rem', marginBottom: '1rem'}}>
-                         <p><strong>Member:</strong> {membership.member_name}</p>
-                         <p><strong>Team:</strong> {membership.team_name}</p>
-                         <p><strong>Package:</strong> {membership.package_name}</p>
-                         <p><strong>Total Price:</strong> Rs. {membership.final_price_calc || '0'}</p>
-                         <p><strong>Amount Paid:</strong> Rs. {membership.amount_paid || '0'}</p>
-                         <p style={{ fontWeight: 'bold', color: '#dc3545' }}>
+
+                    <div className="summary-card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+                        <p><strong>Member:</strong> {membership.member_name}</p>
+                        <p><strong>Team:</strong> {membership.team_name}</p>
+                        <p><strong>Package:</strong> {membership.package_name}</p>
+                        <p><strong>Total Price:</strong> Rs. {membership.final_price_calc || '0'}</p>
+                        <p><strong>Amount Paid:</strong> Rs. {membership.amount_paid || '0'}</p>
+                        <p style={{ fontWeight: 'bold', color: '#dc3545' }}>
                             <strong>Balance Amount:</strong> Rs. {membership.balance_amount || '0'}
-                         </p>
+                        </p>
                     </div>
 
                     <div className="form-group">
@@ -100,7 +100,7 @@ const AddMembershipPaymentModal = ({ membership, onPaymentAdded, onClose, error 
                     </div>
                     <div className="form-group">
                         <label>Payment Mode</label>
-                        <select value={paymentMode} onChange={(e) => {setPaymentMode(e.target.value); setPaymentId(''); setErrors(prev => ({...prev, paymentId: undefined}))}} required>
+                        <select value={paymentMode} onChange={(e) => { setPaymentMode(e.target.value); setPaymentId(''); setErrors(prev => ({ ...prev, paymentId: undefined })) }} required>
                             <option value="Cash">Cash</option>
                             <option value="Online">Online</option>
                             <option value="Cheque">Cheque</option>
