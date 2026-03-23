@@ -84,28 +84,63 @@
 
 
 /* ── Booking Form ── */
+.booking-form .form-group {
+    margin-bottom: var(--space-lg);
+}
+
 .booking-form .form-group label {
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: #495057;
+    font-size: 13px;
+    margin-bottom: 6px;
+    display: block;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
 
 .booking-form .form-group input,
 .booking-form .form-group select {
-    padding: 10px 14px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 16px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-base);
-    font-size: var(--font-size-md);
+    border-radius: 8px;
+    font-size: 15px;
     background-color: #F8F9FA;
-    transition: all var(--transition-base);
+    transition: all 0.25s ease;
+    color: #212529;
 }
 
 .booking-form .form-group input:focus,
 .booking-form .form-group select:focus {
     outline: none;
+    background-color: #fff;
     border-color: var(--color-primary-light);
-    box-shadow: 0 0 0 3px var(--color-primary-glow);
-    background-color: var(--color-surface);
+    box-shadow: 0 0 0 4px rgba(46, 90, 153, 0.1);
+}
+
+.booking-form .btn-primary {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(27, 58, 107, 0.2);
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+.booking-form .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(27, 58, 107, 0.3);
+    background: #152d53;
+}
+.booking-form .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* ── Time Slot Grid ── */
@@ -211,4 +246,85 @@
     .time-slot-grid {
         grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     }
+}
+
+/* ── Modern Availability Controls (Booking Pipeline UX) ── */
+.modern-availability-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    background-color: #F8F9FA;
+    padding: var(--space-md);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    margin-bottom: var(--space-lg);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    flex: 1;
+    min-width: 200px;
+    transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.control-group:focus-within {
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.control-icon {
+    font-size: 20px;
+    margin-right: 12px;
+    color: var(--color-primary);
+    opacity: 0.8;
+}
+
+.control-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.control-input-wrapper label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.modern-input,
+.modern-select {
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+    padding: 0;
+    outline: none;
+    width: 100%;
+}
+
+.modern-select {
+    cursor: pointer;
+}
+
+.control-group.time-range {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 16px;
+    min-width: 260px;
+}
+
+.time-separator {
+    color: var(--color-text-muted);
+    font-weight: bold;
+    margin: 0 16px;
+    margin-top: 12px; /* align with input */
 }

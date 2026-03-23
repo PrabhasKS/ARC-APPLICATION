@@ -1,162 +1,203 @@
 /* ── Active Bookings Container ── */
 .active-bookings-container {
-    padding: var(--space-base);
-    background-color: var(--color-surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border-light);
-    box-shadow: var(--shadow-sm);
+    padding: var(--space-lg);
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .upcoming-container {
-    margin-top: var(--space-lg);
+    margin-top: var(--space-xl);
 }
 
 .active-bookings-container h4 {
     margin-top: 0;
     border-bottom: 2px solid var(--color-border-light);
     padding-bottom: var(--space-md);
-    color: var(--color-text);
-    font-weight: 600;
+    color: #1B3A6B;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
 }
 
 .active-bookings-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-base);
+    gap: 16px;
 }
 
-/* ── Booking Card ── */
+/* ── Modern Sleek Ticket Card ── */
 .active-booking-card {
-    background-color: var(--color-surface);
-    border-left: 4px solid var(--color-border);
-    padding: var(--space-md) var(--space-base);
-    border-radius: var(--radius-base);
-    box-shadow: var(--shadow-sm);
+    background-color: #fff;
+    border: 1px solid #E8EAED;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
     cursor: pointer;
-    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    transition: all 0.25s cubic-bezier(0.02, 0.01, 0.47, 1);
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Left colored accent indicator */
+.active-booking-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background-color: #E8EAED;
+    transition: background-color 0.2s;
 }
 
 .active-booking-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    border-color: #DEE2E6;
 }
 
-/* ── Status Colors ── */
-.active-booking-card.upcoming {
-    border-left-color: var(--color-info);
+/* ── Status Colors (Before pseudo element) ── */
+.active-booking-card.upcoming::before {
+    background-color: #339AF0; /* blue */
 }
 
-.active-booking-card.active {
-    border-left-color: var(--color-success);
-    animation: pulse 2s infinite;
+.active-booking-card.active::before {
+    background-color: #40C057; /* green */
+    animation: active-glow 2s infinite;
 }
 
-.active-booking-card.ended {
-    border-left-color: var(--color-accent);
+.active-booking-card.ended::before {
+    background-color: #FA5252; /* red */
 }
 
-/* ── Booking Info Row ── */
+/* ── Card Content ── */
+.active-booking-card-content {
+    padding: 16px 20px;
+    padding-left: 26px; /* give space for the left accent */
+}
+
 .booking-info {
     display: flex !important;
     flex-direction: row !important;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     width: 100%;
-    font-weight: 600;
-    margin-bottom: var(--space-md);
+    margin-bottom: 12px;
     box-sizing: border-box;
 }
 
-.sport-name,
+.sport-name {
+    color: #1B3A6B;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .court-name {
-    flex-shrink: 0;
-    white-space: nowrap;
+    color: #868E96;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    background: #F8F9FA;
+    padding: 4px 10px;
+    border-radius: 20px;
     display: inline-block;
 }
 
-.sport-name {
-    color: var(--color-text);
-    font-size: 1.05em;
+/* ── Centered Details (Turned to Flex Row instead of Centered Stack) ── */
+.booking-details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed #E8EAED;
+    padding-top: 12px;
 }
 
-.court-name {
-    color: var(--color-text-secondary);
-    font-size: 0.9em;
-    text-align: right;
-}
-
-/* ── Centered Details ── */
-.booking-date {
-    font-size: 0.9em;
-    font-weight: 600;
-    color: var(--color-text);
-    margin-bottom: 4px;
-    text-align: center;
+.booking-time-date {
+    display: flex;
+    flex-direction: column;
 }
 
 .booking-time {
-    font-size: 1.1em;
-    color: var(--color-primary);
-    font-weight: 600;
-    margin-bottom: 8px;
-    text-align: center;
+    font-size: 16px;
+    color: #495057;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.booking-date {
+    font-size: 12px;
+    font-weight: 500;
+    color: #868E96;
 }
 
 .customer-name {
-    font-size: 0.95em;
-    color: var(--color-text-secondary);
-    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #343A40;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.customer-name::before {
+    content: '👤';
+    font-size: 14px;
 }
 
 /* ── Action Buttons ── */
 .ended-message {
-    margin-top: var(--space-md);
-    padding-top: var(--space-md);
-    border-top: 1px solid var(--color-border-light);
+    padding: 12px 20px 16px 26px;
+    background-color: #FFF5F5;
     text-align: center;
-    font-size: 0.9em;
-    color: var(--color-accent);
+    font-size: 13px;
+    color: #C92A2A;
     font-weight: 500;
+    border-top: 1px solid #FFE3E3;
 }
 
 .clear-btn {
-    margin-top: var(--space-sm);
-    padding: 6px 12px;
-    border: 1px solid var(--color-border);
-    background-color: #F8F9FA;
+    margin-top: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background-color: #fff;
+    border: 1px solid #FFE3E3;
+    color: #C92A2A;
+    font-weight: 600;
     cursor: pointer;
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-sm);
-    transition: background var(--transition-fast);
+    border-radius: 8px;
+    font-size: 13px;
+    transition: all 0.2s;
 }
 
 .clear-btn:hover {
-    background-color: var(--color-border-light);
+    background-color: #FFE3E3;
 }
 
 .mark-completed-btn {
-    background-color: var(--color-success);
-    color: var(--color-text-on-dark);
-    border-color: var(--color-success);
+    background-color: #FA5252;
+    color: white;
+    border-color: #FA5252;
 }
 
 .mark-completed-btn:hover {
-    background-color: #196F3D;
+    background-color: #E03131;
+    color: white;
 }
 
 /* ── Pulse Animation ── */
-@keyframes pulse {
+@keyframes active-glow {
     0% {
-        box-shadow: 0 1px 3px rgba(30, 132, 73, 0.2);
+        box-shadow: 0 0 0 0 rgba(64, 192, 87, 0.4);
     }
-
-    50% {
-        box-shadow: 0 1px 15px rgba(30, 132, 73, 0.45);
+    70% {
+        box-shadow: 0 0 0 6px rgba(64, 192, 87, 0);
     }
-
     100% {
-        box-shadow: 0 1px 3px rgba(30, 132, 73, 0.2);
+        box-shadow: 0 0 0 0 rgba(64, 192, 87, 0);
     }
 }

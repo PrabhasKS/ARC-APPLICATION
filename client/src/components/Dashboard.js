@@ -607,6 +607,7 @@ const Dashboard = ({ user }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false); // ✅ Used in JSX conditional rendering
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false); // ✅ Used in JSX conditional rendering
     const [selectedBooking, setSelectedBooking] = useState(null); // ✅ Used in Modal props
+    const [selectedCourtIdFromHeatmap, setSelectedCourtIdFromHeatmap] = useState(''); // ✅ Passed to BookingForm
     const [filters, setFilters] = useState({ sport: '', customer: '' });
     const [sortOrder, setSortOrder] = useState('desc');
     const [error, setError] = useState(null); // ✅ Used in Modal props
@@ -653,13 +654,69 @@ const Dashboard = ({ user }) => {
 
     const handleSlotSelect = (court, time, minute) => {
         const [hour] = time.split(':').map(Number);
-        const newDate = new Date();
-        newDate.setHours(hour, minute);
-        const start = `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}`;
-        newDate.setMinutes(newDate.getMinutes() + 30);
-        const end = `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}`;
+        
+        const clickedSlotDate = new Date();
+        clickedSlotDate.setHours(hour, minute, 0, 0);
+
+        const currentStartDate = new Date();
+        const [startH, startM] = startTime.split(':').map(Number);
+        currentStartDate.setHours(startH, startM, 0, 0);
+
+        const currentEndDate = new Date();
+        const [endH, endM] = endTime.split(':').map(Number);
+        currentEndDate.setHours(endH, endM, 0, 0);
+
+        // Handle deselecting a block within an active selection range
+        if (selectedCourtIdFromHeatmap === court.id) {
+            const slotStartMins = clickedSlotDate.getHours() * 60 + clickedSlotDate.getMinutes();
+            const selStartMins = currentStartDate.getHours() * 60 + currentStartDate.getMinutes();
+            const selEndMins = currentEndDate.getHours() * 60 + currentEndDate.getMinutes();
+
+            // Is the clicked slot inside the currently selected range?
+            if (slotStartMins >= selStartMins && slotStartMins < selEndMins) {
+                const blocksSelected = (selEndMins - selStartMins) / 30;
+                
+                if (blocksSelected <= 1) {
+                    // Clicking the only selected block clears the court selection entirely
+                    setSelectedCourtIdFromHeatmap('');
+                    return;
+                }
+                
+                if (slotStartMins === selStartMins) {
+                    // Clicking the first block in the range shifts the start time forward 30 mins (deselect start)
+                    currentStartDate.setMinutes(currentStartDate.getMinutes() + 30);
+                    setStartTime(`${String(currentStartDate.getHours()).padStart(2, '0')}:${String(currentStartDate.getMinutes()).padStart(2, '0')}`);
+                    return;
+                }
+                
+                // Clicking any other selected block crops the end time backwards to the start of the clicked block (deselect end)
+                const newEndDate = new Date(clickedSlotDate);
+                setEndTime(`${String(newEndDate.getHours()).padStart(2, '0')}:${String(newEndDate.getMinutes()).padStart(2, '0')}`);
+                return;
+            }
+
+            // Is the clicked slot exactly abutting the START of the current selection? (Extend backwards)
+            if (slotStartMins === selStartMins - 30) {
+                setStartTime(`${String(clickedSlotDate.getHours()).padStart(2, '0')}:${String(clickedSlotDate.getMinutes()).padStart(2, '0')}`);
+                return;
+            }
+        }
+
+        // Is the clicked slot exactly abutting the END of the current selection? (Extend forwards)
+        // Wait, currentEndDate is the 'end' time (e.g. 10:00). So clicking the 10:00 slot is abutting the end.
+        if (selectedCourtIdFromHeatmap === court.id && clickedSlotDate.getTime() === currentEndDate.getTime()) {
+            clickedSlotDate.setMinutes(clickedSlotDate.getMinutes() + 30);
+            setEndTime(`${String(clickedSlotDate.getHours()).padStart(2, '0')}:${String(clickedSlotDate.getMinutes()).padStart(2, '0')}`);
+            return;
+        }
+
+        // Otherwise (different court, or a completely non-adjacent slot), start a fresh 30m selection block
+        const start = `${String(clickedSlotDate.getHours()).padStart(2, '0')}:${String(clickedSlotDate.getMinutes()).padStart(2, '0')}`;
+        clickedSlotDate.setMinutes(clickedSlotDate.getMinutes() + 30);
+        const end = `${String(clickedSlotDate.getHours()).padStart(2, '0')}:${String(clickedSlotDate.getMinutes()).padStart(2, '0')}`;
         setStartTime(start);
         setEndTime(end);
+        setSelectedCourtIdFromHeatmap(court.id);
     };
 
     useEffect(() => {
@@ -775,38 +832,68 @@ const Dashboard = ({ user }) => {
 
     return (
         <div className="dashboard-container">
-            <h2 className="dashboard-header">Bookings Dashboard <br></br>Hi, {user.username}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 className="dashboard-header" style={{ marginBottom: 0 }}>Bookings Dashboard <br></br>Hi, {user.username}</h2>
+                <button 
+                    style={{ 
+                        padding: '10px 20px', 
+                        fontSize: '15px', 
+                        borderRadius: '8px', 
+                        backgroundColor: '#1B3A6B', 
+                        color: 'white', 
+                        border: 'none', 
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        boxShadow: '0 4px 12px rgba(27, 58, 107, 0.2)',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(27, 58, 107, 0.3)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(27, 58, 107, 0.2)'; }}
+                    onClick={() => document.getElementById('bookings-booking-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                >
+                    + Bookings
+                </button>
+            </div>
 
             {/* Heatmap Section - Button Removed */}
             <div className="dashboard-card heatmap-card">
                  
-                 {isHeatmapVisible && <AvailabilityHeatmap heatmapData={heatmapData} onSlotSelect={handleSlotSelect} />}
+                 {isHeatmapVisible && <AvailabilityHeatmap heatmapData={heatmapData} onSlotSelect={handleSlotSelect} selectedStartTime={startTime} selectedEndTime={endTime} selectedCourtId={selectedCourtIdFromHeatmap} />}
             </div>
 
             {/* Main Grid for Core Actions */}
-            <div className="dashboard-main-grid">
+            <div className="dashboard-main-grid" id="bookings-booking-section">
                 {/* Court Status Area */}
                 <div className="dashboard-card court-status-card">
                     <h3>Check Availability & Status</h3>
-                    {/* ✅ UPDATED: Back to the horizontal layout */}
-                    <div className="availability-form">
-                        <div className="form-group">
-                            <label>Date</label>
-                            <input type="date" value={selectedDate} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setSelectedDate(e.target.value)} />
+                    {/* Modern Availability Controls */}
+                    <div className="modern-availability-controls">
+                        <div className="control-group">
+                            <span className="control-icon">📅</span>
+                            <div className="control-input-wrapper">
+                                <label>Date</label>
+                                <input type="date" value={selectedDate} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setSelectedDate(e.target.value)} className="modern-input" />
+                            </div>
                         </div>
-                        <div className="form-group">
-                            <label>Time Slot</label>
-                            <select onChange={handleTimeSlotChange} value={`${startTime}-${endTime}`}>
-                                {timeSlots.map(slot => <option key={slot.value} value={slot.value}>{slot.label}</option>)}
-                            </select>
+                        <div className="control-group">
+                            <span className="control-icon">⏱️</span>
+                            <div className="control-input-wrapper">
+                                <label>Quick Slot</label>
+                                <select onChange={handleTimeSlotChange} value={`${startTime}-${endTime}`} className="modern-select">
+                                    {timeSlots.map(slot => <option key={slot.value} value={slot.value}>{slot.label}</option>)}
+                                </select>
+                            </div>
                         </div>
-                         <div className="form-group">
-                            <label>Start Time</label>
-                            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                        </div>
-                        <div className="form-group">
-                            <label>End Time</label>
-                            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                        <div className="control-group time-range">
+                            <div className="control-input-wrapper">
+                                <label>Start</label>
+                                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="modern-input" />
+                            </div>
+                            <span className="time-separator">→</span>
+                            <div className="control-input-wrapper">
+                                <label>End</label>
+                                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="modern-input" />
+                            </div>
                         </div>
                     </div>
                     <h4 style={{ marginTop: '20px' }}>Court Status</h4>
@@ -833,7 +920,7 @@ const Dashboard = ({ user }) => {
                 <div className="dashboard-card booking-form-card">
                     <h4>Book a Slot</h4>
                     <div className="booking-form-container">
-                        <BookingForm courts={availability.filter(c => c.is_available)} selectedDate={selectedDate} startTime={startTime} endTime={endTime} onBookingSuccess={handleBookingSuccess} user={user} />
+                        <BookingForm courts={availability.filter(c => c.is_available)} selectedDate={selectedDate} startTime={startTime} endTime={endTime} initialCourtId={selectedCourtIdFromHeatmap} onBookingSuccess={handleBookingSuccess} user={user} />
                     </div>
                 </div>
 

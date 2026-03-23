@@ -3,9 +3,16 @@ import api from '../api';
 import ConfirmationModal from './ConfirmationModal';
 // Assuming Dashboard.css is imported globally or in the parent component
 
-const BookingForm = ({ courts, selectedDate, startTime, endTime, onBookingSuccess, user }) => {
+const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId, onBookingSuccess, user }) => {
     // --- State Variables ---
     const [courtId, setCourtId] = useState('');
+
+    useEffect(() => {
+        if (initialCourtId) {
+            setCourtId(initialCourtId.toString());
+        }
+    }, [initialCourtId]);
+
     const [customerName, setCustomerName] = useState('');
     const [customerContact, setCustomerContact] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');

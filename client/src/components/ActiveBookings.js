@@ -26,13 +26,22 @@ const ActiveBookings = () => {
 
         return (
             <div className={`active-booking-card ${booking.displayStatus}`} onClick={() => onCardClick(booking)}>
-                <div className="booking-info">
-                    <span className="sport-name">{booking.sport_name}</span>
-                    <span className="court-name">{booking.court_name}</span>
+                <div className="active-booking-card-content">
+                    <div className="booking-info">
+                        <span className="sport-name">{booking.sport_name}</span>
+                        <span className="court-name">{booking.court_name}</span>
+                    </div>
+                    
+                    <div className="customer-name">{booking.customer_name}</div>
+                    
+                    <div className="booking-details-row">
+                        <div className="booking-time-date">
+                            <span className="booking-time">{booking.time_slot}</span>
+                            <span className="booking-date">{formattedDate}</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="booking-date">{formattedDate}</div>
-                <div className="booking-time">{booking.time_slot}</div>
-                <div className="customer-name">{booking.customer_name}</div>
+
                 {showClear && booking.displayStatus === 'ended' && (
                     <div className="ended-message">
                         Time has ended, inform customer.

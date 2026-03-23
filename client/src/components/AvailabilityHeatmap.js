@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './AvailabilityHeatmap.css';
 
-const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
+const AvailabilityHeatmap = ({ heatmapData, onSlotSelect, selectedStartTime, selectedEndTime, selectedCourtId }) => {
     const [tooltip, setTooltip] = useState({ visible: false, content: null, x: 0, y: 0 });
     const [currentTime, setCurrentTime] = useState(new Date());
     const [currentSportIndex, setCurrentSportIndex] = useState(0);
@@ -234,6 +234,22 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                                         break;
                                 }
 
+                                // Determine if this slot is selected
+                                let isSelected = false;
+                                if (selectedCourtId && selectedCourtId === court.id && selectedStartTime && selectedEndTime) {
+                                    const getMins = (timeStr) => {
+                                        const [h, m] = timeStr.split(':').map(Number);
+                                        return h * 60 + m;
+                                    };
+                                    const slotStartMins = getMins(row.timeVal) + (row.subIndex * 30);
+                                    const selStartMins = getMins(selectedStartTime);
+                                    const selEndMins = getMins(selectedEndTime);
+                                    
+                                    if (slotStartMins >= selStartMins && slotStartMins < selEndMins) {
+                                        isSelected = true;
+                                    }
+                                }
+
                                 const isClickable = subSlot.availability === 'available' || subSlot.availability === 'partial';
 
                                 return (
@@ -244,7 +260,7 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect }) => {
                                         onMouseEnter={(e) => handleMouseEnter(e, subSlot)}
                                         onMouseLeave={handleMouseLeave}
                                     >
-                                        <div className={`heatmap-block ${statusClass} ${isClickable ? 'clickable' : ''}`}>
+                                        <div className={`heatmap-block ${statusClass} ${isClickable ? 'clickable' : ''} ${isSelected ? 'selected-highlight' : ''}`}>
                                             {content}
                                         </div>
                                     </div>
