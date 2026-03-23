@@ -1,0 +1,330 @@
+/* (Previous rules) */
+.heatmap-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 600px;
+    background-color: #fff;
+    border: 1px solid var(--color-border-light, #E8EAED);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    position: relative;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.heatmap-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.heatmap-container::-webkit-scrollbar-track {
+    background: #f1f1f1; 
+}
+.heatmap-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1; 
+    border-radius: 4px;
+}
+.heatmap-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8; 
+}
+
+.heatmap-grid {
+    display: grid;
+    /* Columns: Time | Court 1 | Court 2 ... */
+    grid-template-columns: 75px repeat(var(--court-count, 1), minmax(130px, 1fr));
+    min-width: max-content;
+}
+
+/* Header Row */
+.heatmap-time-header {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    background-color: #fff;
+    border-bottom: 2px solid #E8EAED;
+    border-right: 1px solid #E8EAED;
+    box-shadow: 1px 1px 0 rgba(0,0,0,0.03);
+}
+
+.heatmap-court-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #fff;
+    padding: 14px 10px;
+    text-align: center;
+    border-bottom: 2px solid #E8EAED;
+    border-right: 1px solid #E8EAED;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.heatmap-court-header:last-child {
+    border-right: none;
+}
+.heatmap-court-name {
+    display: block;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1B3A6B;
+}
+.heatmap-sport-name {
+    display: block;
+    font-size: 11px;
+    color: #868E96;
+    font-weight: 500;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Time Column cells */
+.heatmap-time-cell {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: #fff;
+    border-right: 1px solid #E8EAED;
+    text-align: right;
+    padding: 8px 12px 0 0;
+    font-size: 12px;
+    color: #5C636A;
+    font-weight: 500;
+}
+.heatmap-time-cell.hour-boundary {
+    border-bottom: 1px solid #E8EAED;
+}
+.heatmap-time-cell.half-hour {
+    border-bottom: 1px solid #E8EAED;
+}
+
+.time-label {
+    position: relative;
+    top: -10px; /* pull up so it sits vertically centered on the hour line */
+    background-color: #fff;
+    line-height: 1;
+}
+
+/* Sub-slots */
+.heatmap-slot-cell {
+    border-right: 1px solid #E8EAED;
+    border-bottom: 1px dashed #F1F3F5;
+    height: 44px; /* plus 1px border = 45px per sub-slot */
+    position: relative;
+    padding: 2px 4px;
+    background-color: #fff;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.heatmap-slot-cell:last-child {
+    border-right: none;
+}
+.heatmap-slot-cell.hour-boundary {
+    border-bottom: 1px solid #E8EAED;
+}
+
+/* Hover effect only for interactive cells */
+.heatmap-slot-cell:not(.not-allowed):hover {
+    background-color: #F8F9FA;
+}
+
+/* Disable pattern for non-clickable slots */
+.heatmap-slot-cell.not-allowed {
+    cursor: not-allowed;
+    background-image: repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(0,0,0,0.02) 10px, rgba(0,0,0,0.02) 20px);
+}
+
+/* The block inside the slot */
+.heatmap-block {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.2s ease;
+}
+
+.heatmap-slot-cell:hover .heatmap-block.clickable {
+    transform: scale(0.98);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    filter: brightness(0.95);
+}
+
+/* Status Colors (Pastel modern) */
+.status-available {
+    background-color: rgba(40, 167, 69, 0.15);
+    color: #198754;
+    border-color: rgba(40, 167, 69, 0.3);
+}
+.status-available-empty {
+    background-color: transparent;
+    border-color: transparent;
+}
+.heatmap-slot-cell:hover .status-available-empty.clickable {
+    background-color: rgba(40, 167, 69, 0.08);
+    border-color: rgba(40, 167, 69, 0.2);
+}
+
+.status-partial {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #B97600;
+    border-color: rgba(255, 193, 7, 0.4);
+}
+.status-attended {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #B97600;
+    border-color: rgba(255, 193, 7, 0.4);
+}
+.status-booked, .status-full {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #C82333;
+    border-color: rgba(220, 53, 69, 0.3);
+}
+.status-maintenance {
+    background-color: #E9ECEF;
+    color: #6C757D;
+    border-color: #DEE2E6;
+}
+
+/* Tooltip */
+.heatmap-tooltip {
+    position: fixed;
+    background-color: #fff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+    padding: 16px;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    font-size: 13px;
+    color: #333;
+    min-width: 240px;
+    font-family: 'Inter', sans-serif;
+}
+.heatmap-tooltip h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1B3A6B;
+    border-bottom: 2px solid #F1F3F5;
+    padding-bottom: 6px;
+}
+.heatmap-tooltip p {
+    margin: 6px 0;
+    display: flex;
+    justify-content: space-between;
+}
+.heatmap-tooltip p strong {
+    color: #495057;
+    margin-right: 12px;
+}
+.heatmap-tooltip-booking {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #F1F3F5;
+}
+.heatmap-tooltip-booking:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+/* Legend */
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: #495057;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* New: Header Controls & Sports Nav */
+.heatmap-header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.sport-navigation {
+    display: flex;
+    align-items: center;
+    background-color: #F8F9FA;
+    border: 1px solid #E8EAED;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.current-sport-label {
+    margin: 0 16px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1B3A6B;
+    min-width: 100px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-btn {
+    background: #fff;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    color: #495057;
+    transition: all 0.2s;
+}
+
+.nav-btn:hover {
+    background: #E8EAED;
+    color: #1B3A6B;
+}
+
+/* New: Red Line Indicator */
+.heatmap-current-time-line {
+    position: absolute;
+    left: 75px; /* offset by time cell width */
+    right: 0;
+    height: 2px;
+    background-color: #FA5252;
+    z-index: 25; /* above cells (z10), below sticky header (z30) */
+    pointer-events: none;
+    box-shadow: 0 1px 2px rgba(250, 82, 82, 0.4);
+}
+
+.time-line-dot {
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #FA5252;
+    box-shadow: 0 0 0 2px #fff;
+}
