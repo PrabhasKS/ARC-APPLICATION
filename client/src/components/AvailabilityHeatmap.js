@@ -238,6 +238,7 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect, selectedStartTime, sel
                                 let isSelected = false;
                                 if (selectedCourtId && selectedCourtId === court.id && selectedStartTime && selectedEndTime) {
                                     const getMins = (timeStr) => {
+                                        if (timeStr === '00:00') return 24 * 60;
                                         const [h, m] = timeStr.split(':').map(Number);
                                         return h * 60 + m;
                                     };

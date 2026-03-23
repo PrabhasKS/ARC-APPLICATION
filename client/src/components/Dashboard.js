@@ -664,13 +664,13 @@ const Dashboard = ({ user }) => {
 
         const currentEndDate = new Date();
         const [endH, endM] = endTime.split(':').map(Number);
-        currentEndDate.setHours(endH, endM, 0, 0);
+        currentEndDate.setHours(endTime === '00:00' ? 24 : endH, endM, 0, 0);
 
         // Handle deselecting a block within an active selection range
         if (selectedCourtIdFromHeatmap === court.id) {
             const slotStartMins = clickedSlotDate.getHours() * 60 + clickedSlotDate.getMinutes();
             const selStartMins = currentStartDate.getHours() * 60 + currentStartDate.getMinutes();
-            const selEndMins = currentEndDate.getHours() * 60 + currentEndDate.getMinutes();
+            const selEndMins = endTime === '00:00' ? 24 * 60 : (currentEndDate.getHours() * 60 + currentEndDate.getMinutes());
 
             // Is the clicked slot inside the currently selected range?
             if (slotStartMins >= selStartMins && slotStartMins < selEndMins) {

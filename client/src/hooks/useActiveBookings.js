@@ -91,19 +91,29 @@ export const useActiveBookings = () => {
         for (const booking of visibleBookings) {
             const bookingDate = booking.date.slice(0, 10);
 
-            const parseTime = (timeStr) => {
-                const [time, modifier] = timeStr.split(' ');
+            const parseTime = (timeStr, isEndTime = false) => {
+                const parts = timeStr.trim().split(' ');
+                const time = parts[0];
+                const modifier = parts[1];
+
                 let [hours, minutes] = time.split(':').map(Number);
                 if (modifier === 'PM' && hours < 12) hours += 12;
                 if (modifier === 'AM' && hours === 12) hours = 0;
+
+                if (isEndTime && hours === 0 && minutes === 0) {
+                    hours = 24;
+                }
+
                 const date = new Date(booking.date);
                 date.setHours(hours, minutes, 0, 0);
                 return date;
             };
 
-            const [startTimeStr, endTimeStr] = booking.time_slot.split(' - ');
+            const timeParts = booking.time_slot.split(' - ');
+            const startTimeStr = timeParts[0];
+            const endTimeStr = timeParts[1];
             const startTime = parseTime(startTimeStr);
-            const endTime = parseTime(endTimeStr);
+            const endTime = parseTime(endTimeStr, true);
 
             if (bookingDate === today) {
                 let displayStatus = 'upcoming';
