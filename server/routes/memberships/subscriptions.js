@@ -69,7 +69,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         }
 
         // 2. Validate the team exists and has capacity
-        const [teams] = await connection.query('SELECT max_players, status FROM teams WHERE id = ? FOR UPDATE', [team_id]);
+        const [teams] = await connection.query('SELECT * FROM teams WHERE id = ? FOR UPDATE', [team_id]);
         if (teams.length === 0) throw new Error('Team not found.');
         if (teams[0].status !== 'active') throw new Error('Cannot add a member to an expired or terminated team.');
 
@@ -110,6 +110,45 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
         const endDateObj = new Date(startDateObj);
         endDateObj.setDate(startDateObj.getDate() + duration_days - 1); // -1 to make it inclusive
         const end_date = endDateObj.toISOString().slice(0, 10);
+
+        // --- Conflict Check against Daily Bookings ---
+        const [conflictingBookings] = await connection.query(
+            `SELECT date, time_slot, slots_booked 
+             FROM bookings 
+             WHERE court_id = ? 
+             AND date BETWEEN ? AND ? 
+             AND status != 'Cancelled'`,
+            [teams[0].court_id, start_date, end_date]
+        );
+
+        const [teamStartStr, teamEndStr] = teams[0].time_slot.split(' - ');
+        const overlappingDailyBookings = conflictingBookings.filter(b => {
+            const [bookingStart, bookingEnd] = b.time_slot.split(' - ');
+            return checkOverlap(teamStartStr.trim(), teamEndStr.trim(), bookingStart.trim(), bookingEnd.trim());
+        });
+
+        if (overlappingDailyBookings.length > 0) {
+            const [[sportData]] = await connection.query('SELECT capacity FROM sports JOIN courts ON sports.id = courts.sport_id WHERE courts.id = ?', [teams[0].court_id]);
+            const capacity = sportData.capacity;
+
+            if (capacity === 1) {
+                const confDate = overlappingDailyBookings[0].date instanceof Date ? overlappingDailyBookings[0].date.toISOString().slice(0,10) : overlappingDailyBookings[0].date;
+                throw new Error(`Cannot subscribe: A conflicting daily booking exists on ${confDate}. Please cancel it first.`);
+            } else {
+                const bookingsByDate = {};
+                overlappingDailyBookings.forEach(b => {
+                    const d = b.date instanceof Date ? b.date.toISOString().slice(0,10) : b.date;
+                    if(!bookingsByDate[d]) bookingsByDate[d] = 0;
+                    bookingsByDate[d] += parseInt(b.slots_booked || 1, 10);
+                });
+                for (const [dateStr, slotsTaken] of Object.entries(bookingsByDate)) {
+                    if (currentMembers[0].active_count + 1 + slotsTaken > capacity) {
+                        throw new Error(`Cannot subscribe: Insufficient capacity on ${dateStr} due to existing bookings.`);
+                    }
+                }
+            }
+        }
+        // --- End Conflict Check ---
 
         // 5. Insert Team Membership
         const [subscriptionResult] = await connection.query(
@@ -565,7 +604,10 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        const [memberships] = await connection.query('SELECT * FROM team_memberships WHERE id = ? FOR UPDATE', [team_membership_id]);
+        const [memberships] = await connection.query(
+            'SELECT tm.*, t.court_id, t.time_slot FROM team_memberships tm JOIN teams t ON tm.team_id = t.id WHERE tm.id = ? FOR UPDATE', 
+            [team_membership_id]
+        );
         if (memberships.length === 0) throw new Error('Subscription not found.');
         const oldMembership = memberships[0];
 
@@ -585,6 +627,51 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
         const startDate = new Date(start_date);
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + duration_days - 1);
+        const end_date_str = endDate.toISOString().slice(0, 10);
+
+        // --- Conflict Check against Daily Bookings ---
+        const [conflictingBookings] = await connection.query(
+            `SELECT date, time_slot, slots_booked 
+             FROM bookings 
+             WHERE court_id = ? 
+             AND date BETWEEN ? AND ? 
+             AND status != 'Cancelled'`,
+            [oldMembership.court_id, start_date, end_date_str]
+        );
+
+        const [teamStartStr, teamEndStr] = oldMembership.time_slot.split(' - ');
+        const overlappingDailyBookings = conflictingBookings.filter(b => {
+            const [bookingStart, bookingEnd] = b.time_slot.split(' - ');
+            return checkOverlap(teamStartStr.trim(), teamEndStr.trim(), bookingStart.trim(), bookingEnd.trim());
+        });
+
+        if (overlappingDailyBookings.length > 0) {
+            const [[sportData]] = await connection.query('SELECT capacity FROM sports JOIN courts ON sports.id = courts.sport_id WHERE courts.id = ?', [oldMembership.court_id]);
+            const capacity = sportData.capacity;
+
+            if (capacity === 1) {
+                const confDate = overlappingDailyBookings[0].date instanceof Date ? overlappingDailyBookings[0].date.toISOString().slice(0,10) : overlappingDailyBookings[0].date;
+                throw new Error(`Cannot renew: A conflicting daily booking exists on ${confDate}. Please cancel it first.`);
+            } else {
+                // Determine current active members not including this renewing member (we are renewing so they might be active or expired, but let's just do a quick check)
+                const [currentMembers] = await connection.query(
+                    'SELECT COUNT(*) as active_count FROM team_memberships WHERE team_id = ? AND status = "active" AND id != ?',
+                    [oldMembership.team_id, team_membership_id]
+                );
+                const bookingsByDate = {};
+                overlappingDailyBookings.forEach(b => {
+                    const d = b.date instanceof Date ? b.date.toISOString().slice(0,10) : b.date;
+                    if(!bookingsByDate[d]) bookingsByDate[d] = 0;
+                    bookingsByDate[d] += parseInt(b.slots_booked || 1, 10);
+                });
+                for (const [dateStr, slotsTaken] of Object.entries(bookingsByDate)) {
+                    if (currentMembers[0].active_count + 1 + slotsTaken > capacity) {
+                        throw new Error(`Cannot renew: Insufficient capacity on ${dateStr} due to existing bookings.`);
+                    }
+                }
+            }
+        }
+        // --- End Conflict Check ---
 
         await connection.query(
             `UPDATE team_memberships 
@@ -599,7 +686,7 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
                 discount_amount = ?,
                 discount_details = ?
             WHERE id = ?`,
-            [package_id || oldMembership.package_id, start_date, endDate.toISOString().slice(0, 10), endDate.toISOString().slice(0, 10),
+            [package_id || oldMembership.package_id, start_date, end_date_str, end_date_str,
                 amount_paid, balance_amount, payment_status, discount_amount || 0, discount_details, team_membership_id]
         );
 
@@ -662,6 +749,19 @@ router.post('/teams/:team_id/renew-all', isPrivilegedUser, async (req, res) => {
         const startDateObj = new Date(start_date);
         const renewedIds = [];
 
+        // Pre-fetch team details (court_id, time_slot, capacity, active_count) for conflict handling
+        const [teamDetails] = await connection.query('SELECT court_id, time_slot FROM teams WHERE id = ?', [team_id]);
+        if (teamDetails.length === 0) throw new Error("Team not found");
+        const court_id = teamDetails[0].court_id;
+        const time_slot = teamDetails[0].time_slot;
+        const [teamStartStr, teamEndStr] = time_slot.split(' - ');
+        
+        const [[sportData]] = await connection.query('SELECT capacity FROM sports JOIN courts ON sports.id = courts.sport_id WHERE courts.id = ?', [court_id]);
+        const capacity = sportData.capacity;
+        
+        const [currentActive] = await connection.query("SELECT COUNT(*) as active_count FROM team_memberships WHERE team_id = ? AND status = 'active'", [team_id]);
+        let activeCountBase = currentActive[0].active_count;
+
         for (const member of members) {
             const { duration_days, per_person_price } = member;
             const disc = parseFloat(discount_amount || 0);
@@ -673,6 +773,40 @@ router.post('/teams/:team_id/renew-all', isPrivilegedUser, async (req, res) => {
             const endDateObj = new Date(startDateObj);
             endDateObj.setDate(startDateObj.getDate() + duration_days - 1);
             const end_date = endDateObj.toISOString().slice(0, 10);
+
+            // --- Conflict Check against Daily Bookings ---
+            const [conflictingBookings] = await connection.query(
+                `SELECT date, time_slot, slots_booked FROM bookings WHERE court_id = ? AND date BETWEEN ? AND ? AND status != 'Cancelled'`,
+                [court_id, start_date, end_date]
+            );
+            const overlappingDailyBookings = conflictingBookings.filter(b => {
+                const [bookingStart, bookingEnd] = b.time_slot.split(' - ');
+                return checkOverlap(teamStartStr.trim(), teamEndStr.trim(), bookingStart.trim(), bookingEnd.trim());
+            });
+
+            if (overlappingDailyBookings.length > 0) {
+                if (capacity === 1) {
+                    const confDate = overlappingDailyBookings[0].date instanceof Date ? overlappingDailyBookings[0].date.toISOString().slice(0,10) : overlappingDailyBookings[0].date;
+                    throw new Error(`Cannot renew member ${member.full_name || member.id}: A conflicting daily booking exists on ${confDate}.`);
+                } else {
+                    const bookingsByDate = {};
+                    overlappingDailyBookings.forEach(b => {
+                        const d = b.date instanceof Date ? b.date.toISOString().slice(0,10) : b.date;
+                        if(!bookingsByDate[d]) bookingsByDate[d] = 0;
+                        bookingsByDate[d] += parseInt(b.slots_booked || 1, 10);
+                    });
+                    for (const [dateStr, slotsTaken] of Object.entries(bookingsByDate)) {
+                        // Current active members + 1 (the one we are about to renew) + slotsTaken
+                        if (activeCountBase + 1 + slotsTaken > capacity) {
+                            throw new Error(`Cannot renew member ${member.full_name || member.id}: Insufficient capacity on ${dateStr} due to existing bookings.`);
+                        }
+                    }
+                }
+            }
+            // --- End Conflict Check ---
+            
+            // Increment activeCountBase to account for this member we just "renewed" in memory
+            activeCountBase++;
 
             await connection.query(
                 `UPDATE team_memberships 
