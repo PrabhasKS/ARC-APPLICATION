@@ -176,7 +176,7 @@ router.post('/subscribe', isPrivilegedUser, async (req, res) => {
 
     } catch (error) {
         if (connection) await connection.rollback();
-        console.error('Error adding member to team:', error);
+        console.error('Error adding member to team:', error.message);
         res.status(400).json({ message: error.message || 'Failed to add member to team' });
     } finally {
         if (connection) connection.release();
@@ -702,7 +702,7 @@ router.put('/active/:id/renew', isPrivilegedUser, async (req, res) => {
 
     } catch (error) {
         if (connection) await connection.rollback();
-        console.error('Error renewing membership:', error);
+        console.error('Error renewing membership:', error.message);
         res.status(500).json({ message: error.message });
     } finally {
         if (connection) connection.release();
@@ -834,7 +834,7 @@ router.post('/teams/:team_id/renew-all', isPrivilegedUser, async (req, res) => {
         res.status(200).json({ success: true, message: `Successfully renewed ${renewedIds.length} member(s).`, renewed_ids: renewedIds });
     } catch (error) {
         if (connection) await connection.rollback();
-        console.error('Error renewing whole team:', error);
+        console.error('Error renewing whole team:', error.message);
         res.status(500).json({ message: error.message || 'Failed to renew team.' });
     } finally {
         if (connection) connection.release();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './AvailabilityHeatmap.css';
 
-const AvailabilityHeatmap = ({ heatmapData, onSlotSelect, selectedStartTime, selectedEndTime, selectedCourtId }) => {
+const AvailabilityHeatmap = ({ heatmapData, onSlotSelect, selectedStartTime, selectedEndTime, selectedCourtId, selectedDate, onDateChange }) => {
     const [tooltip, setTooltip] = useState({ visible: false, content: null, x: 0, y: 0 });
     const [currentTime, setCurrentTime] = useState(new Date());
     const [currentSportIndex, setCurrentSportIndex] = useState(0);
@@ -66,15 +66,6 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect, selectedStartTime, sel
         setTooltip({ visible: false, content: null, x: 0, y: 0 });
     };
 
-    // Navigation handlers
-    const handlePrevSport = () => {
-        setCurrentSportIndex(prev => (prev > 0 ? prev - 1 : uniqueSports.length - 1));
-    };
-
-    const handleNextSport = () => {
-        setCurrentSportIndex(prev => (prev < uniqueSports.length - 1 ? prev + 1 : 0));
-    };
-
     // Prepare rows from timeSlots
     const rows = [];
     const referenceCourt = activeCourts.length > 0 ? activeCourts[0] : heatmapData[0];
@@ -133,13 +124,46 @@ const AvailabilityHeatmap = ({ heatmapData, onSlotSelect, selectedStartTime, sel
                     Court Availability Heatmap
                 </h3>
                 
-                {uniqueSports.length > 1 && (
-                    <div className="sport-navigation">
-                        <button onClick={handlePrevSport} className="nav-btn">&lt;</button>
-                        <span className="current-sport-label">{activeSport}</span>
-                        <button onClick={handleNextSport} className="nav-btn">&gt;</button>
-                    </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {onDateChange && (
+                        <input 
+                            type="date" 
+                            style={{ 
+                                padding: '6px 12px', 
+                                border: '1px solid #ced4da', 
+                                borderRadius: '4px', 
+                                fontSize: '14px', 
+                                outline: 'none',
+                                color: '#495057'
+                            }}
+                            value={selectedDate} 
+                            min={new Date().toISOString().slice(0, 10)} 
+                            onChange={(e) => onDateChange(e.target.value)} 
+                        />
+                    )}
+
+                    {uniqueSports.length > 1 && (
+                        <select 
+                            className="modern-select" 
+                            style={{ 
+                                padding: '6px 12px', 
+                                border: '1px solid #ced4da', 
+                                borderRadius: '4px', 
+                                fontSize: '14px', 
+                                outline: 'none',
+                                color: '#495057',
+                                backgroundColor: 'white',
+                                cursor: 'pointer'
+                            }}
+                            value={currentSportIndex}
+                            onChange={(e) => setCurrentSportIndex(Number(e.target.value))}
+                        >
+                            {uniqueSports.map((sport, index) => (
+                                <option key={sport} value={index}>{sport}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
             </div>
 
             <div className="heatmap-legend">

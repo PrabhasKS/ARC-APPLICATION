@@ -858,7 +858,7 @@ const Dashboard = ({ user }) => {
             {/* Heatmap Section - Button Removed */}
             <div className="dashboard-card heatmap-card">
                  
-                 {isHeatmapVisible && <AvailabilityHeatmap heatmapData={heatmapData} onSlotSelect={handleSlotSelect} selectedStartTime={startTime} selectedEndTime={endTime} selectedCourtId={selectedCourtIdFromHeatmap} />}
+                 {isHeatmapVisible && <AvailabilityHeatmap heatmapData={heatmapData} onSlotSelect={handleSlotSelect} selectedStartTime={startTime} selectedEndTime={endTime} selectedCourtId={selectedCourtIdFromHeatmap} selectedDate={selectedDate} onDateChange={setSelectedDate} />}
             </div>
 
             {/* Main Grid for Core Actions */}
