@@ -285,6 +285,21 @@ router.delete('/active/:id', isPrivilegedUser, async (req, res) => {
             return res.status(404).json({ message: 'Active membership not found.' });
         }
 
+        // Check if the team is now empty and mark it expired if so
+        const [teamIdRow] = await db.query('SELECT team_id FROM team_memberships WHERE id = ?', [id]);
+        if (teamIdRow.length > 0) {
+             const team_id = teamIdRow[0].team_id;
+             await db.query(`
+                 UPDATE teams t
+                 SET t.status = 'expired'
+                 WHERE t.id = ? AND t.status = 'active'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM team_memberships tm 
+                     WHERE tm.team_id = t.id AND tm.status = 'active'
+                 )
+             `, [team_id]);
+        }
+
         res.json({ message: 'Member subscription terminated successfully.' });
 
     } catch (error) {
@@ -305,6 +320,22 @@ router.put('/ended/:id/terminate', isPrivilegedUser, async (req, res) => {
         }
 
         await db.query("UPDATE team_memberships SET status = 'terminated' WHERE id = ?", [id]);
+
+        // Check if the team is now empty and mark it expired if so
+        const [teamIdRow] = await db.query('SELECT team_id FROM team_memberships WHERE id = ?', [id]);
+        if (teamIdRow.length > 0) {
+             const team_id = teamIdRow[0].team_id;
+             await db.query(`
+                 UPDATE teams t
+                 SET t.status = 'expired'
+                 WHERE t.id = ? AND t.status = 'active'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM team_memberships tm 
+                     WHERE tm.team_id = t.id AND tm.status = 'active'
+                 )
+             `, [team_id]);
+        }
+
         res.json({ message: 'Membership terminated successfully.' });
     } catch (error) {
         console.error('Error terminating ended membership:', error);
