@@ -10,17 +10,17 @@ router.post('/teams', async (req, res) => {
 
     // During a dry run, we only check for clashes. name and max_players are not yet needed.
     if (!dry_run && (!name || !court_id || !time_slot || max_players === undefined)) {
-        return res.status(400).json({ msg: 'Please enter all required fields for a Team' });
+        return res.status(400).json({ message: 'Please enter all required fields for a Team' });
     }
     if (dry_run && (!court_id || !time_slot)) {
-        return res.status(400).json({ msg: 'Court and Time Slot are required for availability check.' });
+        return res.status(400).json({ message: 'Court and Time Slot are required for availability check.' });
     }
 
     try {
         // Validate court capacity if creating multiple teams vs single team
         const [courtData] = await db.execute('SELECT s.capacity FROM courts c JOIN sports s ON c.sport_id = s.id WHERE c.id = ?', [court_id]);
         if (courtData.length === 0) {
-            return res.status(404).json({ msg: 'Court not found' });
+            return res.status(404).json({ message: 'Court not found' });
         }
         
         const capacity = courtData[0].capacity;
@@ -32,24 +32,22 @@ router.post('/teams', async (req, res) => {
                 [court_id, time_slot]
             );
             if (existingTeam.length > 0) {
-                return res.status(400).json({ msg: 'A Team already exists for this Court and Time Slot.', is_clashing: true });
+                return res.status(400).json({ message: 'A Team already exists for this Court and Time Slot.', is_clashing: true });
             }
         } else {
-            // High-capacity sport (Swimming): Multiple Teams allowed up to total capacity. max_players MUST be 1.
-            if (!dry_run && max_players !== 1) {
-                 return res.status(400).json({ msg: 'For high-capacity sports, each person must be on their own individual Team (max_players = 1).' });
-            }
+            // High-capacity sport: Multiple Teams allowed up to total capacity.
             const [existingTeams] = await db.execute(
-                'SELECT COUNT(id) as current_teams FROM teams WHERE court_id = ? AND time_slot = ? AND status = "active"',
+                'SELECT SUM(max_players) as total_booked FROM teams WHERE court_id = ? AND time_slot = ? AND status = "active"',
                 [court_id, time_slot]
             );
-            if (existingTeams[0].current_teams >= capacity) {
-                 return res.status(400).json({ msg: 'This time slot has reached maximum capacity.', is_clashing: true });
+            const totalBooked = parseInt(existingTeams[0].total_booked) || 0;
+            if (totalBooked + parseInt(max_players || 1) > capacity) {
+                 return res.status(400).json({ message: 'This time slot does not have enough capacity for a team of this size.', is_clashing: true });
             }
         }
 
         if (dry_run) {
-            return res.json({ success: true, msg: 'Time slot is available.' });
+            return res.json({ success: true, message: 'Time slot is available.' });
         }
 
         const [result] = await db.execute(
@@ -59,13 +57,13 @@ router.post('/teams', async (req, res) => {
 
         res.status(201).json({
             success: true,
-            msg: 'Team created successfully',
+            message: 'Team created successfully',
             team_id: result.insertId
         });
 
     } catch (error) {
         console.error('Create Team Error:', error);
-        res.status(500).json({ msg: 'Server error while creating team' });
+        res.status(500).json({ message: 'Server error while creating team' });
     }
 });
 
@@ -93,7 +91,7 @@ router.get('/teams', async (req, res) => {
         res.json(teams);
     } catch (error) {
         console.error('Get Teams Error:', error);
-        res.status(500).json({ msg: 'Server error while fetching teams' });
+        res.status(500).json({ message: 'Server error while fetching teams' });
     }
 });
 
@@ -114,7 +112,7 @@ router.get('/teams/:id', async (req, res) => {
         `, [teamId]);
 
         if (teams.length === 0) {
-            return res.status(404).json({ msg: 'Team not found' });
+            return res.status(404).json({ message: 'Team not found' });
         }
 
         const [members] = await db.execute(`
@@ -135,7 +133,7 @@ router.get('/teams/:id', async (req, res) => {
         });
     } catch (error) {
         console.error('Get Team Details Error:', error);
-        res.status(500).json({ msg: 'Server error while fetching team details' });
+        res.status(500).json({ message: 'Server error while fetching team details' });
     }
 });
 
