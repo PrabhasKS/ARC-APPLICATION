@@ -1,0 +1,347 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../../database');
+const PDFDocument = require('pdfkit');
+const { authenticateToken, isAdmin } = require('../../middleware/auth');
+const sse = require('../../sse');
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/inventory/standalone-sales
+// List all standalone sales (admin + desk)
+// ─────────────────────────────────────────────────────────────
+router.get('/', authenticateToken, async (req, res) => {
+    const { date, search, page = 1, limit = 15 } = req.query;
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+    let whereClauses = [];
+    let params = [];
+
+    if (date) {
+        whereClauses.push('s.sale_date = ?');
+        params.push(date);
+    }
+    if (search) {
+        whereClauses.push('(s.customer_name LIKE ? OR s.customer_contact LIKE ? OR s.id LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    try {
+        const [[{ total }]] = await db.query(
+            `SELECT COUNT(*) as total FROM standalone_sales s ${whereStr}`, params
+        );
+
+        const [rows] = await db.query(
+            `SELECT s.*, u.username as created_by
+             FROM standalone_sales s
+             LEFT JOIN users u ON s.created_by_user_id = u.id
+             ${whereStr}
+             ORDER BY s.created_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, parseInt(limit, 10), offset]
+        );
+
+        res.json({ sales: rows, total, totalPages: Math.ceil(total / limit) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/inventory/standalone-sales/:id
+// Get single sale with items and payments
+// ─────────────────────────────────────────────────────────────
+router.get('/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [[sale]] = await db.query(
+            `SELECT s.*, u.username as created_by
+             FROM standalone_sales s
+             LEFT JOIN users u ON s.created_by_user_id = u.id
+             WHERE s.id = ?`,
+            [id]
+        );
+        if (!sale) return res.status(404).json({ message: 'Sale not found.' });
+
+        const [items] = await db.query(
+            `SELECT si.*, a.name as accessory_name, a.type as accessory_type,
+                    a.rental_pricing_type
+             FROM standalone_sale_items si
+             JOIN accessories a ON si.accessory_id = a.id
+             WHERE si.standalone_sale_id = ?`,
+            [id]
+        );
+
+        const [payments] = await db.query(
+            `SELECT p.*, u.username
+             FROM payments p
+             LEFT JOIN users u ON p.created_by_user_id = u.id
+             WHERE p.standalone_sale_id = ?
+             ORDER BY p.payment_date ASC`,
+            [id]
+        );
+
+        res.json({ ...sale, items, payments });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/inventory/standalone-sales
+// Create a new walk-in sale / rental (admin + desk)
+// ─────────────────────────────────────────────────────────────
+router.post('/', authenticateToken, async (req, res) => {
+    const {
+        customer_name, customer_contact, sale_date,
+        items, // [{ accessory_id, transaction_type, quantity, rental_hours }]
+        payment_mode, amount_paid, notes
+    } = req.body;
+
+    if (!customer_name || !customer_contact || !items || items.length === 0) {
+        return res.status(400).json({ message: 'customer_name, customer_contact, and items are required.' });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Calculate total from items
+        let total_amount = 0;
+        const resolvedItems = [];
+
+        for (const item of items) {
+            const [[acc]] = await connection.query(
+                'SELECT id, name, price, type, rental_pricing_type, hourly_rate, available_quantity FROM accessories WHERE id = ?',
+                [item.accessory_id]
+            );
+            if (!acc) {
+                await connection.rollback();
+                return res.status(404).json({ message: `Accessory ID ${item.accessory_id} not found.` });
+            }
+
+            const qty = parseInt(item.quantity || 1, 10);
+
+            // Stock availability check
+            if (acc.available_quantity < qty) {
+                await connection.rollback();
+                return res.status(400).json({
+                    message: `Insufficient stock for "${acc.name}". Available: ${acc.available_quantity}, Requested: ${qty}`
+                });
+            }
+
+            // Calculate price
+            let unit_price;
+            if (item.transaction_type === 'rental' && acc.rental_pricing_type === 'hourly') {
+                const hours = parseFloat(item.rental_hours || 1);
+                unit_price = parseFloat(acc.hourly_rate || 0) * hours;
+            } else {
+                unit_price = parseFloat(acc.price);
+            }
+
+            const line_total = unit_price * qty;
+            total_amount += line_total;
+
+            resolvedItems.push({
+                accessory_id: acc.id,
+                transaction_type: item.transaction_type || 'sale',
+                quantity: qty,
+                price_at_sale: unit_price,
+                rental_hours: item.rental_hours || null,
+                acc_name: acc.name
+            });
+        }
+
+        const paid = parseFloat(amount_paid || 0);
+        const balance = total_amount - paid;
+        const payment_status = balance <= 0 ? 'Completed' : (paid > 0 ? 'Received' : 'Pending');
+        const today = sale_date || new Date().toISOString().slice(0, 10);
+
+        // Insert standalone_sale
+        const [saleResult] = await connection.query(
+            `INSERT INTO standalone_sales 
+                (customer_name, customer_contact, sale_date, total_amount, amount_paid, balance_amount, payment_status, notes, created_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [customer_name, customer_contact, today, total_amount, paid, balance, payment_status, notes || null, req.user.id]
+        );
+        const saleId = saleResult.insertId;
+
+        // Insert items + deduct stock + log
+        for (const item of resolvedItems) {
+            await connection.query(
+                `INSERT INTO standalone_sale_items 
+                    (standalone_sale_id, accessory_id, transaction_type, quantity, price_at_sale, rental_hours)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [saleId, item.accessory_id, item.transaction_type, item.quantity, item.price_at_sale, item.rental_hours]
+            );
+
+            // Deduct from available_quantity
+            await connection.query(
+                `UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?`,
+                [item.quantity, item.accessory_id]
+            );
+
+            // Stock log
+            const changeType = item.transaction_type === 'rental' ? 'rented_out' : 'sold';
+            await connection.query(
+                `INSERT INTO inventory_stock_log 
+                    (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
+                 VALUES (?, ?, ?, 'standalone_sale', ?, ?, ?)`,
+                [item.accessory_id, changeType, -item.quantity,
+                 saleId, `${changeType} via standalone sale #${saleId}`, req.user.id]
+            );
+        }
+
+        // Insert initial payment if paid > 0
+        if (paid > 0) {
+            await connection.query(
+                `INSERT INTO payments (standalone_sale_id, amount, payment_mode, created_by_user_id)
+                 VALUES (?, ?, ?, ?)`,
+                [saleId, paid, payment_mode || 'cash', req.user.id]
+            );
+        }
+
+        await connection.commit();
+        sse.sendEventsToAll({ message: 'inventory_updated' });
+        res.json({ success: true, saleId });
+    } catch (err) {
+        if (connection) await connection.rollback();
+        res.status(500).json({ error: err.message });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/inventory/standalone-sales/:id/payment
+// Add a payment to an existing standalone sale
+// ─────────────────────────────────────────────────────────────
+router.post('/:id/payment', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { amount, payment_mode, payment_id } = req.body;
+    const paid = parseFloat(amount);
+
+    if (!paid || paid <= 0) {
+        return res.status(400).json({ message: 'amount must be positive.' });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        const [[sale]] = await connection.query(
+            'SELECT id, balance_amount, amount_paid FROM standalone_sales WHERE id = ? FOR UPDATE', [id]
+        );
+        if (!sale) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Sale not found.' });
+        }
+        if (paid > parseFloat(sale.balance_amount)) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Amount exceeds outstanding balance.' });
+        }
+
+        const new_paid = parseFloat(sale.amount_paid) + paid;
+        const new_balance = parseFloat(sale.balance_amount) - paid;
+        const payment_status = new_balance <= 0 ? 'Completed' : 'Received';
+
+        await connection.query(
+            `UPDATE standalone_sales SET amount_paid = ?, balance_amount = ?, payment_status = ? WHERE id = ?`,
+            [new_paid, new_balance, payment_status, id]
+        );
+
+        await connection.query(
+            `INSERT INTO payments (standalone_sale_id, amount, payment_mode, payment_id, created_by_user_id)
+             VALUES (?, ?, ?, ?, ?)`,
+            [id, paid, payment_mode || 'cash', payment_id || null, req.user.id]
+        );
+
+        await connection.commit();
+        sse.sendEventsToAll({ message: 'inventory_updated' });
+        res.json({ success: true });
+    } catch (err) {
+        if (connection) await connection.rollback();
+        res.status(500).json({ error: err.message });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/inventory/standalone-sales/:id/receipt.pdf
+// Generate PDF receipt for a standalone sale
+// ─────────────────────────────────────────────────────────────
+router.get('/:id/receipt.pdf', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [[sale]] = await db.query(
+            `SELECT s.*, u.username as created_by FROM standalone_sales s
+             LEFT JOIN users u ON s.created_by_user_id = u.id WHERE s.id = ?`, [id]
+        );
+        if (!sale) return res.status(404).send('Sale not found');
+
+        const [items] = await db.query(
+            `SELECT si.*, a.name as accessory_name FROM standalone_sale_items si
+             JOIN accessories a ON si.accessory_id = a.id WHERE si.standalone_sale_id = ?`, [id]
+        );
+        const [payments] = await db.query(
+            `SELECT p.*, u.username FROM payments p
+             LEFT JOIN users u ON p.created_by_user_id = u.id
+             WHERE p.standalone_sale_id = ?`, [id]
+        );
+
+        const doc = new PDFDocument({ size: [302, 500], margin: 10 });
+        const buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfData = Buffer.concat(buffers);
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="sale-receipt-${id}.pdf"`,
+                'Content-Length': pdfData.length
+            });
+            res.end(pdfData);
+        });
+
+        doc.fontSize(14).text('ARC SportsZone', { align: 'center' });
+        doc.fontSize(8).text('Accessories Sale Receipt', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(8).text(`Sale #${sale.id} | Date: ${sale.sale_date}`);
+        doc.fontSize(8).text(`Customer: ${sale.customer_name} | Contact: ${sale.customer_contact}`);
+        doc.moveDown();
+
+        doc.fontSize(10).text('Items', { underline: true });
+        items.forEach(item => {
+            const lineTotal = parseFloat(item.price_at_sale) * item.quantity;
+            const label = item.transaction_type === 'rental' ? '(Rental)' : '(Sale)';
+            doc.fontSize(8).text(`${item.accessory_name} ${label} x${item.quantity} — Rs. ${lineTotal.toFixed(2)}`);
+        });
+        doc.moveDown();
+
+        doc.fontSize(10).text('Payment', { underline: true });
+        doc.fontSize(8).text(`Total: Rs. ${parseFloat(sale.total_amount).toFixed(2)}`);
+        doc.fontSize(8).text(`Paid: Rs. ${parseFloat(sale.amount_paid).toFixed(2)}`);
+        doc.fontSize(8).text(`Balance: Rs. ${parseFloat(sale.balance_amount).toFixed(2)}`);
+        doc.fontSize(8).text(`Status: ${sale.payment_status}`);
+        doc.moveDown();
+
+        if (payments.length > 0) {
+            doc.fontSize(10).text('Payment History', { underline: true });
+            payments.forEach(p => {
+                const d = new Date(p.payment_date).toLocaleDateString('en-IN');
+                doc.fontSize(8).text(`Rs. ${parseFloat(p.amount).toFixed(2)} via ${p.payment_mode} on ${d}`);
+            });
+        }
+
+        doc.moveDown();
+        doc.fontSize(8).text('Thank you!', { align: 'center' });
+        doc.end();
+    } catch (err) {
+        res.status(500).send('Error generating receipt.');
+    }
+});
+
+module.exports = router;

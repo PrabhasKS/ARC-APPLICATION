@@ -15,6 +15,7 @@ const Header = ({ user, onLogout }) => {
                         <NavLink to="/" end>Bookings</NavLink>
                         <NavLink to="/ledger">History</NavLink>
                         {(user.role === 'admin' || user.role === 'desk') && <NavLink to="/memberships">Memberships</NavLink>}
+                        {(user.role === 'admin' || user.role === 'desk') && <NavLink to="/inventory">Inventory</NavLink>}
                         {user.role === 'admin' && <NavLink to="/admin">Management</NavLink>}
                         {user.role === 'admin' && <NavLink to="/analytics">Analytics</NavLink>}
                         <button onClick={onLogout} className="logout-btn">Logout</button>

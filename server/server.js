@@ -6,6 +6,7 @@ const { helmet, globalLimiter, authLimiter } = require('./middleware/security');
 
 const apiRoutes = require('./routes/api');
 const membershipRoutes = require('./routes/memberships');
+const inventoryRoutes = require('./routes/inventory');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,7 @@ app.use('/api/', globalLimiter);    // General limit for everything else
 
 app.use('/api', apiRoutes);
 app.use('/api/memberships', membershipRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 console.log("About to start server...");
 app.listen(PORT, () => {
