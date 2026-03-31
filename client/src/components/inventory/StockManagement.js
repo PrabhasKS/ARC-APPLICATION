@@ -42,7 +42,7 @@ export default function StockManagement() {
     const [accessories, setAccessories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [filterType, setFilterType] = useState('');
+    const [viewMode, setViewMode] = useState('active'); // 'active' or 'deleted'
     const [addEditModal, setAddEditModal] = useState({ open: false, accessory: null });
     const [restockModal, setRestockModal] = useState({ open: false, accessory: null });
     const [discardModal, setDiscardModal] = useState({ open: false, accessory: null });
@@ -53,7 +53,7 @@ export default function StockManagement() {
         setLoading(true);
         setApiError('');
         try {
-            const res = await getAccessories();
+            const res = await getAccessories({ include_deleted: true });
             setAccessories(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             setApiError(err.response?.data?.error || err.message || 'Failed to load accessories.');
@@ -75,14 +75,16 @@ export default function StockManagement() {
     };
 
     const filtered = accessories.filter(a => {
-        const matchSearch = a.name.toLowerCase().includes(search.toLowerCase());
-        const matchType = !filterType || a.type === filterType;
-        return matchSearch && matchType;
-    });
-
-    const lowStock = accessories.filter(a => a.available_quantity > 0 && a.available_quantity <= a.reorder_threshold).length;
-    const outOfStock = accessories.filter(a => a.available_quantity === 0).length;
-    const totalValue = accessories.reduce((s, a) => s + (parseFloat(a.price || 0) * (a.available_quantity || 0)), 0);
+            const isDel = Boolean(a.is_deleted);
+            if (viewMode === 'active' && isDel) return false;
+            if (viewMode === 'deleted' && !isDel) return false;
+            return a.name.toLowerCase().includes(search.toLowerCase());
+        });
+    
+        const activeItems = accessories.filter(a => !a.is_deleted);
+        const lowStock = activeItems.filter(a => a.available_quantity > 0 && a.available_quantity <= a.reorder_threshold).length;
+        const outOfStock = activeItems.filter(a => a.available_quantity === 0).length;
+        const totalValue = activeItems.reduce((s, a) => s + (parseFloat(a.price || 0) * (a.available_quantity || 0)), 0);
 
     return (
         <>
@@ -119,22 +121,20 @@ export default function StockManagement() {
             {/* Toolbar */}
             <div className="inv-toolbar">
                 <div className="inv-toolbar-left">
+                    <div className="inv-toggle-group" style={{ marginRight: 16 }}>
+                        <button className={`inv-toggle-btn${viewMode === 'active' ? ' active' : ''}`} onClick={() => setViewMode('active')}>
+                            📦 Active Stock
+                        </button>
+                        <button className={`inv-toggle-btn${viewMode === 'deleted' ? ' active' : ''}`} onClick={() => setViewMode('deleted')}>
+                            🗑 Deleted Items
+                        </button>
+                    </div>
                     <input
                         style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)', fontFamily: 'var(--font-family)', fontSize: 14, minWidth: 220 }}
                         placeholder="🔍 Search accessories..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                     />
-                    <select
-                        style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)', background: '#F8F9FA', fontFamily: 'var(--font-family)', fontSize: 14, color: 'var(--color-text)' }}
-                        value={filterType}
-                        onChange={e => setFilterType(e.target.value)}
-                    >
-                        <option value="">All Types</option>
-                        <option value="for_sale">For Sale</option>
-                        <option value="for_rental">For Rental</option>
-                        <option value="both">Both</option>
-                    </select>
                 </div>
                 <div className="inv-toolbar-right">
                     <button className="btn btn-primary" onClick={() => setAddEditModal({ open: true, accessory: null })}>
@@ -143,7 +143,7 @@ export default function StockManagement() {
                 </div>
             </div>
 
-            {!loading && (lowStock > 0 || outOfStock > 0) && (
+            {viewMode === 'active' && !loading && (lowStock > 0 || outOfStock > 0) && (
                 <div className={`inv-alert ${outOfStock > 0 ? 'inv-alert-danger' : 'inv-alert-warning'}`}>
                     ⚠️ {outOfStock > 0 ? `${outOfStock} item(s) are out of stock. ` : ''}
                     {lowStock > 0 ? `${lowStock} item(s) are below their reorder threshold.` : ''} Please restock soon.
@@ -196,12 +196,16 @@ export default function StockManagement() {
                                     <td style={{ color: 'var(--color-text-muted)' }}>{acc.reorder_threshold}</td>
                                     <td><StockStatusBadge available={acc.available_quantity} threshold={acc.reorder_threshold ?? 5} /></td>
                                     <td>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="btn btn-secondary btn-sm" onClick={() => setAddEditModal({ open: true, accessory: acc })}>Edit</button>
-                                            <button className="btn btn-success btn-sm" onClick={() => setRestockModal({ open: true, accessory: acc })}>+ Stock</button>
-                                            <button className="btn btn-warning btn-sm" onClick={() => setDiscardModal({ open: true, accessory: acc })}>Discard</button>
-                                            <button className="btn btn-danger btn-sm" onClick={() => setDeleteConfirm(acc)}>Delete</button>
-                                        </div>
+                                        {viewMode === 'active' ? (
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button className="btn btn-secondary btn-sm" onClick={() => setAddEditModal({ open: true, accessory: acc })}>Edit</button>
+                                                <button className="btn btn-success btn-sm" onClick={() => setRestockModal({ open: true, accessory: acc })}>+ Stock</button>
+                                                <button className="btn btn-warning btn-sm" onClick={() => setDiscardModal({ open: true, accessory: acc })}>Discard</button>
+                                                <button className="btn btn-danger btn-sm" onClick={() => setDeleteConfirm(acc)}>Delete</button>
+                                            </div>
+                                        ) : (
+                                            <span style={{ color: 'var(--color-danger)', fontSize: 12, fontWeight: 600 }}>Archived</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -217,8 +221,8 @@ export default function StockManagement() {
                             <h2>Delete Accessory</h2>
                             <button className="close-button" onClick={() => setDeleteConfirm(null)}>×</button>
                         </div>
-                        <p>Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
-                        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Cannot delete if it has existing transaction records.</p>
+                        <p>Are you sure you want to completely archive <strong>{deleteConfirm.name}</strong> from your active stock?</p>
+                        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>This item will be moved to the "Deleted Items" list. Past bookings containing this item will remain unaffected.</p>
                         <div className="modal-footer">
                             <button className="btn btn-secondary btn-sm" onClick={() => setDeleteConfirm(null)}>Cancel</button>
                             <button className="btn btn-danger btn-sm" onClick={() => handleDelete(deleteConfirm.id)}>Delete</button>

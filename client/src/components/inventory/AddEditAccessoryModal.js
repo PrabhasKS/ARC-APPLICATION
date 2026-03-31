@@ -8,7 +8,7 @@ export default function AddEditAccessoryModal({ accessory, onClose, onSaved }) {
         price: accessory?.price !== undefined ? accessory.price : '',
         type: accessory?.type || 'for_sale',
         rental_pricing_type: accessory?.rental_pricing_type || 'flat',
-        hourly_rate: accessory?.hourly_rate || '',
+        rent_price: accessory?.rent_price || '',
         initial_stock: isEdit ? (accessory.available_quantity ?? '') : '',
         reorder_threshold: accessory?.reorder_threshold ?? 5,
     });
@@ -17,8 +17,8 @@ export default function AddEditAccessoryModal({ accessory, onClose, onSaved }) {
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-    const showRentalOptions = form.type === 'for_rental' || form.type === 'both';
-    const showHourlyRate = showRentalOptions && form.rental_pricing_type === 'hourly';
+    const showSalePrice = form.type === 'for_sale' || form.type === 'both';
+    const showRentPrice = form.type === 'for_rental' || form.type === 'both';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -27,10 +27,10 @@ export default function AddEditAccessoryModal({ accessory, onClose, onSaved }) {
         try {
             const payload = {
                 name: form.name,
-                price: parseFloat(form.price) || 0,
+                price: showSalePrice ? (parseFloat(form.price) || 0) : 0,
                 type: form.type,
                 rental_pricing_type: form.rental_pricing_type,
-                hourly_rate: showHourlyRate ? parseFloat(form.hourly_rate) : null,
+                rent_price: showRentPrice ? (parseFloat(form.rent_price) || 0) : null,
                 initial_stock: parseInt(form.initial_stock) || 0,
                 reorder_threshold: parseInt(form.reorder_threshold) || 5,
             };
@@ -73,58 +73,54 @@ export default function AddEditAccessoryModal({ accessory, onClose, onSaved }) {
                         </div>
                     </div>
 
-                    {showRentalOptions && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {showSalePrice && (
+                            <div className="form-group">
+                                <label>Sale Price (₹) *</label>
+                                <input type="number" min="0" step="0.01" required={showSalePrice}
+                                    value={form.price} onChange={e => set('price', e.target.value)} placeholder="0.00" />
+                            </div>
+                        )}
+                        {showRentPrice && (
+                            <div className="form-group">
+                                <label>
+                                    Rent Price (₹) * 
+                                    {form.rental_pricing_type === 'hourly' && <span style={{fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 4}}>(per hr)</span>}
+                                </label>
+                                <input type="number" min="0" step="0.01" required={showRentPrice}
+                                    value={form.rent_price} onChange={e => set('rent_price', e.target.value)} placeholder="0.00" />
+                            </div>
+                        )}
+                    </div>
+
+                    {showRentPrice && (
                         <div className="form-group">
-                            <label>Rental Pricing Model</label>
+                            <label>Rental Calculation Mode</label>
                             <div className="inv-toggle-group">
                                 <button type="button"
                                     className={`inv-toggle-btn${form.rental_pricing_type === 'flat' ? ' active' : ''}`}
-                                    onClick={() => set('rental_pricing_type', 'flat')}>💰 Flat Price</button>
+                                    onClick={() => set('rental_pricing_type', 'flat')}>💰 Flat (Per session)</button>
                                 <button type="button"
                                     className={`inv-toggle-btn${form.rental_pricing_type === 'hourly' ? ' active' : ''}`}
-                                    onClick={() => set('rental_pricing_type', 'hourly')}>⏱ Hourly Rate</button>
+                                    onClick={() => set('rental_pricing_type', 'hourly')}>⏱ Hourly (Per slot)</button>
                             </div>
-                            <small style={{ color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
-                                {form.rental_pricing_type === 'hourly' ? 'Price = rate × hours entered at sale.' : 'Fixed price per rental session.'}
-                            </small>
                         </div>
                     )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div className="form-group">
-                            <label>{form.type === 'for_rental' && form.rental_pricing_type === 'flat' ? 'Flat Rental Price (₹) *' : 'Sale Price (₹) *'}</label>
-                            <input type="number" min="0" step="0.01"
-                                value={form.price} onChange={e => set('price', e.target.value)} placeholder="0.00" />
+                            <label>Reorder Threshold</label>
+                            <input type="number" min="0" value={form.reorder_threshold} onChange={e => set('reorder_threshold', e.target.value)} />
+                            <small style={{ color: 'var(--color-text-muted)' }}>Alert when stock falls below this.</small>
                         </div>
-                        {showHourlyRate ? (
+                        {!isEdit && (
                             <div className="form-group">
-                                <label>Hourly Rate (₹/hr) *</label>
-                                <input type="number" min="0" step="0.01" required={showHourlyRate}
-                                    value={form.hourly_rate} onChange={e => set('hourly_rate', e.target.value)} placeholder="0.00" />
-                            </div>
-                        ) : (
-                            <div className="form-group">
-                                <label>Reorder Threshold</label>
-                                <input type="number" min="0" value={form.reorder_threshold} onChange={e => set('reorder_threshold', e.target.value)} />
-                                <small style={{ color: 'var(--color-text-muted)' }}>Alert when stock falls below this.</small>
+                                <label>Initial Stock *</label>
+                                <input type="number" min="0" required={!isEdit}
+                                    value={form.initial_stock} onChange={e => set('initial_stock', e.target.value)} placeholder="0" />
                             </div>
                         )}
                     </div>
-
-                    {showHourlyRate && (
-                        <div className="form-group">
-                            <label>Reorder Threshold</label>
-                            <input type="number" min="0" value={form.reorder_threshold} onChange={e => set('reorder_threshold', e.target.value)} />
-                        </div>
-                    )}
-
-                    {!isEdit && (
-                        <div className="form-group">
-                            <label>Initial Stock *</label>
-                            <input type="number" min="0" required={!isEdit}
-                                value={form.initial_stock} onChange={e => set('initial_stock', e.target.value)} placeholder="0" />
-                        </div>
-                    )}
 
                     {isEdit && (
                         <div className="summary-card">

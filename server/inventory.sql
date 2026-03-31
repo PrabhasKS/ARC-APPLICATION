@@ -218,3 +218,44 @@ VALUES ('Badminton Racquet (Hourly)', 0.00, 'for_rental', 'hourly', 30.00, 10, 1
 --   SHOW TABLES LIKE '%inventory%';
 --   SHOW TABLES LIKE '%rental%';
 -- =============================================================
+
+-- =============================================================
+-- PART 4: SOFT DELETE SUPPORT & MIGRATION HOTFIXES
+--         (Added during later implementation phase)
+-- =============================================================
+
+-- 4a. Add is_deleted flag so we can hide old production 
+--     accessories without breaking historic booking receipts.
+ALTER TABLE accessories
+  ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Soft delete for historical booking protection';
+
+-- 4b. OPTIONAL MIGRATION STEP FOR PRODUCTION:
+--     If you want to start fresh and hide ALL old accessories
+--     (like the manual 50 rs shuttle/rent items) instantly so you can 
+--     re-add them properly through the new inventory dashboard, 
+--     run this command:
+-- 
+--     UPDATE accessories SET is_deleted = TRUE;
+-- 
+--     This ensures 1000+ past bookings keep their data, but 
+--     the booking form stays completely clean for your new items.
+-- =============================================================
+
+-- =============================================================
+-- PART 5: DUAL-PRICING SCHEMA UPDATE
+--         (Added to separate flat Sale Price vs Rental Price)
+-- =============================================================
+
+-- 5a. Rename hourly_rate to rent_price so it handles both Flat and Hourly
+--     rental rates. The standard `price` will strictly be for Sales.
+ALTER TABLE accessories 
+  CHANGE hourly_rate rent_price DECIMAL(10, 2) NULL COMMENT 'Used for both flat and hourly rentals';
+
+-- 5b. For any existing accessories that were "flat" rentals, 
+--     copy their old sale price over to rent_price so they aren't lost.
+UPDATE accessories 
+  SET rent_price = price 
+  WHERE type IN ('for_rental', 'both') 
+  AND rental_pricing_type = 'flat' 
+  AND rent_price IS NULL;
+-- =============================================================

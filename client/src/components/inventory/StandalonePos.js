@@ -6,8 +6,8 @@ import StandaloneSaleDetailModal from './StandaloneSaleDetailModal';
 function AccCard({ acc, onAdd }) {
     const isOut = (acc.available_quantity ?? 0) === 0;
     const icon = acc.type === 'for_rental' ? '🔄' : acc.type === 'both' ? '✨' : '🏷';
-    const priceLabel = acc.rental_pricing_type === 'hourly'
-        ? `₹${acc.hourly_rate}/hr`
+    const priceLabel = acc.type === 'for_rental' 
+        ? (acc.rental_pricing_type === 'hourly' ? `₹${acc.rent_price}/hr` : `₹${parseFloat(acc.rent_price || 0).toFixed(2)}`)
         : `₹${parseFloat(acc.price || 0).toFixed(2)}`;
 
     return (
@@ -67,7 +67,7 @@ function RentalTypeModal({ acc, onSelect, onClose }) {
                         🏷 Sell — ₹{parseFloat(acc.price || 0).toFixed(2)}
                     </button>
                     <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => onSelect('rental')}>
-                        🔄 Rent — {acc.rental_pricing_type === 'hourly' ? `₹${acc.hourly_rate}/hr` : `₹${parseFloat(acc.price || 0).toFixed(2)}`}
+                        🔄 Rent — {acc.rental_pricing_type === 'hourly' ? `₹${acc.rent_price}/hr` : `₹${parseFloat(acc.rent_price || 0).toFixed(2)}`}
                     </button>
                 </div>
             </div>
@@ -123,8 +123,8 @@ export default function StandalonePos() {
 
     const addToCart = (acc, txType) => {
         const id = `${acc.id}_${txType}_${Date.now()}`;
-        const unitPrice = txType === 'rental' && acc.rental_pricing_type === 'hourly'
-            ? parseFloat(acc.hourly_rate || 0)
+        const unitPrice = txType === 'rental'
+            ? parseFloat(acc.rent_price || 0)
             : parseFloat(acc.price || 0);
         setCart(c => [...c, { tempId: id, accessory_id: acc.id, name: acc.name, transaction_type: txType, quantity: 1, rental_hours: 1, unit_price: unitPrice, rental_pricing_type: acc.rental_pricing_type }]);
     };

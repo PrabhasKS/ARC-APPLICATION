@@ -114,7 +114,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         for (const item of items) {
             const [[acc]] = await connection.query(
-                'SELECT id, name, price, type, rental_pricing_type, hourly_rate, available_quantity FROM accessories WHERE id = ?',
+                'SELECT id, name, price, type, rental_pricing_type, rent_price, available_quantity FROM accessories WHERE id = ?',
                 [item.accessory_id]
             );
             if (!acc) {
@@ -134,11 +134,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
             // Calculate price
             let unit_price;
-            if (item.transaction_type === 'rental' && acc.rental_pricing_type === 'hourly') {
-                const hours = parseFloat(item.rental_hours || 1);
-                unit_price = parseFloat(acc.hourly_rate || 0) * hours;
+            if (item.transaction_type === 'rental') {
+                const hours = acc.rental_pricing_type === 'hourly' ? parseFloat(item.rental_hours || 1) : 1;
+                unit_price = parseFloat(acc.rent_price || 0) * hours;
             } else {
-                unit_price = parseFloat(acc.price);
+                unit_price = parseFloat(acc.price || 0);
             }
 
             const line_total = unit_price * qty;

@@ -307,6 +307,8 @@ body {
     max-width: 560px;
     padding: var(--space-xl);
     margin: auto;
+    max-height: 90vh;
+    overflow-y: auto;
     animation: dsSlideIn 0.3s ease-out;
 }
 

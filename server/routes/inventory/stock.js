@@ -15,12 +15,14 @@ router.get('/', authenticateToken, async (req, res) => {
                 id, name, price,
                 COALESCE(type, 'for_sale') as type,
                 COALESCE(rental_pricing_type, 'flat') as rental_pricing_type,
-                hourly_rate,
+                rent_price,
                 COALESCE(stock_quantity, 0) as stock_quantity,
                 COALESCE(available_quantity, 0) as available_quantity,
                 COALESCE(discarded_quantity, 0) as discarded_quantity,
-                COALESCE(reorder_threshold, 5) as reorder_threshold
+                COALESCE(reorder_threshold, 5) as reorder_threshold,
+                COALESCE(is_deleted, 0) as is_deleted
             FROM accessories
+            ${req.query.include_deleted === 'true' ? '' : 'WHERE is_deleted = FALSE'}
             ORDER BY name ASC
         `);
         res.json(rows);
@@ -35,7 +37,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const {
-        name, price, type, rental_pricing_type, hourly_rate,
+        name, price, type, rental_pricing_type, rent_price,
         initial_stock, reorder_threshold
     } = req.body;
 
@@ -53,12 +55,12 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
 
         const [result] = await connection.query(
             `INSERT INTO accessories 
-                (name, price, type, rental_pricing_type, hourly_rate, 
+                (name, price, type, rental_pricing_type, rent_price, 
                  stock_quantity, available_quantity, discarded_quantity, reorder_threshold)
              VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
             [name, price, type,
              rental_pricing_type || 'flat',
-             (rental_pricing_type === 'hourly' ? hourly_rate : null),
+             (type === 'for_rental' || type === 'both' ? rent_price : null),
              stockQty, stockQty, threshold]
         );
         const accessoryId = result.insertId;
@@ -90,7 +92,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
-    const { name, price, type, rental_pricing_type, hourly_rate, reorder_threshold } = req.body;
+    const { name, price, type, rental_pricing_type, rent_price, reorder_threshold } = req.body;
 
     if (!name || price === undefined || !type) {
         return res.status(400).json({ message: 'name, price, and type are required.' });
@@ -100,11 +102,11 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
         await db.query(
             `UPDATE accessories
              SET name = ?, price = ?, type = ?, rental_pricing_type = ?,
-                 hourly_rate = ?, reorder_threshold = ?
+                 rent_price = ?, reorder_threshold = ?
              WHERE id = ?`,
             [name, price, type,
              rental_pricing_type || 'flat',
-             (rental_pricing_type === 'hourly' ? hourly_rate : null),
+             (type === 'for_rental' || type === 'both' ? rent_price : null),
              reorder_threshold || 5, id]
         );
         sse.sendEventsToAll({ message: 'inventory_updated' });
@@ -116,28 +118,19 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // DELETE /api/inventory/accessories/:id
-// Admin: delete accessory (only if not used in any transaction)
+// Admin: Soft delete accessory (hides it from booking form and active lists)
 // ─────────────────────────────────────────────────────────────
 router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     try {
-        // Check for existing bookings or sales
-        const [[{ cnt }]] = await db.query(
-            `SELECT COUNT(*) as cnt FROM booking_accessories WHERE accessory_id = ?`, [id]
-        );
-        const [[{ cnt2 }]] = await db.query(
-            `SELECT COUNT(*) as cnt FROM standalone_sale_items WHERE accessory_id = ?`, [id]
-        );
-        if (cnt > 0 || cnt2 > 0) {
-            return res.status(409).json({ message: 'Cannot delete: accessory has existing transaction records.' });
-        }
-        await db.query('DELETE FROM accessories WHERE id = ?', [id]);
+        await db.query('UPDATE accessories SET is_deleted = TRUE WHERE id = ?', [id]);
         sse.sendEventsToAll({ message: 'inventory_updated' });
-        res.json({ success: true });
+        res.json({ success: true, message: 'Accessory archived successfully.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/inventory/accessories/:id/restock

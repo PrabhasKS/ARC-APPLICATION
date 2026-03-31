@@ -3,13 +3,12 @@ import './InventoryDashboard.css';
 import StockManagement from './StockManagement';
 import StandalonePos from './StandalonePos';
 import RentalReturns from './RentalReturns';
-import InventoryAnalytics from './InventoryAnalytics';
+
 
 const TABS = [
     { id: 'stock',     label: 'Stock Management', icon: '📦', adminOnly: true },
     { id: 'pos',       label: 'Standalone Sales',  icon: '🛒', adminOnly: false },
     { id: 'returns',   label: 'Rental Returns',    icon: '↩️', adminOnly: false },
-    { id: 'analytics', label: 'Analytics',         icon: '📊', adminOnly: true },
 ];
 
 export default function InventoryDashboard({ user }) {
@@ -42,7 +41,6 @@ export default function InventoryDashboard({ user }) {
                 {activeTab === 'stock'     && <StockManagement user={user} />}
                 {activeTab === 'pos'       && <StandalonePos user={user} />}
                 {activeTab === 'returns'   && <RentalReturns user={user} />}
-                {activeTab === 'analytics' && <InventoryAnalytics user={user} />}
             </div>
         </div>
     );

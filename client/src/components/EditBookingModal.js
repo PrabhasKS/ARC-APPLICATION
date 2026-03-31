@@ -26,7 +26,7 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     useEffect(() => {
         const fetchAccessories = async () => {
             try {
-                const res = await api.get('/accessories');
+                const res = await api.get('/inventory/accessories', { params: { include_deleted: true } });
                 setAccessories(res.data || []);
             } catch (error) {
                 console.error("Error fetching accessories:", error);
@@ -292,15 +292,30 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
     const handleAddSelectedAccessory = (accessoryId) => {
         if (!accessoryId) return;
         const existingAcc = selectedAccessories.find(a => a.id === accessoryId);
+        const details = accessories.find(a => a.id === accessoryId);
+        if (!details) return;
+
         if (existingAcc) {
-            setSelectedAccessories(
-                selectedAccessories.map(a =>
-                    a.id === accessoryId ? { ...a, quantity: a.quantity + 1 } : a
-                )
-            );
+            if (existingAcc.quantity < details.available_quantity) {
+                setSelectedAccessories(
+                    selectedAccessories.map(a =>
+                        a.id === accessoryId ? { ...a, quantity: a.quantity + 1 } : a
+                    )
+                );
+            } else {
+                alert(`Cannot add more. Only ${details.available_quantity} available.`);
+            }
         } else {
-            setSelectedAccessories([...selectedAccessories, { id: accessoryId, quantity: 1 }]);
+            let defaultTx = 'sale';
+            if (details.type === 'for_rental') defaultTx = 'rental';
+            setSelectedAccessories([...selectedAccessories, { id: accessoryId, quantity: 1, transaction_type: defaultTx }]);
         }
+    };
+
+    const handleTransactionTypeChange = (accessoryId, newTxType) => {
+        setSelectedAccessories(selectedAccessories.map(a =>
+            a.id === accessoryId ? { ...a, transaction_type: newTxType } : a
+        ));
     };
 
     const handleRemoveAccessory = (accessoryId) => {
@@ -369,23 +384,53 @@ const EditBookingModal = ({ booking, onSave, onClose, error }) => {
                                         onChange={(e) => handleAddSelectedAccessory(parseInt(e.target.value))}
                                     >
                                         <option value="">Select an accessory</option>
-                                        {accessories.map(acc => (
-                                            <option key={acc.id} value={acc.id}>{acc.name} - ₹{acc.price}</option>
-                                        ))}
+                                        {accessories.filter(a => !a.is_deleted).map(acc => {
+                                            const isOut = acc.available_quantity === 0;
+                                            return (
+                                                <option 
+                                                    key={acc.id} 
+                                                    value={acc.id}
+                                                    disabled={isOut}
+                                                    style={{ color: isOut ? 'red' : 'inherit' }}
+                                                >
+                                                    {acc.name} - ₹{acc.price} {isOut ? '(Out of Stock)' : `(${acc.available_quantity} available)`}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
                                 <ul>
                                     {selectedAccessories.map(acc => {
                                         const accessoryDetails = accessories.find(a => a.id === acc.id);
                                         return (
-                                            <li key={acc.id}>
-                                                {accessoryDetails?.name} (x{acc.quantity})
-                                                <button
-                                                    onClick={() => handleRemoveAccessory(acc.id)}
-                                                    disabled={formData.payment_status === 'Completed'}
-                                                >
-                                                    &times;
-                                                </button>
+                                            <li key={acc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                <span>{accessoryDetails?.name || 'Unknown'} - ₹{accessoryDetails?.price || 0}</span>
+                                                <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', gap: '8px' }}>
+                                                    {accessoryDetails?.type === 'both' && (
+                                                        <select 
+                                                            value={acc.transaction_type}
+                                                            onChange={(e) => handleTransactionTypeChange(acc.id, e.target.value)}
+                                                            style={{ padding: '2px 4px', fontSize: '13px', borderRadius: '4px' }}
+                                                        >
+                                                            <option value="sale">Sale</option>
+                                                            <option value="rental">Rent</option>
+                                                        </select>
+                                                    )}
+                                                    {accessoryDetails?.type !== 'both' && (
+                                                        <span style={{ fontSize: '12px', color: '#666', border: '1px solid #ddd', padding: '2px 6px', borderRadius: '4px', background: '#f8f9fa' }}>
+                                                            {accessoryDetails?.type === 'for_rental' ? 'Rent' : 'Sale'}
+                                                        </span>
+                                                    )}
+                                                    <span style={{ fontWeight: 'bold' }}>x{acc.quantity}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveAccessory(acc.id)}
+                                                        disabled={formData.payment_status === 'Completed'}
+                                                        style={{ background: 'none', border: 'none', color: '#dc3545', fontSize: '18px', cursor: 'pointer', padding: '0 4px' }}
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </div>
                                             </li>
                                         );
                                     })}

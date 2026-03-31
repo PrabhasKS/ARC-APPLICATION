@@ -488,11 +488,22 @@ router.post('/bookings/calculate-price', authenticateToken, async (req, res) => 
         let accessories_total_price = 0;
         if (accessories && accessories.length > 0) {
             for (const acc of accessories) {
-                const [[accessoryData]] = await db.query('SELECT price FROM accessories WHERE id = ?', [acc.id]);
-                if (accessoryData && parseFloat(accessoryData.price) > 0) {
-                    accessories_total_price += parseFloat(accessoryData.price) * acc.quantity;
-                } else {
-                    // Fallback to price provided in the request body if DB price is not found or is 0
+                const [[accessoryData]] = await db.query('SELECT price, rent_price, rental_pricing_type FROM accessories WHERE id = ?', [acc.id]);
+                if (accessoryData) {
+                    let unitPrice = 0;
+                    if (acc.transaction_type === 'rental') {
+                        const rate = parseFloat(accessoryData.rent_price || 0);
+                        unitPrice = accessoryData.rental_pricing_type === 'hourly' ? rate * (parseInt(slots_booked) || 1) : rate;
+                    } else {
+                        unitPrice = parseFloat(accessoryData.price || 0);
+                    }
+                    
+                    if (unitPrice > 0) {
+                        accessories_total_price += unitPrice * acc.quantity;
+                    } else if (acc.price) {
+                        accessories_total_price += parseFloat(acc.price) * acc.quantity;
+                    }
+                } else if (acc.price) {
                     accessories_total_price += parseFloat(acc.price) * acc.quantity;
                 }
             }
@@ -582,9 +593,17 @@ router.post('/bookings', authenticateToken, async (req, res) => {
         let accessories_total_price = 0;
         if (accessories && accessories.length > 0) {
             for (const acc of accessories) {
-                const [[accessoryData]] = await connection.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
+                const [[accessoryData]] = await db.query('SELECT price, rent_price, rental_pricing_type FROM accessories WHERE id = ?', [acc.accessory_id]);
                 if (accessoryData) {
-                    accessories_total_price += accessoryData.price * acc.quantity;
+                    const txType = acc.transaction_type || 'sale';
+                    let unitPrice = 0;
+                    if (txType === 'rental') {
+                        const rate = parseFloat(accessoryData.rent_price || 0);
+                        unitPrice = accessoryData.rental_pricing_type === 'hourly' ? rate * (parseInt(slots_booked) || 1) : rate;
+                    } else {
+                        unitPrice = parseFloat(accessoryData.price || 0);
+                    }
+                    accessories_total_price += unitPrice * acc.quantity;
                 }
             }
         }
@@ -678,9 +697,33 @@ router.post('/bookings', authenticateToken, async (req, res) => {
 
         if (accessories && accessories.length > 0) {
             for (const acc of accessories) {
-                const [[accessoryData]] = await connection.query('SELECT price FROM accessories WHERE id = ?', [acc.accessory_id]);
+                const [[accessoryData]] = await connection.query('SELECT price, rent_price, rental_pricing_type, available_quantity FROM accessories WHERE id = ? FOR UPDATE', [acc.accessory_id]);
                 if (accessoryData) {
-                    await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking) VALUES (?, ?, ?, ?)', [bookingId, acc.accessory_id, acc.quantity, accessoryData.price]);
+                    if (accessoryData.available_quantity < acc.quantity) {
+                        throw new Error(`Not enough stock for accessory ID ${acc.accessory_id}. Only ${accessoryData.available_quantity} available.`);
+                    }
+                    const txType = acc.transaction_type || 'sale';
+                    
+                    let unitPrice = 0;
+                    if (txType === 'rental') {
+                        const rate = parseFloat(accessoryData.rent_price || 0);
+                        unitPrice = accessoryData.rental_pricing_type === 'hourly' ? rate * (parseInt(slots_booked) || 1) : rate;
+                    } else {
+                        unitPrice = parseFloat(accessoryData.price || 0);
+                    }
+                    
+                    await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking, transaction_type) VALUES (?, ?, ?, ?, ?)', [bookingId, acc.accessory_id, acc.quantity, unitPrice, txType]);
+                    
+                    // Deduct stock
+                    await connection.query('UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?', [acc.quantity, acc.accessory_id]);
+                    
+                    // Log
+                    await connection.query(
+                        `INSERT INTO inventory_stock_log 
+                         (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
+                         VALUES (?, ?, ?, 'booking', ?, 'Added to court booking', ?)`,
+                        [acc.accessory_id, txType === 'rental' ? 'rented_out' : 'sold', -Math.abs(acc.quantity), bookingId, created_by_user_id]
+                    );
                 }
             }
         }
@@ -781,14 +824,52 @@ router.put('/bookings/:id', authenticateToken, async (req, res) => {
 
         // 4. Handle accessories
         if (accessories) {
-            // a. Delete existing accessories for this booking
+            // a. Restock old accessories
+            const [oldAccessories] = await connection.query('SELECT accessory_id, quantity, transaction_type FROM booking_accessories WHERE booking_id = ?', [id]);
+            for (const old of oldAccessories) {
+                await connection.query('UPDATE accessories SET available_quantity = available_quantity + ? WHERE id = ?', [old.quantity, old.accessory_id]);
+                await connection.query(
+                    `INSERT INTO inventory_stock_log 
+                     (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
+                     VALUES (?, 'correction', ?, 'booking', ?, 'Restored stock during booking edit', ?)`,
+                    [old.accessory_id, old.quantity, id, created_by_user_id]
+                );
+            }
+
+            // b. Delete existing accessories for this booking
             await connection.query('DELETE FROM booking_accessories WHERE booking_id = ?', [id]);
 
-            // b. Insert new accessories
+            // c. Insert new accessories and deduct stock
             for (const acc of accessories) {
-                const [[accessoryData]] = await connection.query('SELECT price FROM accessories WHERE id = ?', [acc.id]);
+                const aid = acc.accessory_id || acc.id;
+                const [[accessoryData]] = await connection.query('SELECT price, rent_price, rental_pricing_type, available_quantity FROM accessories WHERE id = ? FOR UPDATE', [aid]);
                 if (accessoryData) {
-                    await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking) VALUES (?, ?, ?, ?)', [id, acc.id, acc.quantity, accessoryData.price]);
+                    if (accessoryData.available_quantity < acc.quantity) {
+                        throw new Error(`Not enough stock for accessory ID ${aid}. Only ${accessoryData.available_quantity} available.`);
+                    }
+                    const txType = acc.transaction_type || 'sale';
+                    
+                    let unitPrice = 0;
+                    if (txType === 'rental') {
+                        const rate = parseFloat(accessoryData.rent_price || 0);
+                        const slotsBookedForEdit = parseInt(existingBooking.slots_booked, 10);
+                        unitPrice = accessoryData.rental_pricing_type === 'hourly' ? rate * (slotsBookedForEdit || 1) : rate;
+                    } else {
+                        unitPrice = parseFloat(accessoryData.price || 0);
+                    }
+
+                    await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking, transaction_type) VALUES (?, ?, ?, ?, ?)', [id, aid, acc.quantity, unitPrice, txType]);
+                    
+                    // Deduct stock
+                    await connection.query('UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?', [acc.quantity, aid]);
+                    
+                    // Log
+                    await connection.query(
+                        `INSERT INTO inventory_stock_log 
+                         (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
+                         VALUES (?, ?, ?, 'booking', ?, 'Added to court booking after edit', ?)`,
+                        [aid, txType === 'rental' ? 'rented_out' : 'sold', -Math.abs(acc.quantity), id, created_by_user_id]
+                    );
                 }
             }
         }

@@ -39,8 +39,8 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId,
     useEffect(() => {
         const fetchAccessories = async () => {
             try {
-                const res = await api.get('/accessories');
-                setAccessories(res.data || []);
+                const res = await api.get('/inventory/accessories');
+                setAccessories((res.data || []).filter(a => !a.is_deleted));
             } catch (error) {
                 console.error("Error fetching accessories:", error);
                 setAccessories([]);
@@ -67,7 +67,16 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId,
                     // Calculate total price from selected accessories
                     const accessoriesTotal = selectedAccessories.reduce((total, acc) => {
                         const accessoryDetails = accessories.find(a => a.id === acc.id);
-                        return total + ((accessoryDetails?.price || 0) * acc.quantity);
+                        if (!accessoryDetails) return total;
+                        
+                        let unitPrice = 0;
+                        if (acc.transaction_type === 'rental') {
+                            const rate = parseFloat(accessoryDetails.rent_price || 0);
+                            unitPrice = accessoryDetails.rental_pricing_type === 'hourly' ? rate * (parseInt(slotsBooked) || 1) : rate;
+                        } else {
+                            unitPrice = parseFloat(accessoryDetails.price || 0);
+                        }
+                        return total + (unitPrice * acc.quantity);
                     }, 0);
 
                     // totalPrice to display (undiscounted court + accessories)
@@ -117,15 +126,30 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId,
     const handleAddSelectedAccessory = (accessoryId) => {
         if (!accessoryId) return;
         const existingAcc = selectedAccessories.find(a => a.id === accessoryId);
+        const details = accessories.find(a => a.id === accessoryId);
+        if (!details) return;
+
         if (existingAcc) {
-            setSelectedAccessories(
-                selectedAccessories.map(a =>
-                    a.id === accessoryId ? { ...a, quantity: a.quantity + 1 } : a
-                )
-            );
+            if (existingAcc.quantity < details.available_quantity) {
+                setSelectedAccessories(
+                    selectedAccessories.map(a =>
+                        a.id === accessoryId ? { ...a, quantity: a.quantity + 1 } : a
+                    )
+                );
+            } else {
+                alert(`Cannot add more. Only ${details.available_quantity} available.`);
+            }
         } else {
-            setSelectedAccessories([...selectedAccessories, { id: accessoryId, quantity: 1 }]);
+            let defaultTx = 'sale';
+            if (details.type === 'for_rental') defaultTx = 'rental';
+            setSelectedAccessories([...selectedAccessories, { id: accessoryId, quantity: 1, transaction_type: defaultTx }]);
         }
+    };
+
+    const handleTransactionTypeChange = (accessoryId, newTxType) => {
+        setSelectedAccessories(selectedAccessories.map(a =>
+            a.id === accessoryId ? { ...a, transaction_type: newTxType } : a
+        ));
     };
 
     const handleRemoveAccessory = (accessoryId) => {
@@ -232,7 +256,11 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId,
                 slots_booked: parseInt(slotsBooked) || 1,
                 discount_amount: parseFloat(discountAmount) || 0,
                 discount_reason: discountReason,
-                accessories: selectedAccessories.map(a => ({ accessory_id: a.id, quantity: a.quantity }))
+                accessories: selectedAccessories.map(a => ({ 
+                    accessory_id: a.id, 
+                    quantity: a.quantity,
+                    transaction_type: a.transaction_type 
+                }))
             });
 
             setLastBooking(res.data);
@@ -329,40 +357,69 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId,
                                     }}
                                 >
                                     <option value="" disabled>Choose an accessory to add...</option>
-                                    {accessories.map(acc => (
-                                        <option key={acc.id} value={acc.id}>
-                                            {acc.name} - ₹{acc.price}
-                                        </option>
-                                    ))}
+                                    {accessories.map(acc => {
+                                        const isOut = acc.available_quantity === 0;
+                                        return (
+                                                <option 
+                                                    key={acc.id} 
+                                                    value={acc.id} 
+                                                    disabled={isOut} 
+                                                    style={{ color: isOut ? 'red' : 'inherit' }}
+                                                >
+                                                    {acc.name} - {acc.type === 'for_rental' ? `Rent ₹${acc.rent_price}` : (acc.type === 'both' ? `Sale ₹${acc.price} | Rent ₹${acc.rent_price}` : `Sale ₹${acc.price}`)} {isOut ? '(Out of Stock)' : `(${acc.available_quantity} available)`}
+                                                </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                             {selectedAccessories.length > 0 && (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '14px' }}>
                                     {selectedAccessories.map((acc, index) => {
                                         const details = accessories.find(a => a.id === acc.id);
+                                        const isRented = acc.transaction_type === 'rental';
+                                        const unitPrice = isRented ? parseFloat(details?.rent_price || 0) : parseFloat(details?.price || 0);
+                                        const calcPrice = isRented && details?.rental_pricing_type === 'hourly' ? unitPrice * (parseInt(slotsBooked) || 1) : unitPrice;
+                                        
                                         return (
                                             <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px solid #ebebeb', fontSize: '14px' }}>
-                                                <span>{details?.name || 'Unknown'} - ₹{details?.price || 0}</span>
-                                                <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', background: '#f1f3f5', borderRadius: '12px', padding: '2px 8px', gap: '6px', whiteSpace: 'nowrap' }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (acc.quantity > 1) {
-                                                                setSelectedAccessories(selectedAccessories.map(a => a.id === acc.id ? { ...a, quantity: a.quantity - 1 } : a));
-                                                            } else {
-                                                                handleRemoveAccessory(acc.id);
-                                                            }
-                                                        }}
-                                                        style={{ display: 'inline-block', width: 'auto', margin: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', padding: '0 4px', color: '#495057', flexShrink: 0 }}>
-                                                        -
-                                                    </button>
-                                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#212529', minWidth: '16px', textAlign: 'center', display: 'inline-block' }}>{acc.quantity}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAddSelectedAccessory(acc.id)}
-                                                        style={{ display: 'inline-block', width: 'auto', margin: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', padding: '0 4px', color: '#495057', flexShrink: 0 }}>
-                                                        +
-                                                    </button>
+                                                <span>{details?.name || 'Unknown'} - ₹{(calcPrice * acc.quantity).toFixed(2)}</span>
+                                                <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', gap: '10px' }}>
+                                                    {details?.type === 'both' && (
+                                                        <select 
+                                                            value={acc.transaction_type}
+                                                            onChange={(e) => handleTransactionTypeChange(acc.id, e.target.value)}
+                                                            style={{ padding: '2px 4px', fontSize: '13px', borderRadius: '4px' }}
+                                                        >
+                                                            <option value="sale">Sale</option>
+                                                            <option value="rental">Rent</option>
+                                                        </select>
+                                                    )}
+                                                    {details?.type !== 'both' && (
+                                                        <span style={{ fontSize: '12px', color: '#666', border: '1px solid #ddd', padding: '2px 6px', borderRadius: '4px', background: '#f8f9fa' }}>
+                                                            {details?.type === 'for_rental' ? 'Rent' : 'Sale'}
+                                                        </span>
+                                                    )}
+                                                    <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', background: '#f1f3f5', borderRadius: '12px', padding: '2px 8px', gap: '6px', whiteSpace: 'nowrap' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (acc.quantity > 1) {
+                                                                    setSelectedAccessories(selectedAccessories.map(a => a.id === acc.id ? { ...a, quantity: a.quantity - 1 } : a));
+                                                                } else {
+                                                                    handleRemoveAccessory(acc.id);
+                                                                }
+                                                            }}
+                                                            style={{ display: 'inline-block', width: 'auto', margin: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', padding: '0 4px', color: '#495057', flexShrink: 0 }}>
+                                                            -
+                                                        </button>
+                                                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#212529', minWidth: '16px', textAlign: 'center', display: 'inline-block' }}>{acc.quantity}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAddSelectedAccessory(acc.id)}
+                                                            style={{ display: 'inline-block', width: 'auto', margin: 0, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', padding: '0 4px', color: '#495057', flexShrink: 0 }}>
+                                                            +
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </li>
                                         );

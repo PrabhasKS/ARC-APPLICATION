@@ -6,7 +6,7 @@
 import api from '../../api';
 
 // Accessories
-export const getAccessories = () => api.get('/inventory/accessories');
+export const getAccessories = (params) => api.get('/inventory/accessories', { params });
 export const createAccessory = (data) => api.post('/inventory/accessories', data);
 export const updateAccessory = (id, data) => api.put(`/inventory/accessories/${id}`, data);
 export const deleteAccessory = (id) => api.delete(`/inventory/accessories/${id}`);

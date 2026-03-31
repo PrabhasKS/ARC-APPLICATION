@@ -10,21 +10,21 @@ const { buildDateFilter } = require('../../utils/helpers');
 // ─────────────────────────────────────────────────────────────
 router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const [[{ total_accessories }]] = await db.query('SELECT COUNT(*) as total_accessories FROM accessories');
+        const [[{ total_accessories }]] = await db.query('SELECT COUNT(*) as total_accessories FROM accessories WHERE is_deleted = FALSE');
         const [[stockData]] = await db.query(`
             SELECT 
                 SUM(available_quantity) as total_available,
                 SUM(discarded_quantity) as total_discarded,
                 SUM(stock_quantity) as total_stocked,
                 SUM(available_quantity * price) as inventory_value
-            FROM accessories
+            FROM accessories WHERE is_deleted = FALSE
         `);
         const [[{ low_stock_count }]] = await db.query(`
             SELECT COUNT(*) as low_stock_count FROM accessories
-            WHERE available_quantity <= reorder_threshold AND available_quantity > 0
+            WHERE available_quantity <= reorder_threshold AND available_quantity > 0 AND is_deleted = FALSE
         `);
         const [[{ out_of_stock }]] = await db.query(`
-            SELECT COUNT(*) as out_of_stock FROM accessories WHERE available_quantity = 0
+            SELECT COUNT(*) as out_of_stock FROM accessories WHERE available_quantity = 0 AND is_deleted = FALSE
         `);
 
         res.json({
@@ -184,7 +184,7 @@ router.get('/analytics/stock-alerts', authenticateToken, isAdmin, async (req, re
         const [rows] = await db.query(`
             SELECT id, name, type, available_quantity, reorder_threshold, stock_quantity, discarded_quantity
             FROM accessories
-            WHERE available_quantity <= reorder_threshold
+            WHERE available_quantity <= reorder_threshold AND is_deleted = FALSE
             ORDER BY available_quantity ASC
         `);
         res.json(rows);
