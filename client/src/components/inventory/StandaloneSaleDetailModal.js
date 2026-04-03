@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getStandaloneSale, addSalePayment, getSaleReceiptUrl } from './inventoryApi';
+import StandaloneReceiptModal from './StandaloneReceiptModal';
 
 export default function StandaloneSaleDetailModal({ saleId, onClose }) {
     const [sale, setSale] = useState(null);
@@ -8,6 +9,7 @@ export default function StandaloneSaleDetailModal({ saleId, onClose }) {
     const [paying, setPaying] = useState(false);
     const [payError, setPayError] = useState('');
     const [showPayForm, setShowPayForm] = useState(false);
+    const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
     const fetchSale = async () => {
         setLoading(true);
@@ -52,7 +54,7 @@ export default function StandaloneSaleDetailModal({ saleId, onClose }) {
                 <div className="modal-header">
                     <h2>Sale #{sale.id} — {sale.customer_name}</h2>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => window.open(getSaleReceiptUrl(saleId), '_blank')}>🖨 Receipt</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setIsReceiptOpen(true)}>🖨 Receipt</button>
                         <button className="close-button" onClick={onClose}>×</button>
                     </div>
                 </div>
@@ -149,6 +151,7 @@ export default function StandaloneSaleDetailModal({ saleId, onClose }) {
                     )
                 )}
             </div>
+            {isReceiptOpen && <StandaloneReceiptModal saleId={saleId} onClose={() => setIsReceiptOpen(false)} />}
         </div>
     );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAccessories, createStandaloneSale, getStandaloneSales, getSaleReceiptUrl } from './inventoryApi';
 import StandaloneSaleDetailModal from './StandaloneSaleDetailModal';
-
+import StandaloneReceiptModal from './StandaloneReceiptModal';
 /* ── Accessory card ──────────────────────────────────── */
 function AccCard({ acc, onAdd }) {
     const isOut = (acc.available_quantity ?? 0) === 0;
@@ -98,6 +98,7 @@ export default function StandalonePos() {
     const [salesSearch, setSalesSearch] = useState('');
     const [salesDate, setSalesDate] = useState('');
     const [detailModal, setDetailModal] = useState(null);
+    const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
     const fetchAccessories = useCallback(async () => {
         try {
@@ -192,10 +193,13 @@ export default function StandalonePos() {
                             <span>✅ Sale #{successSale} created!</span>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button className="btn btn-secondary btn-sm" onClick={() => { setDetailModal(successSale); setSuccessSale(null); }}>View Details</button>
-                                <button className="btn btn-secondary btn-sm" onClick={() => window.open(getSaleReceiptUrl(successSale), '_blank')}>🖨 Receipt</button>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setIsReceiptOpen(true)}>🖨 Receipt</button>
                                 <button className="btn btn-secondary btn-sm" onClick={() => setSuccessSale(null)}>×</button>
                             </div>
                         </div>
+                    )}
+                    {isReceiptOpen && successSale && (
+                        <StandaloneReceiptModal saleId={successSale} onClose={() => setIsReceiptOpen(false)} />
                     )}
                     {error && <div className="error-message">{error} <button style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} onClick={() => setError('')}>×</button></div>}
 
@@ -343,6 +347,9 @@ export default function StandalonePos() {
 
             {typeModal && <RentalTypeModal acc={typeModal} onSelect={txType => { addToCart(typeModal, txType); setTypeModal(null); }} onClose={() => setTypeModal(null)} />}
             {detailModal && <StandaloneSaleDetailModal saleId={detailModal} onClose={() => { setDetailModal(null); fetchSales(); fetchAccessories(); }} />}
+            {isReceiptOpen && detailModal && (
+                <StandaloneReceiptModal saleId={detailModal} onClose={() => setIsReceiptOpen(false)} />
+            )}
         </>
     );
 }

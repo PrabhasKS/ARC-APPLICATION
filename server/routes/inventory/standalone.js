@@ -293,7 +293,7 @@ router.get('/:id/receipt.pdf', async (req, res) => {
              WHERE p.standalone_sale_id = ?`, [id]
         );
 
-        const doc = new PDFDocument({ size: [302, 500], margin: 10 });
+        const doc = new PDFDocument({ size: [302, 550], margin: 15 });
         const buffers = [];
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', () => {
@@ -306,38 +306,72 @@ router.get('/:id/receipt.pdf', async (req, res) => {
             res.end(pdfData);
         });
 
-        doc.fontSize(14).text('ARC SportsZone', { align: 'center' });
-        doc.fontSize(8).text('Accessories Sale Receipt', { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(8).text(`Sale #${sale.id} | Date: ${sale.sale_date}`);
-        doc.fontSize(8).text(`Customer: ${sale.customer_name} | Contact: ${sale.customer_contact}`);
-        doc.moveDown();
+        const drawLine = () => {
+            doc.moveDown(0.5);
+            doc.moveTo(15, doc.y).lineTo(287, doc.y).dash(3, { space: 3 }).stroke();
+            doc.undash();
+            doc.moveDown(0.5);
+        };
 
-        doc.fontSize(10).text('Items', { underline: true });
+        const printRow = (left, right) => {
+            const y = doc.y;
+            doc.text(left, 15, y, { width: 180, align: 'left' });
+            doc.text(right, 195, y, { width: 92, align: 'right' });
+        };
+
+        // Header
+        doc.fontSize(16).font('Helvetica-Bold').text('ARC SportsZone', 15, 20, { align: 'center' });
+        doc.fontSize(10).font('Helvetica').text('Inventory Receipt', { align: 'center' });
+        drawLine();
+
+        // Customer Details
+        doc.fontSize(9).font('Helvetica-Bold').text(`Sale ID: ${sale.id}`);
+        doc.font('Helvetica').text(`Customer: ${sale.customer_name}`);
+        doc.text(`Contact: ${sale.customer_contact}`);
+        doc.text(`Date: ${sale.sale_date}`);
+        drawLine();
+
+        // Items
+        doc.fontSize(10).font('Helvetica-Bold').text('Items');
+        doc.moveDown(0.3);
+        doc.fontSize(9).font('Helvetica');
         items.forEach(item => {
             const lineTotal = parseFloat(item.price_at_sale) * item.quantity;
-            const label = item.transaction_type === 'rental' ? '(Rental)' : '(Sale)';
-            doc.fontSize(8).text(`${item.accessory_name} ${label} x${item.quantity} — Rs. ${lineTotal.toFixed(2)}`);
+            const label = item.transaction_type === 'rental' ? '(Rent)' : '(Sale)';
+            printRow(`${item.accessory_name} ${label} x${item.quantity}`, `Rs. ${lineTotal.toFixed(2)}`);
+            doc.moveDown(0.2);
         });
-        doc.moveDown();
+        drawLine();
 
-        doc.fontSize(10).text('Payment', { underline: true });
-        doc.fontSize(8).text(`Total: Rs. ${parseFloat(sale.total_amount).toFixed(2)}`);
-        doc.fontSize(8).text(`Paid: Rs. ${parseFloat(sale.amount_paid).toFixed(2)}`);
-        doc.fontSize(8).text(`Balance: Rs. ${parseFloat(sale.balance_amount).toFixed(2)}`);
-        doc.fontSize(8).text(`Status: ${sale.payment_status}`);
-        doc.moveDown();
+        // Payment Details
+        doc.fontSize(10).font('Helvetica-Bold').text('Payment Details');
+        doc.moveDown(0.3);
+        doc.fontSize(9).font('Helvetica');
+        printRow('Total Amount:', `Rs. ${parseFloat(sale.total_amount).toFixed(2)}`);
+        doc.moveDown(0.2);
+        printRow('Amount Paid:', `Rs. ${parseFloat(sale.amount_paid).toFixed(2)}`);
+        doc.moveDown(0.2);
+        printRow('Balance:', `Rs. ${parseFloat(sale.balance_amount).toFixed(2)}`);
+        doc.moveDown(0.2);
+        printRow('Status:', sale.payment_status);
+        drawLine();
 
+        // Payment History
         if (payments.length > 0) {
-            doc.fontSize(10).text('Payment History', { underline: true });
+            doc.fontSize(10).font('Helvetica-Bold').text('Payment History');
+            doc.moveDown(0.3);
+            doc.fontSize(8).font('Helvetica');
             payments.forEach(p => {
                 const d = new Date(p.payment_date).toLocaleDateString('en-IN');
-                doc.fontSize(8).text(`Rs. ${parseFloat(p.amount).toFixed(2)} via ${p.payment_mode} on ${d}`);
+                doc.text(`Rs. ${parseFloat(p.amount).toFixed(2)} via ${p.payment_mode} on ${d}`);
+                doc.moveDown(0.2);
             });
+            drawLine();
         }
 
+        doc.fontSize(9).text(`Processed By: ${sale.created_by || 'N/A'}`, { align: 'center' });
         doc.moveDown();
-        doc.fontSize(8).text('Thank you!', { align: 'center' });
+        doc.fontSize(10).font('Helvetica-Bold').text('Thank you!', { align: 'center' });
         doc.end();
     } catch (err) {
         res.status(500).send('Error generating receipt.');
