@@ -44,58 +44,62 @@ export default function ReturnModal({ returnInfo, onClose, onSaved }) {
                     <h2>↩ Process Return</h2>
                     <button className="close-button" onClick={onClose}>×</button>
                 </div>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', maxHeight: '75vh' }}>
                     {error && <div className="error-message">{error}</div>}
-                    <div className="summary-card">
-                        <p><strong>Accessory:</strong> {accessory_name}</p>
-                        <p><strong>Customer:</strong> {customer_name}</p>
-                        <p style={{ margin: 0 }}><strong>Source:</strong> {source_type === 'standalone' ? 'Walk-in Sale' : 'Court Booking'} #{source_id}</p>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div className="form-group">
-                            <label>Qty Returning (max {max_qty}) *</label>
-                            <input type="number" min="1" max={max_qty} required
-                                value={form.quantity_returned} onChange={e => set('quantity_returned', e.target.value)} />
+                    
+                    <div className="modal-body" style={{ overflowY: 'auto', paddingRight: '4px', flex: 1 }}>
+                        <div className="summary-card">
+                            <p><strong>Accessory:</strong> {accessory_name}</p>
+                            <p><strong>Customer:</strong> {customer_name}</p>
+                            <p style={{ margin: 0 }}><strong>Source:</strong> {source_type === 'standalone' ? 'Walk-in Sale' : 'Court Booking'} #{source_id}</p>
                         </div>
-                        <div className="form-group">
-                            <label>Item Condition *</label>
-                            <select value={form.item_condition} onChange={e => set('item_condition', e.target.value)}>
-                                <option value="good">✅ Good — Back to stock</option>
-                                <option value="damaged">⚠️ Damaged — Charge customer</option>
-                                <option value="discarded">🗑 Discarded — Worn out</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {form.item_condition === 'good' && <div className="message success">✅ Item will be returned to available stock.</div>}
-                    {form.item_condition === 'damaged' && <div className="message error">⚠️ Item will be marked discarded. A damage charge payment will be recorded.</div>}
-                    {form.item_condition === 'discarded' && <div className="message error">🗑 Item is worn out and permanently removed from usable stock.</div>}
-
-                    {showDamage && (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div className="form-group">
-                                <label>Damage Charge (₹)</label>
-                                <input type="number" min="0" step="0.01"
-                                    value={form.damage_charge} onChange={e => set('damage_charge', e.target.value)} placeholder="0.00" />
-                                <small style={{ color: 'var(--color-text-muted)' }}>A separate payment record will be created.</small>
+                                <label>Qty Returning (max {max_qty}) *</label>
+                                <input type="number" min="1" max={max_qty} required
+                                    value={form.quantity_returned} onChange={e => set('quantity_returned', e.target.value)} />
                             </div>
                             <div className="form-group">
-                                <label>Payment Mode</label>
-                                <select value={form.damage_payment_mode} onChange={e => set('damage_payment_mode', e.target.value)}>
-                                    <option value="cash">Cash</option>
-                                    <option value="online">Online</option>
-                                    <option value="card">Card</option>
+                                <label>Item Condition *</label>
+                                <select value={form.item_condition} onChange={e => set('item_condition', e.target.value)}>
+                                    <option value="good">✅ Good — Back to stock</option>
+                                    <option value="damaged">⚠️ Damaged — Charge customer</option>
+                                    <option value="discarded">🗑 Discarded — Worn out</option>
                                 </select>
                             </div>
                         </div>
-                    )}
 
-                    <div className="form-group">
-                        <label>Notes</label>
-                        <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
-                            placeholder="Any remarks about the return condition..." />
+                        {form.item_condition === 'good' && <div className="message success">✅ Item will be returned to available stock.</div>}
+                        {form.item_condition === 'damaged' && <div className="message error">⚠️ Item will be marked discarded. A damage charge payment will be recorded.</div>}
+                        {form.item_condition === 'discarded' && <div className="message error">🗑 Item is worn out and permanently removed from usable stock.</div>}
+
+                        {showDamage && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="form-group">
+                                    <label>Damage Charge (₹)</label>
+                                    <input type="number" min="0" step="0.01"
+                                        value={form.damage_charge} onChange={e => set('damage_charge', e.target.value)} placeholder="0.00" />
+                                    <small style={{ color: 'var(--color-text-muted)' }}>A separate payment record will be created.</small>
+                                </div>
+                                <div className="form-group">
+                                    <label>Payment Mode</label>
+                                    <select value={form.damage_payment_mode} onChange={e => set('damage_payment_mode', e.target.value)}>
+                                        <option value="cash">Cash</option>
+                                        <option value="online">Online</option>
+                                        <option value="card">Card</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="form-group">
+                            <label>Notes</label>
+                            <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+                                placeholder="Any remarks about the return condition..." />
+                        </div>
                     </div>
-                    <div className="modal-footer">
+
+                    <div className="modal-footer" style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-base)', borderTop: '1px solid var(--color-border-light)' }}>
                         <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>Cancel</button>
                         <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
                             {saving ? 'Processing…' : '↩ Confirm Return'}

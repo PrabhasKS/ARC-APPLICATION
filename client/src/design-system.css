@@ -290,13 +290,15 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.45);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     overflow-y: auto;
-    padding: 40px 0;
-    z-index: 1000;
+    padding: 20px 0;
+    z-index: 1050;
+    /* This ensures children can scroll the overlay */
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-content {
@@ -304,11 +306,11 @@ body {
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-xl);
     width: 90%;
-    max-width: 560px;
     padding: var(--space-xl);
-    margin: auto;
-    max-height: 90vh;
-    overflow-y: auto;
+    margin: 20px auto;
+    position: relative;
+    max-width: 560px;
+    flex-shrink: 0; /* Prevents modal from collapsing */
     animation: dsSlideIn 0.3s ease-out;
 }
 
