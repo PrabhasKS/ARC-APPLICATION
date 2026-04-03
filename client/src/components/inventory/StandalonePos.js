@@ -322,7 +322,6 @@ export default function StandalonePos() {
                                         <td>
                                             <div style={{ display: 'flex', gap: 6 }}>
                                                 <button className="btn btn-secondary btn-sm" onClick={() => setDetailModal(s.id)}>View</button>
-                                                <button className="btn btn-secondary btn-sm" onClick={() => window.open(getSaleReceiptUrl(s.id), '_blank')}>🖨</button>
                                             </div>
                                         </td>
                                     </tr>
