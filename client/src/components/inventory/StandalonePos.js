@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAccessories, createStandaloneSale, getStandaloneSales, getSaleReceiptUrl } from './inventoryApi';
+import { getAccessories, createStandaloneSale, getStandaloneSales } from './inventoryApi';
 import StandaloneSaleDetailModal from './StandaloneSaleDetailModal';
 import StandaloneReceiptModal from './StandaloneReceiptModal';
 /* ── Accessory card ──────────────────────────────────── */

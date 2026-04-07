@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    getAccessories, getAnalyticsSummary, getStandaloneRevenue,
-    getBookingRevenue, getRevenueByAccessory, getRentalVsSale, getStockAlerts
-} from './inventoryApi';
+import { getAccessories } from './inventoryApi';
 import AddEditAccessoryModal from './AddEditAccessoryModal';
 import RestockModal from './RestockModal';
 import DiscardModal from './DiscardModal';

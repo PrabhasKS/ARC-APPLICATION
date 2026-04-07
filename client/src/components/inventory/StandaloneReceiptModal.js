@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'react-qr-code';
-import { getStandaloneSale, getSaleReceiptUrl } from './inventoryApi';
+import { getStandaloneSale } from './inventoryApi';
 import '../ReceiptModal.css';
 
 export default function StandaloneReceiptModal({ saleId, onClose }) {

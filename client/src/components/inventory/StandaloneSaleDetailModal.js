@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getStandaloneSale, addSalePayment, getSaleReceiptUrl } from './inventoryApi';
+import { getStandaloneSale, addSalePayment } from './inventoryApi';
 import StandaloneReceiptModal from './StandaloneReceiptModal';
 
 export default function StandaloneSaleDetailModal({ saleId, onClose }) {
