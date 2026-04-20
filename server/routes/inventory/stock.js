@@ -267,12 +267,21 @@ router.get('/stock-log', authenticateToken, isAdmin, async (req, res) => {
         );
 
         const [rows] = await db.query(
-            `SELECT l.*, a.name as accessory_name, u.username as performed_by
-             FROM inventory_stock_log l
-             JOIN accessories a ON l.accessory_id = a.id
-             LEFT JOIN users u ON l.performed_by_user_id = u.id
-             ${whereStr}
-             ORDER BY l.created_at DESC
+            `SELECT sub.* FROM (
+                SELECT l.*, a.name as accessory_name, u.username as performed_by,
+                    a.available_quantity - COALESCE(
+                        SUM(l.quantity_change) OVER (
+                            PARTITION BY l.accessory_id 
+                            ORDER BY l.created_at DESC 
+                            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                        ), 0
+                    ) as stock_after
+                FROM inventory_stock_log l
+                JOIN accessories a ON l.accessory_id = a.id
+                LEFT JOIN users u ON l.performed_by_user_id = u.id
+                ${whereStr}
+                ORDER BY l.created_at DESC
+             ) sub
              LIMIT ? OFFSET ?`,
             [...params, parseInt(limit, 10), parseInt(offset, 10)]
         );
