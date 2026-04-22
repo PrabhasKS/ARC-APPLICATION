@@ -165,8 +165,8 @@ export default function StockManagement() {
                                 <th>Name</th>
                                 <th>Type</th>
                                 <th>Price / Rate</th>
-                                <th>Total Stock</th>
-                                <th>Available</th>
+                                <th>Initial Stock</th>
+                                <th>Available Stock</th>
                                 <th>Discarded</th>
                                 <th>Threshold</th>
                                 <th>Status</th>
@@ -179,10 +179,23 @@ export default function StockManagement() {
                                     <td style={{ fontWeight: 600 }}>{acc.name}</td>
                                     <td><TypeBadge type={acc.type} /></td>
                                     <td>
-                                        {acc.rental_pricing_type === 'hourly'
-                                            ? <span>₹{acc.hourly_rate}<span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>/hr</span></span>
-                                            : <span>₹{parseFloat(acc.price || 0).toFixed(2)}</span>}
-                                    </td>
+    {acc.type === 'for_sale' && (
+        <span>₹{parseFloat(acc.price || 0).toFixed(2)}</span>
+    )}
+
+    {acc.type === 'for_rental' && (
+        acc.rental_pricing_type === 'hourly'
+            ? <span>₹{acc.rent_price}/hr</span>
+            : <span>₹{acc.rent_price}</span>
+    )}
+
+    {acc.type === 'both' && (
+        <span>
+            ₹{parseFloat(acc.price || 0).toFixed(2)} | ₹{acc.rent_price}
+            {acc.rental_pricing_type === 'hourly' ? '/hr' : ''}
+        </span>
+    )}
+</td>
                                     <td>{acc.stock_quantity}</td>
                                     <td>
                                         <StockBar available={acc.available_quantity} total={acc.stock_quantity} threshold={acc.reorder_threshold ?? 5} />
@@ -229,9 +242,12 @@ export default function StockManagement() {
             )}
 
             {addEditModal.open && (
-                <AddEditAccessoryModal accessory={addEditModal.accessory}
+                <AddEditAccessoryModal
+                    accessory={addEditModal.accessory}
+                    accessories={accessories.filter(a => !a.is_deleted)} // ✅ fix
                     onClose={() => setAddEditModal({ open: false, accessory: null })}
-                    onSaved={fetchAccessories} />
+                    onSaved={fetchAccessories}
+                />
             )}
             {restockModal.open && (
                 <RestockModal accessory={restockModal.accessory}

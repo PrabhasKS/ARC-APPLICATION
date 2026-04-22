@@ -245,9 +245,28 @@ export default function StandalonePos() {
                                     <input className="cart-form-input" value={customer.name} onChange={e => setCustomer(c => ({ ...c, name: e.target.value }))} placeholder="Walk-in customer name" />
                                 </div>
                                 <div className="cart-form-group">
-                                    <label className="cart-form-label">Contact *</label>
-                                    <input className="cart-form-input" value={customer.contact} onChange={e => setCustomer(c => ({ ...c, contact: e.target.value }))} placeholder="Phone number" />
-                                </div>
+  <label className="cart-form-label">Contact *</label>
+  <input
+    className="cart-form-input"
+    value={customer.contact}
+    onChange={e => {
+      const value = e.target.value;
+
+      // Allow only digits and limit to 10 characters
+      if (/^\d{0,10}$/.test(value)) {
+        setCustomer(c => ({ ...c, contact: value }));
+      }
+    }}
+    placeholder="Phone number"
+    maxLength={10}
+  />
+  
+  {customer.contact && customer.contact.length !== 10 && (
+    <small style={{ color: 'red' }}>
+      Enter a valid 10-digit number
+    </small>
+  )}
+</div>
                                 <div className="cart-form-row">
                                     <div className="cart-form-group">
                                         <label className="cart-form-label">Date</label>

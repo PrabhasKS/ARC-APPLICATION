@@ -32,3 +32,6 @@ export const getBookingRevenue = (params) => api.get('/inventory/analytics/booki
 export const getRevenueByAccessory = (params) => api.get('/inventory/analytics/revenue-by-accessory', { params });
 export const getRentalVsSale = (params) => api.get('/inventory/analytics/rental-vs-sale', { params });
 export const getStockAlerts = () => api.get('/inventory/analytics/stock-alerts');
+
+// Activity Log
+export const getStockLog = (params) => api.get('/inventory/accessories/stock-log', { params });
