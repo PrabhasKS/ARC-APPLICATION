@@ -190,7 +190,7 @@ router.post('/', authenticateToken, async (req, res) => {
                     (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
                  VALUES (?, ?, ?, 'standalone_sale', ?, ?, ?)`,
                 [item.accessory_id, changeType, -item.quantity,
-                 saleId, `${changeType} via standalone sale #${saleId}`, req.user.id]
+                    saleId, `${changeType} via standalone sale #${saleId}`, req.user.id]
             );
         }
 

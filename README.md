@@ -1,6 +1,6 @@
 # 🌟 ARC APPLICATION - COMPLETE ANALYSIS
 
-A **production-ready full-stack sports facility booking system** with membership management, real-time updates, and comprehensive admin controls. Built with React, Node.js/Express, and MySQL.
+A **production-ready full-stack sports facility booking system** with membership management, real-time updates, comprehensive inventory tracking, and full admin controls. Built with React, Node.js/Express, and MySQL.
 
 ---
 
@@ -13,11 +13,38 @@ A **production-ready full-stack sports facility booking system** with membership
 ✅ **Payment Processing** – Partial/full payments with multiple payment modes (cash/online)
 ✅ **Membership System** – Team-based subscriptions with renewal & termination
 ✅ **Attendance Tracking** – Daily member check-in with leave management
+✅ **Inventory & POS** – Standalone sales/rentals, stock tracking, damage handling, and audit logs
 ✅ **Real-Time Updates** – SSE (Server-Sent Events) for live notifications
-✅ **Analytics & Reports** – Heatmaps, booking trends, revenue analytics
-✅ **PDF Generation** – Automated receipts and reports
-✅ **Admin Panel** – User management, court status control, system configuration
+✅ **Analytics & Reports** – Heatmaps, booking trends, revenue, and inventory analytics
+✅ **PDF Generation** – Automated receipts and reports for bookings, memberships, and standalone sales
 ✅ **Facility Holidays** – Closure date management for maintenance & events
+
+---
+
+## 🎨 **FRONTEND DESIGN SYSTEM**
+
+The application uses a centralized design system implemented via CSS Variables (`design-system.css`), ensuring absolute consistency across all modules.
+
+### **Color Palette**
+- **Primary Brand**: `#1B3A6B` to `#2E5A99` (Navy Blue Gradient - used for headers and primary CTAs)
+- **Accent/Danger**: `#C0392B` to `#E74C3C` (Red Gradient - used for destructive actions)
+- **Background**: A subtle, fixed gradient `linear-gradient(to bottom, #F2D4D6, #FAFAFA, #D6E4F0)`
+- **Semantic Colors**: 
+  - Success: `#1E8449` (Text), `#D5F5E3` (Bg)
+  - Warning: `#D4AC0D` (Text), `#FEF9E7` (Bg)
+  - Info: `#2E86C1` (Text), `#D6EAF8` (Bg)
+
+### **Typography & Spacing**
+- **Font Family**: `Inter`, sans-serif
+- **Scale**: `12px` (xs) up to `36px` (4xl)
+- **Border Radius**: Highly rounded elements (`--radius-base: 8px`, `--radius-xl: 16px`, `--radius-full: 9999px`)
+
+### **Core UI Components**
+- **Buttons (`.btn`)**: Distinct classes for `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-success`. Includes hover translation `translateY(-1px)` and glow shadows.
+- **Modals**: Centered `.modal-content` with an animated slide-in entrance (`@keyframes dsSlideIn`).
+- **Forms**: Standardized `.form-group` with floating focus states (`box-shadow: 0 0 0 3px var(--color-primary-glow)`).
+- **Cards**: `.summary-card` for highlighted info (e.g., total prices) with a thick left accent border.
+- **Feedback**: `.notification-popup` with slide-in/fade-out animations and inline `.message` alerts.
 
 ---
 
@@ -30,10 +57,8 @@ A **production-ready full-stack sports facility booking system** with membership
 - **Authentication**: JWT (jsonwebtoken v9.0.2) + Bcrypt v6.0.0
 - **Real-Time**: SSE (Server-Sent Events) for live updates
 - **Scheduling**: Node-cron v4.2.1 (automated tasks)
-- **SMS/Notifications**: Twilio v5.8.2
 - **PDF Generation**: PDFKit v0.17.2
 - **Data Export**: json2csv v6.0.0-alpha.2
-- **Dev Tool**: Nodemon v3.1.10
 
 ### **Frontend**
 - **Library**: React v19.1.1
@@ -42,595 +67,209 @@ A **production-ready full-stack sports facility booking system** with membership
 - **Charts**: Chart.js v4.5.0 + react-chartjs-2
 - **Date Handling**: date-fns v4.1.0
 - **QR Code**: react-qr-code v2.0.18
-- **JWT Decode**: jwt-decode v4.0.0
-- **Testing**: Jest + React Testing Library
-- **Styling**: CSS
 
-### **Database**: MySQL 5.7+ (14 tables)
+### **Database**: MySQL 5.7+ (20 tables)
 
 ---
 
-## � **DATABASE DESIGN - ER DIAGRAM (14 TABLES)**
+## 🗄️ **DATABASE DESIGN (20 TABLES)**
 
-### **Core Booking Tables (6)**
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│    users     │────▶│   bookings   │◀────│   courts     │
-├──────────────┤     ├──────────────┤     ├──────────────┤
-│ id (PK)      │     │ id (PK)      │     │ id (PK)      │
-│ username (U) │     │ court_id (FK)│     │ sport_id(FK) │
-│ password     │     │ sport_id (FK)│     │ name         │
-│ role         │     │ created_by   │     │ status       │
-└──────────────┘     │ customer_*   │     └──────────────┘
-                     │ date         │
-                     │ time_slot    │     ┌──────────────┐
-                     │ status       │────▶│ accessories  │
-                     │ payment_*    │     ├──────────────┤
-                     │ discount_*   │     │ id (PK)      │
-                     │ is_reschedule│     │ name         │
-                     └──────┬───────┘     │ price        │
-                            │             └──────────────┘
-                     ┌──────▼──────────────┐
-                     │booking_accessories  │
-                     ├─────────────────────┤
-                     │ id (PK)             │
-                     │ booking_id (FK)     │
-                     │ accessory_id (FK)   │
-                     │ quantity            │
-                     │ price_at_booking    │
-                     └─────────────────────┘
-```
+### **Core Booking Tables**
+- `users` (id, username, password, role)
+- `sports` (id, name, price, capacity)
+- `courts` (id, sport_id, name, status)
+- `bookings` (id, court_id, date, time_slot, payment_*, status)
+- `booking_accessories` (booking_id, accessory_id, transaction_type, quantity)
 
-### **Membership Tables (7)**
-```
-┌─────────────────┐     ┌─────────────────────┐
-│ members         │────▶│ active_memberships  │
-├─────────────────┤     ├─────────────────────┤
-│ id (PK)         │     │ id (PK)             │
-│ full_name       │     │ package_id (FK)     │
-│ phone_number(U) │     │ court_id (FK)       │
-│ email           │     │ start_date          │
-│ notes           │     │ original_end_date   │
-└────────┬────────┘     │ current_end_date    │
-         │              │ time_slot           │
-         │              │ final_price         │
-         │              │ amount_paid         │
-         │              │ balance_amount      │
-         │              │ payment_status      │
-         │              │ status              │
-         │              │ created_by_user_id  │
-         │              └──────┬──────────────┘
-         │                     │
-    ┌────▼──────────────┐      │  ┌────────────────────┐
-    │ membership_team   │      │  │membership_packages │
-    ├───────────────────┤      │  ├────────────────────┤
-    │ membership_id(FK) │      │  │ id (PK)            │
-    │ member_id(FK)     │      │  │ name               │
-    └───────────────────┘      │  │ sport_id (FK)      │
-                               │  │ duration_days      |
-                                  | per_person_price   |
-                                  | max_team_size      |
-                                  └────────────────────┘
+### **Membership Tables**
+- `members` (id, full_name, phone_number)
+- `membership_packages` (id, name, duration_days, per_person_price)
+- `active_memberships` (id, package_id, start_date, end_date)
+- `membership_team` (membership_id, member_id)
+- `membership_leave` (id, membership_id, leave_days, status)
+- `team_attendance` (id, membership_id, attendance_date)
+- `facility_holidays` (id, holiday_date, reason)
 
-                     ┌─────────▼──────────────┐ 
-                     │ membership_leave       │ 
-                     ├────────────────────────┤
-                     │ id (PK)                │
-                     │ membership_id (FK)     │
-                     │ leave_days             │
-                     │ reason                 │
-                     │ status                 │
-                     │ compensation_applied   │
-                     │ start_date             │
-                     │ end_date               │
-                     │ approved_by_user_id(FK)│
-                     └────────────────────────┘
+### **Inventory & POS Tables (NEW)**
+- `accessories` (id, name, price, rent_price, type [for_sale/for_rental/both], stock_quantity)
+- `standalone_sales` (id, customer_name, total_amount, payment_status)
+- `standalone_sale_items` (sale_id, accessory_id, transaction_type, quantity, price_at_sale)
+- `rental_returns` (id, source_type, source_id, accessory_id, item_condition)
+- `inventory_stock_log` (id, accessory_id, change_type [sold, restock, discarded], quantity_change)
 
-    ┌──────────────────────────┐
-    │ team_attendance          │
-    ├──────────────────────────┤
-    │ id (PK)                  │
-    │ membership_id (FK)       │
-    │ attendance_date          │
-    │ marked_by_user_id (FK)   │
-    │ created_at               │
-    └──────────────────────────┘
-
-    ┌──────────────────────────┐
-    │ facility_holidays        │
-    ├──────────────────────────┤
-    │ id (PK)                  │
-    │ holiday_date (UNIQUE)    │
-    │ reason                   │
-    └──────────────────────────┘
-```
-
-### **Payment & Sports Tables**
-```
-┌──────────────┐     ┌──────────────────┐
-│   sports     │────▶│   payments       │
-├──────────────┤     ├──────────────────┤
-│ id (PK)      │     │ id (PK)          │
-│ name         │     │ booking_id (FK)  │
-│ price        │     │ membership_id(FK)│
-│ capacity     │     │ amount           │
-└──────────────┘     │ payment_mode     │
-                     │ payment_date     │
-                     │ payment_id       │
-                     │ created_by_user  │
-                     └──────────────────┘
-```
-
-### **Table Descriptions**
-
-| Table | Purpose | Key Fields |
-|-------|---------|-----------|
-| **users** | Authentication & authorization | id, username, password, role |
-| **sports** | Sport types (Badminton, Turf, etc.) | id, name, price, capacity |
-| **courts** | Individual courts/facilities | id, sport_id, name, status |
-| **bookings** | Daily court bookings | id, court_id, date, time_slot, customer_*, payment_* |
-| **booking_accessories** | Equipment/accessories for bookings | booking_id, accessory_id, quantity, price_at_booking |
-| **accessories** | Available equipment | id, name, price |
-| **members** | Individual team members | id, full_name, phone_number, email |
-| **membership_packages** | Subscription plan templates | id, name, sport_id, duration_days, per_person_price |
-| **active_memberships** | Active team subscriptions | id, package_id, court_id, dates, payment_*, status |
-| **membership_team** | Links members to memberships | membership_id, member_id (composite PK) |
-| **membership_leave** | Emergency/leave requests | id, membership_id, leave_days, status, compensation |
-| **team_attendance** | Daily member attendance | id, membership_id, attendance_date, marked_by |
-| **facility_holidays** | Closure dates | id, holiday_date, reason |
-| **payments** | Payment transactions | id, booking_id OR membership_id, amount, payment_mode |
+### **Shared Financial Tables**
+- `payments` (id, booking_id, membership_id, standalone_sale_id, amount, payment_mode)
 
 ---
 
-## � **API ENDPOINTS (40+)**
+## 🌐 **API ENDPOINTS (50+)**
 
-### **Authentication**
+### **Inventory & POS (NEW)**
+```http
+GET    /api/inventory/accessories            → List all accessories with stock counts
+POST   /api/inventory/accessories            → Add new accessory
+POST   /api/inventory/accessories/:id/restock→ Update stock quantity (Logs to audit)
+POST   /api/inventory/accessories/:id/discard→ Mark items as damaged/discarded
+GET    /api/inventory/standalone-sales       → List all walk-in POS sales
+POST   /api/inventory/standalone-sales       → Create walk-in sale/rental transaction
+POST   /api/inventory/standalone-sales/:id/payment → Process balance payment
+GET    /api/inventory/returns/pending        → List all unreturned rented items
+POST   /api/inventory/returns                → Process item return (with optional damage fee)
+GET    /api/inventory/analytics/summary      → Get core stock and revenue KPIs
+GET    /api/inventory/accessories/stock-log  → Complete audit trail of inventory movement
 ```
+
+### **Bookings & Core**
+```http
 POST   /api/login                           → User login & JWT generation
-```
-
-### **User Management (Admin Only)**
-```
-POST   /api/admin/users                     → Create new user
-GET    /api/admin/users                     → List all users
-DELETE /api/admin/users/:id                 → Delete user
-```
-
-### **Sports & Courts**
-```
-GET    /api/sports                          → List all sports
 GET    /api/courts                          → List all courts with details
-GET    /api/courts/availability             → Check court availability (date/time)
-PUT    /api/courts/:id/status               → Update court status
-```
-
-### **Booking Management - Retrieve**
-```
-GET    /api/events                          → SSE stream for real-time updates
-GET    /api/bookings                        → Get bookings for specific date
 GET    /api/bookings/all                    → List all bookings (paginated, filterable)
-GET    /api/bookings/active                 → Get active bookings
-GET    /api/booking/:id/receipt.pdf         → Download booking receipt (PDF)
-GET    /api/availability/heatmap            → Availability heatmap analytics
-```
-
-### **Booking Management - Create & Modify**
-```
 POST   /api/bookings                        → Create new booking
 POST   /api/bookings/calculate-price        → Calculate booking price
-PUT    /api/bookings/:id                    → Update booking
 PUT    /api/bookings/:id/payment            → Process payment
-POST   /api/bookings/:id/payments           → Record partial/full payments
 POST   /api/bookings/:id/extend             → Extend booking duration
-PUT    /api/bookings/:id/cancel             → Cancel booking (Admin only)
 ```
 
-### **Membership Packages (Admin)**
-```
+### **Memberships**
+```http
 GET    /api/memberships/packages            → List all packages
-GET    /api/memberships/packages/:id        → Get specific package
-POST   /api/memberships/packages            → Create package
-PUT    /api/memberships/packages/:id        → Update package
-DELETE /api/memberships/packages/:id        → Delete package
-```
-
-### **Members Management**
-```
-POST   /api/memberships/members             → Create new member
-GET    /api/memberships/members             → Search/list members
-PUT    /api/memberships/members/:id         → Update member
-DELETE /api/memberships/members/:id         → Delete member
-```
-
-### **Membership Subscriptions**
-```
-POST   /api/memberships/check-clash         → Check time slot conflicts
 POST   /api/memberships/subscribe           → Create new membership
 GET    /api/memberships/active              → Get active memberships
-GET    /api/memberships/ended               → Get expired memberships
-GET    /api/memberships/terminated          → Get terminated memberships
-DELETE /api/memberships/active/:id          → Delete membership
 PUT    /api/memberships/active/:id/renew    → Renew membership
-PUT    /api/memberships/active/:id/manage-members → Update team members
-POST   /api/memberships/active/:id/add-member    → Add member to team
-PUT    /api/memberships/ended/:id/terminate     → Terminate membership
-POST   /api/memberships/active/:id/payments     → Record membership payment
-GET    /api/memberships/:id/receipt.pdf    → Download membership receipt
-```
-
-### **Attendance & Leave Management**
-```
 POST   /api/memberships/team-attendance     → Mark attendance
-GET    /api/memberships/team-attendance     → Get attendance records
-GET    /api/memberships/active/:id/attendance-history → Team history
-POST   /api/memberships/request-leave       → Request leave
-PUT    /api/memberships/leave-requests/:id  → Update leave request
-POST   /api/memberships/grant-leave         → Approve leave request
-GET    /api/memberships/leave-requests      → List leave requests
-GET    /api/memberships/on-leave            → Get members on leave
-GET    /api/memberships/active/:id/leave-history    → Leave history
-```
-
-### **Facility Management**
-```
-GET    /api/memberships/holidays            → List facility holidays
-POST   /api/memberships/holidays            → Add holiday
-DELETE /api/memberships/holidays/:id        → Remove holiday
-```
-
-### **Details & Analytics**
-```
-GET    /api/memberships/:id/details         → Get membership full details
+POST   /api/memberships/grant-leave         → Request/Approve leave
 ```
 
 ---
 
-## � **FRONTEND COMPONENTS (30+)**
+## 🧩 **MODULES & FRONTEND COMPONENTS (40+)**
 
-### **Authentication & Layout**
-- `Login.js` - User login page with JWT
-- `Header.js` - Navigation bar & user info
+The frontend is neatly divided into specific operational modules:
 
-### **Core Pages**
-- `Dashboard.js` - Main dashboard (protected)
-- `Ledger.js` - Booking & transaction history
-- `Admin.js` - Admin panel (user & system management)
-- `Analytics.js` - Business analytics & reports
+### **1. Booking Module**
+- **Components**: `Dashboard.js`, `BookingForm.js`, `BookingList.js`, `EditBookingModal.js`, `AvailabilityHeatmap.js`
+- **Functionality**: Core daily operations. Heatmap integration for visualizing empty slots. Handles dynamic calculation of slot pricing and equipment addition.
 
-### **Booking Components**
-- `BookingForm.js` - Create new booking
-- `BookingList.js` - Display bookings
-- `ActiveBookings.js` - Show active bookings
-- `BookingDetailsModal.js` - Booking details modal
-- `EditBookingModal.js` - Edit booking modal
-- `ReceiptModal.js` - Receipt display
-- `AvailabilityHeatmap.js` - Court availability heatmap
-- `CourtActions.js` - Court action buttons
-- `CourtStatusControl.js` - Update court status
-- `DashboardCourtStatusToggle.js` - Court toggle widget
+### **2. Membership Module**
+- **Components**: `MembershipDashboard.js`, `ActiveMembershipsMgt.js`, `NewSubscription.js`, `LeaveRequests.js`, `HolidayMgt.js`
+- **Functionality**: Long-term team subscriptions. Handles complex date logic, automated attendance scaling, leave compensations, and recurring payments.
 
-### **Membership Components**
-- `MembershipDashboard.js` - Membership hub
-- `MembershipView.js` - View membership details
-- `NewSubscription.js` - Create new membership
-- `ActiveMembershipsMgt.js` - Manage active memberships
-- `PackageMgt.js` - Manage packages
-- `PackageEditModal.js` - Edit package modal
-- `AddMemberModal.js` - Add member modal
-- `AddMembershipPaymentModal.js` - Record payment modal
-- `ManageActiveMembersModal.js` - Manage team modal
-- `AddTeamMemberModal.js` - Add team member modal
-- `RenewModal.js` - Renewal form modal
-- `RenewalConfirmationModal.js` - Renewal confirmation
-- `LeaveRequests.js` - Manage leave requests
-- `MarkLeaveModal.js` - Mark/approve leave modal
-- `AttendanceCalendarModal.js` - Attendance tracking
-- `HolidayMgt.js` - Facility holiday management
-- `MembershipReceiptModal.js` - Membership receipt modal
+### **3. Inventory & POS Module (NEW)**
+- **Components**: 
+  - `InventoryDashboard.js`: The central hub holding sub-tabs.
+  - `StandalonePos.js`: A specialized Point-of-Sale UI for walk-in customers buying/renting gear.
+  - `StockManagement.js`: Admin grid to restock or discard items, enforcing audit logging.
+  - `RentalReturns.js`: View pending rentals (from both Bookings and POS) and process returns.
+  - `InventoryAnalytics.js`: Charts breaking down revenue and stock alerts.
+- **Functionality**: Separates physical item sales from court bookings. Maintains a strict `inventory_stock_log` ledger for loss prevention.
 
-### **Analytics & UI**
-- `DeskAnalytics.js` - Desk-level analytics
-- `Pagination.js` - Pagination component
-- `ConfirmationModal.js` - Confirmation dialogs
+### **4. Ledger & Financial Module**
+- **Components**: `Ledger.js`, `ReceiptModal.js`, `MembershipReceiptModal.js`, `StandaloneReceiptModal.js`
+- **Functionality**: Unified view of all financial transactions across Bookings, Memberships, and Standalone Sales. Handles partial payment tracking.
+
+### **5. Analytics Module**
+- **Components**: `Analytics.js`, `DeskAnalytics.js`
+- **Functionality**: Chart.js integration showing revenue over time, popular court utilization, and staff performance metrics.
+
+### **6. Admin & Layout**
+- **Components**: `App.js` (Routing), `Header.js`, `Login.js`, `Admin.js`
+- **Functionality**: JWT interceptors, Protected Route wrappers, User credential management.
 
 ---
 
 ## 🏗️ **SYSTEM ARCHITECTURE**
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                      FRONTEND (React)                            │
-│  ├─ Components (Dashboard, Bookings, Memberships, Admin)         │
+│  ├─ Modules (Bookings, Memberships, Inventory, Ledger, Admin)    │
 │  ├─ Routing: React Router v7.8.2                                 │
 │  ├─ HTTP: Axios with JWT interceptors                            │
-│  └─ State: Component-level useState/useContext                   │
+│  └─ Design System: CSS Variables (design-system.css)             │
 └──────────────────────────────────────────────────────────────────┘
                               △
                               │ HTTP/REST + JWT + SSE
                               ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                 BACKEND (Node.js/Express)                        │
-│  ├─ Routes (Express Router)                                       │
-│  │  ├─ /api/login, /api/bookings/*                              │
-│  │  ├─ /api/courts/*, /api/sports/*                             │
-│  │  ├─ /api/admin/users                                          │
-│  │  └─ /api/memberships/* (subscriptions, leaves)                │
-│  ├─ Middleware (JWT Auth, RBAC, CORS)                            │
-│  ├─ Business Logic (availability, pricing, payments)             │
-│  └─ External Integrations (Twilio, PDFs, Payments)               │
+│  ├─ Routes (Express Router)                                      │
+│  │  ├─ /api/bookings, /api/memberships, /api/inventory           │
+│  ├─ Middleware (JWT Auth, RBAC, Rate Limiting)                   │
+│  ├─ Business Logic (Availability, Stock Ledgers, Leaves)         │
+│  └─ Utilities (PDF Generation, Event Streams)                    │
 └──────────────────────────────────────────────────────────────────┘
                               △
-                              │ MySQL Protocol
+                              │ MySQL2 Promise Pool
                               ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│              DATABASE (MySQL with Pooling)                       │
-│  Core: users, sports, courts, bookings, booking_accessories     │
-│  Memberships: members, packages, active_memberships, team,      │
-│  leave, attendance, holidays, payments                          │
+│              DATABASE (MySQL - 20 Tables)                        │
+│  Core: users, sports, courts, bookings                           │
+│  Memberships: packages, active_memberships, attendance           │
+│  Inventory: accessories, standalone_sales, stock_log             │
 └──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🔐 **AUTHENTICATION & AUTHORIZATION**
-
-### **Authentication Flow**
-1. User submits `username` + `password` → `POST /api/login`
-2. Backend verifies password using **Bcrypt**
-3. Backend generates **JWT token** with 7-day expiration
-4. Client stores token in **localStorage**
-5. Axios interceptor automatically includes token in `Authorization: Bearer <token>` header
-6. Token verified on every protected route
-
-### **Role-Based Access Control (RBAC)**
-```javascript
-Roles:
-├─ admin        → Full system access (users, settings, all operations)
-├─ desk         → Desk operations (bookings, memberships, staff management)
-└─ staff        → Limited access (view bookings, generate reports)
-
-Middleware Protection:
-├─ authenticateToken  → Validates JWT on all protected routes
-├─ isAdmin           → Restricts to admin role only
-└─ isPrivilegedUser  → Allows admin + desk roles
 ```
 
 ---
 
 ## 📈 **KEY WORKFLOWS**
 
-### **Booking Creation Flow**
-```
-1. User selects court, date, time, adds accessories
-2. Frontend calls POST /api/bookings/calculate-price
-3. Backend calculates: base_price + accessories - discount
-4. User confirms booking
-5. Frontend calls POST /api/bookings
-6. Backend checks availability (no overlaps)
-7. Backend inserts booking + payment record
-8. Backend broadcasts SSE update to all clients
-9. Frontend generates receipt & confirmation
-```
+### **1. Daily Walk-in Bookings Flow**
+1. **Court Selection**: User clicks on an available slot in the Dashboard Heatmap or selects a court/time in the BookingForm.
+2. **Dynamic Pricing**: The frontend sends the court, duration, and selected accessories to `POST /api/bookings/calculate-price`. The backend applies logic (like slot lengths and accessory costs) and returns the total.
+3. **Transaction**: The user provides customer details and payment (Partial or Full).
+4. **Validation & Creation**: `POST /api/bookings` verifies the slot hasn't been taken (preventing double-booking). The booking and a `payments` record are created within an atomic SQL transaction.
+5. **Real-time Broadcast**: The backend triggers an SSE event. All connected frontends instantly update the court status grid.
+6. **Receipt Generation**: The frontend can immediately fetch a PDF receipt generated by PDFKit on the backend.
 
-### **Membership Creation Flow**
-```
-1. Admin creates membership package with pricing
-2. Desk staff searches for/adds members
-3. Desk staff creates new subscription:
-   - Selects package, court, time slot
-   - Starts date & duration auto-calculated
-   - Team members assigned
-4. Backend validates time slot (no clashes)
-5. Backend calculates total price
-6. Payment recorded (partial or full)
-7. Team attendance tracking enabled
-```
+### **2. Membership Module Flow**
+1. **Package Setup**: Admin defines subscription templates (e.g., "1 Month Badminton") setting `duration_days` and `per_person_price`.
+2. **Team Assembly**: Desk staff selects a package, picks a dedicated court and time slot, and assigns registered `members` to the new `active_memberships` record.
+3. **Daily Attendance**: Members show up. Desk staff clicks "Mark Attendance". A record is added to `team_attendance` to track usage.
+4. **Leave Management**: If the team goes on vacation, they request leave. Desk staff approves it, which pauses their membership and automatically pushes their `current_end_date` forward by the approved days.
+5. **Renewal**: At the end of the term, staff hits Renew, carrying over the team and generating a new payment ledger while maintaining the history.
 
-### **Leave Management Flow**
-```
-1. Member requests leave (emergency/vacation)
-2. Request stored as PENDING
-3. Desk staff reviews & approves/rejects
-4. If approved: compensation applied, leave days tracked
-5. Member attendance skipped for leave dates
-6. Leaves counted toward renewal compensation
-```
-
----
-
-## 📦 **PREREQUISITES**
-
-- [Node.js](https://nodejs.org/) (v14+, includes npm)
-- [MySQL](https://www.mysql.com/downloads/) (v5.7+)
+### **3. Inventory & POS Flow**
+1. **Admin Setup**: Admin creates accessories setting `type` (`for_sale`, `for_rental`, or `both`) and logs initial `stock_quantity`.
+2. **Walk-in POS**: Desk staff uses the Standalone POS UI. If an item is `both`, the UI prompts the staff to select the specific transaction type (Rent vs Sale) to apply the correct pricing.
+3. **Transaction**: The sale records to `standalone_sales` and `standalone_sale_items`.
+4. **Stock Ledger**: The backend immediately inserts an immutable record into `inventory_stock_log` (e.g., `-1 rented_out`).
+5. **Rental Return**: When the customer returns the item, staff processes it via `RentalReturns.js`. The item is placed back in `available_quantity`, and a `returned` log is generated.
 
 ---
 
 ## 🚀 **SETUP INSTRUCTIONS**
 
-### **1️⃣ Clone Repository**
-```bash
-git clone <your-repository-url>
-cd ARC-APPLICATION
-```
-
-### **2️⃣ Backend Setup**
+### **1️⃣ Backend Setup**
 ```bash
 cd server
 npm install
 ```
-
 Create `.env` file:
 ```ini
 DB_HOST=localhost
-DB_USER=your_mysql_username
-DB_PASSWORD=your_mysql_password
-DB_NAME=sports_booking
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=arc
 DB_PORT=3306
 JWT_SECRET=your_secret_key_here
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
 PORT=5000
 ```
-
 Initialize database:
 ```bash
-mysql -u your_username -p < db.sql
-mysql -u your_username -p < migrations.sql
-mysql -u your_username -p < membership.sql
+mysql -u root -p < db.sql
+mysql -u root -p < membership.sql
+mysql -u root -p < inventory.sql
 ```
+Start server: `npm run dev`
 
-Start server:
-```bash
-npm start          # Production
-npm run dev        # Development (nodemon)
-```
-
-### **3️⃣ Frontend Setup**
+### **2️⃣ Frontend Setup**
 ```bash
 cd client
 npm install
-npm start          # Runs on http://localhost:3000
-npm run build      # Build for production
 ```
-
----
-
-## 📜 **ENVIRONMENT VARIABLES**
-
-### **Server (.env)**
-```ini
-# Database
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=password
-DB_NAME=sports_booking
-DB_PORT=3306
-
-# JWT
-JWT_SECRET=your_jwt_secret_key_min_32_chars
-
-# Twilio
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-
-# Server
-PORT=5000
-NODE_ENV=production
-```
-
-### **Client (.env)**
+Create `.env` file:
 ```ini
 REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_RECIEPT_URL=http://localhost:5000
 ```
-
----
-
-## 🎯 **PROJECT STRUCTURE**
-
-```
-ARC-APPLICATION/
-│
-├── client/                          # React Frontend
-│   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Login.js
-│   │   │   ├── Dashboard.js
-│   │   │   ├── BookingForm.js
-│   │   │   ├── memberships/          # Membership components
-│   │   │   └── ...
-│   │   ├── App.js
-│   │   ├── api.js                    # Axios client with JWT interceptor
-│   │   ├── App.css
-│   │   └── index.js
-│   ├── package.json
-│   └── README.md
-│
-├── server/                          # Node.js/Express Backend
-│   ├── routes/
-│   │   ├── api.js                   # Main booking API (2263 lines)
-│   │   └── memberships.js           # Membership API (1596 lines)
-│   ├── middleware/
-│   │   └── auth.js                  # JWT & role validation
-│   ├── database.js                  # MySQL pool connection
-│   ├── server.js                    # Express app entry point
-│   ├── sse.js                       # Server-Sent Events handler
-│   ├── db.sql                       # Core database schema
-│   ├── migrations.sql               # Payment table migration
-│   ├── membership.sql               # Membership schema (14 tables total)
-│   ├── package.json
-│   └── .env
-│
-├── README.md                        # This file
-├── POSTMAN_API_TESTING.md           # API testing guide
-└── .gitignore
-```
-
----
-
-## 📊 **DATABASE STATISTICS**
-
-- **Tables**: 14
-- **Total Records Type**: Bookings, Memberships, Payments, Attendance
-- **Key Relationships**: 20+ foreign keys
-- **Constraints**: UNIQUE, NOT NULL, CHECK, DEFAULT
-- **Indexes**: Auto on primary keys, compound unique on memberships
-
----
-
-## 🔧 **AVAILABLE SCRIPTS**
-
-### **Server**
-```bash
-npm start                     # Production mode
-npm run dev                   # Development with nodemon
-```
-
-### **Client**
-```bash
-npm start                     # Dev server (port 3000)
-npm test                      # Run tests
-npm run build                 # Production build
-npm run eject                 # Eject from Create React App
-```
-
----
-
-## ⚡ **PERFORMANCE FEATURES**
-
-- **Connection Pooling**: 10 max connections with queue management
-- **JWT Stateless Auth**: No server-side session storage
-- **Indexed Queries**: Fast lookups on commonly searched fields
-- **Real-time Updates**: SSE & Socket.io for instant notifications
-- **Pagination**: Large datasd (10-50 items/page)
-- **Caching**: localStorage for JWT & user data
-- **Lazy Loading**: Components load only when needed
-
----
-
-## 🤝 **CONTRIBUTING**
-
-1. Create a feature branch: `git checkout -b feature/YourFeature`
-2. Commit changes: `git commit -m 'Add feature'`
-3. Push to branch: `git push origin feature/YourFeature`
-4. Open a Pull Request
-
----
-
-## 📝 **LICENSE**
-
-This project is licensed under the **MIT License** - see the LICENSE file for details.
-
----
-
-## 📞 **SUPPORT**
-
-For issues, feature requests, or questions:
-1. Check existing GitHub issues
-2. Create a detailed issue with steps to reproduce
-3. Include your environment info (OS, Node version, MySQL version)
-
----
-
-**Last Updated**: February 25, 2026  
-**Version**: 1.0.0 Production
+Start frontend: `npm start`
