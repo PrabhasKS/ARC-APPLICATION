@@ -141,30 +141,26 @@ router.post('/', authenticateToken, async (req, res) => {
         );
         const returnId = returnResult.insertId;
 
+        const [[accInfo]] = await connection.query('SELECT type FROM accessories WHERE id = ? FOR UPDATE', [accessory_id]);
+        const isRentalPool = accInfo && accInfo.type === 'both';
+
         let changeType;
         if (item_condition === 'good') {
             // Item is back in usable stock
             changeType = 'returned';
-            await connection.query(
-                `UPDATE accessories SET available_quantity = available_quantity + ? WHERE id = ?`,
-                [qty, accessory_id]
-            );
-        } else if (item_condition === 'damaged') {
-            // Item removed from available stock but counted as damage_replace
-            changeType = 'damage_replace';
-            // available_quantity is NOT restored (item is not usable yet)
-            // stock_quantity decreases to reflect actual owned units
-            await connection.query(
-                `UPDATE accessories SET discarded_quantity = discarded_quantity + ? WHERE id = ?`,
-                [qty, accessory_id]
-            );
-        } else if (item_condition === 'discarded') {
-            // Item totally worn out
-            changeType = 'discarded';
-            await connection.query(
-                `UPDATE accessories SET discarded_quantity = discarded_quantity + ? WHERE id = ?`,
-                [qty, accessory_id]
-            );
+            if (isRentalPool) {
+                await connection.query(`UPDATE accessories SET rental_available_quantity = rental_available_quantity + ? WHERE id = ?`, [qty, accessory_id]);
+            } else {
+                await connection.query(`UPDATE accessories SET available_quantity = available_quantity + ? WHERE id = ?`, [qty, accessory_id]);
+            }
+        } else if (item_condition === 'damaged' || item_condition === 'discarded') {
+            // Item removed from available stock
+            changeType = item_condition === 'damaged' ? 'damage_replace' : 'discarded';
+            if (isRentalPool) {
+                await connection.query(`UPDATE accessories SET rental_discarded_quantity = rental_discarded_quantity + ? WHERE id = ?`, [qty, accessory_id]);
+            } else {
+                await connection.query(`UPDATE accessories SET discarded_quantity = discarded_quantity + ? WHERE id = ?`, [qty, accessory_id]);
+            }
         }
 
         // Stock log
