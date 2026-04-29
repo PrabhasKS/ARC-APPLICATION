@@ -697,12 +697,15 @@ router.post('/bookings', authenticateToken, async (req, res) => {
 
         if (accessories && accessories.length > 0) {
             for (const acc of accessories) {
-                const [[accessoryData]] = await connection.query('SELECT price, rent_price, rental_pricing_type, available_quantity FROM accessories WHERE id = ? FOR UPDATE', [acc.accessory_id]);
+                const [[accessoryData]] = await connection.query('SELECT type, price, rent_price, rental_pricing_type, available_quantity, rental_available_quantity FROM accessories WHERE id = ? FOR UPDATE', [acc.accessory_id]);
                 if (accessoryData) {
-                    if (accessoryData.available_quantity < acc.quantity) {
-                        throw new Error(`Not enough stock for accessory ID ${acc.accessory_id}. Only ${accessoryData.available_quantity} available.`);
-                    }
                     const txType = acc.transaction_type || 'sale';
+                    const isRentalPool = accessoryData.type === 'both' && txType === 'rental';
+                    const availableStock = isRentalPool ? accessoryData.rental_available_quantity : accessoryData.available_quantity;
+
+                    if (availableStock < acc.quantity) {
+                        throw new Error(`Not enough stock for accessory ID ${acc.accessory_id} in ${isRentalPool ? 'rental' : 'sale'} pool. Only ${availableStock} available.`);
+                    }
                     
                     let unitPrice = 0;
                     if (txType === 'rental') {
@@ -715,7 +718,11 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                     await connection.query('INSERT INTO booking_accessories (booking_id, accessory_id, quantity, price_at_booking, transaction_type) VALUES (?, ?, ?, ?, ?)', [bookingId, acc.accessory_id, acc.quantity, unitPrice, txType]);
                     
                     // Deduct stock
-                    await connection.query('UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?', [acc.quantity, acc.accessory_id]);
+                    if (isRentalPool) {
+                        await connection.query('UPDATE accessories SET rental_available_quantity = rental_available_quantity - ? WHERE id = ?', [acc.quantity, acc.accessory_id]);
+                    } else {
+                        await connection.query('UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?', [acc.quantity, acc.accessory_id]);
+                    }
                     
                     // Log
                     await connection.query(

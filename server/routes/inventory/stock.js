@@ -16,9 +16,12 @@ router.get('/', authenticateToken, async (req, res) => {
                 COALESCE(type, 'for_sale') as type,
                 COALESCE(rental_pricing_type, 'flat') as rental_pricing_type,
                 rent_price,
-                COALESCE(stock_quantity, 0) as stock_quantity,
+                COALESCE(total_purchased_quantity, 0) as total_purchased_quantity,
                 COALESCE(available_quantity, 0) as available_quantity,
                 COALESCE(discarded_quantity, 0) as discarded_quantity,
+                COALESCE(rental_total_purchased_quantity, 0) as rental_total_purchased_quantity,
+                COALESCE(rental_available_quantity, 0) as rental_available_quantity,
+                COALESCE(rental_discarded_quantity, 0) as rental_discarded_quantity,
                 COALESCE(reorder_threshold, 5) as reorder_threshold,
                 COALESCE(is_deleted, 0) as is_deleted
             FROM accessories
@@ -56,7 +59,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
         const [result] = await connection.query(
             `INSERT INTO accessories 
                 (name, price, type, rental_pricing_type, rent_price, 
-                 stock_quantity, available_quantity, discarded_quantity, reorder_threshold)
+                 total_purchased_quantity, available_quantity, discarded_quantity, reorder_threshold)
              VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
             [name, price, type,
              rental_pricing_type || 'flat',
@@ -138,7 +141,7 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/:id/restock', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
-    const { quantity, notes } = req.body;
+    const { quantity, notes, pool } = req.body;
     const qty = parseInt(quantity, 10);
 
     if (!qty || qty <= 0) {
@@ -151,20 +154,30 @@ router.post('/:id/restock', authenticateToken, isAdmin, async (req, res) => {
         await connection.beginTransaction();
 
         // Check accessory exists
-        const [[acc]] = await connection.query('SELECT id FROM accessories WHERE id = ?', [id]);
+        const [[acc]] = await connection.query('SELECT id, type FROM accessories WHERE id = ?', [id]);
         if (!acc) {
             await connection.rollback();
             return res.status(404).json({ message: 'Accessory not found.' });
         }
 
         // Update stock quantities
-        await connection.query(
-            `UPDATE accessories
-             SET stock_quantity = stock_quantity + ?,
-                 available_quantity = available_quantity + ?
-             WHERE id = ?`,
-            [qty, qty, id]
-        );
+        if (acc.type === 'both' && pool === 'rental') {
+            await connection.query(
+                `UPDATE accessories
+                 SET rental_total_purchased_quantity = rental_total_purchased_quantity + ?,
+                     rental_available_quantity = rental_available_quantity + ?
+                 WHERE id = ?`,
+                [qty, qty, id]
+            );
+        } else {
+            await connection.query(
+                `UPDATE accessories
+                 SET total_purchased_quantity = total_purchased_quantity + ?,
+                     available_quantity = available_quantity + ?
+                 WHERE id = ?`,
+                [qty, qty, id]
+            );
+        }
 
         // Log the restock
         await connection.query(
@@ -191,7 +204,7 @@ router.post('/:id/restock', authenticateToken, isAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/:id/discard', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
-    const { quantity, reason } = req.body;
+    const { quantity, reason, pool } = req.body;
     const qty = parseInt(quantity, 10);
 
     if (!qty || qty <= 0) {
@@ -204,26 +217,40 @@ router.post('/:id/discard', authenticateToken, isAdmin, async (req, res) => {
         await connection.beginTransaction();
 
         const [[acc]] = await connection.query(
-            'SELECT available_quantity FROM accessories WHERE id = ?', [id]
+            'SELECT type, available_quantity, rental_available_quantity FROM accessories WHERE id = ?', [id]
         );
         if (!acc) {
             await connection.rollback();
             return res.status(404).json({ message: 'Accessory not found.' });
         }
-        if (acc.available_quantity < qty) {
+        
+        const isRentalPool = acc.type === 'both' && pool === 'rental';
+        const available = isRentalPool ? acc.rental_available_quantity : acc.available_quantity;
+
+        if (available < qty) {
             await connection.rollback();
             return res.status(400).json({
-                message: `Only ${acc.available_quantity} unit(s) available to discard.`
+                message: `Only ${available} unit(s) available to discard.`
             });
         }
 
-        await connection.query(
-            `UPDATE accessories
-             SET available_quantity = available_quantity - ?,
-                 discarded_quantity = discarded_quantity + ?
-             WHERE id = ?`,
-            [qty, qty, id]
-        );
+        if (isRentalPool) {
+            await connection.query(
+                `UPDATE accessories
+                 SET rental_available_quantity = rental_available_quantity - ?,
+                     rental_discarded_quantity = rental_discarded_quantity + ?
+                 WHERE id = ?`,
+                [qty, qty, id]
+            );
+        } else {
+            await connection.query(
+                `UPDATE accessories
+                 SET available_quantity = available_quantity - ?,
+                     discarded_quantity = discarded_quantity + ?
+                 WHERE id = ?`,
+                [qty, qty, id]
+            );
+        }
 
         await connection.query(
             `INSERT INTO inventory_stock_log 

@@ -114,7 +114,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         for (const item of items) {
             const [[acc]] = await connection.query(
-                'SELECT id, name, price, type, rental_pricing_type, rent_price, available_quantity FROM accessories WHERE id = ?',
+                'SELECT id, name, price, type, rental_pricing_type, rent_price, available_quantity, rental_available_quantity FROM accessories WHERE id = ?',
                 [item.accessory_id]
             );
             if (!acc) {
@@ -123,12 +123,14 @@ router.post('/', authenticateToken, async (req, res) => {
             }
 
             const qty = parseInt(item.quantity || 1, 10);
+            const isRentalPool = acc.type === 'both' && item.transaction_type === 'rental';
+            const availableStock = isRentalPool ? acc.rental_available_quantity : acc.available_quantity;
 
             // Stock availability check
-            if (acc.available_quantity < qty) {
+            if (availableStock < qty) {
                 await connection.rollback();
                 return res.status(400).json({
-                    message: `Insufficient stock for "${acc.name}". Available: ${acc.available_quantity}, Requested: ${qty}`
+                    message: `Insufficient stock for "${acc.name}" in ${isRentalPool ? 'rental' : 'sale'} pool. Available: ${availableStock}, Requested: ${qty}`
                 });
             }
 
@@ -150,7 +152,8 @@ router.post('/', authenticateToken, async (req, res) => {
                 quantity: qty,
                 price_at_sale: unit_price,
                 rental_hours: item.rental_hours || null,
-                acc_name: acc.name
+                acc_name: acc.name,
+                acc_type: acc.type
             });
         }
 
@@ -177,11 +180,19 @@ router.post('/', authenticateToken, async (req, res) => {
                 [saleId, item.accessory_id, item.transaction_type, item.quantity, item.price_at_sale, item.rental_hours]
             );
 
-            // Deduct from available_quantity
-            await connection.query(
-                `UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?`,
-                [item.quantity, item.accessory_id]
-            );
+            // Deduct from appropriate quantity pool
+            const isRentalPoolUpdate = item.transaction_type === 'rental' && item.acc_type === 'both';
+            if (isRentalPoolUpdate) {
+                await connection.query(
+                    `UPDATE accessories SET rental_available_quantity = rental_available_quantity - ? WHERE id = ?`,
+                    [item.quantity, item.accessory_id]
+                );
+            } else {
+                await connection.query(
+                    `UPDATE accessories SET available_quantity = available_quantity - ? WHERE id = ?`,
+                    [item.quantity, item.accessory_id]
+                );
+            }
 
             // Stock log
             const changeType = item.transaction_type === 'rental' ? 'rented_out' : 'sold';

@@ -259,3 +259,24 @@ UPDATE accessories
   AND rental_pricing_type = 'flat' 
   AND rent_price IS NULL;
 -- =============================================================
+
+-- =============================================================
+-- PART 6: SEPARATE STOCK POOLS (SALE VS RENT)
+--         (Added to fix confusing stock calculation & enforce pools)
+-- =============================================================
+
+-- 6a. Rename stock_quantity to total_purchased_quantity (Sale/Default pool)
+ALTER TABLE accessories 
+  CHANGE stock_quantity total_purchased_quantity INT NOT NULL DEFAULT 0 COMMENT 'Total units ever purchased for this pool';
+
+-- 6b. Add specific columns for the Rental pool (Used heavily by 'both' items)
+ALTER TABLE accessories
+  ADD COLUMN rental_total_purchased_quantity INT NOT NULL DEFAULT 0 COMMENT 'Total units purchased specifically for rental',
+  ADD COLUMN rental_available_quantity INT NOT NULL DEFAULT 0 COMMENT 'Units currently available to rent',
+  ADD COLUMN rental_discarded_quantity INT NOT NULL DEFAULT 0 COMMENT 'Rental units worn out or destroyed';
+
+-- 6c. Migration step (Optional but recommended):
+-- If you already had items of type 'both' and their current 'available_quantity'
+-- was meant for BOTH, you might want to manually distribute them.
+-- By default, all existing quantities stay in the "Sale/Default" pool columns.
+-- =============================================================
