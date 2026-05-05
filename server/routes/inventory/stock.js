@@ -23,6 +23,7 @@ router.get('/', authenticateToken, async (req, res) => {
                 COALESCE(rental_available_quantity, 0) as rental_available_quantity,
                 COALESCE(rental_discarded_quantity, 0) as rental_discarded_quantity,
                 COALESCE(reorder_threshold, 5) as reorder_threshold,
+                COALESCE(rental_reorder_threshold, 5) as rental_reorder_threshold,
                 COALESCE(is_deleted, 0) as is_deleted
             FROM accessories
             ${req.query.include_deleted === 'true' ? '' : 'WHERE is_deleted = FALSE'}
@@ -41,14 +42,17 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const {
         name, price, type, rental_pricing_type, rent_price,
-        initial_stock, reorder_threshold
+        total_purchased_quantity, available_quantity,
+        rental_total_purchased_quantity, rental_available_quantity,
+        reorder_threshold
     } = req.body;
 
     if (!name || price === undefined || !type) {
         return res.status(400).json({ message: 'name, price, and type are required.' });
     }
 
-    const stockQty = parseInt(initial_stock || 0, 10);
+    const saleQty = parseInt(total_purchased_quantity || 0, 10);
+    const rentQty = parseInt(rental_total_purchased_quantity || 0, 10);
     const threshold = parseInt(reorder_threshold || 5, 10);
 
     let connection;
@@ -59,22 +63,37 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
         const [result] = await connection.query(
             `INSERT INTO accessories 
                 (name, price, type, rental_pricing_type, rent_price, 
-                 total_purchased_quantity, available_quantity, discarded_quantity, reorder_threshold)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-            [name, price, type,
-             rental_pricing_type || 'flat',
-             (type === 'for_rental' || type === 'both' ? rent_price : null),
-             stockQty, stockQty, threshold]
+                 total_purchased_quantity, available_quantity, discarded_quantity, 
+                 rental_total_purchased_quantity, rental_available_quantity, rental_discarded_quantity,
+                 reorder_threshold, rental_reorder_threshold)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?)`,
+            [
+                name, price, type,
+                rental_pricing_type || 'flat',
+                (type === 'for_rental' || type === 'both' ? rent_price : null),
+                saleQty, saleQty, rentQty, rentQty, threshold, 
+                parseInt(req.body.rental_reorder_threshold || threshold)
+            ]
         );
         const accessoryId = result.insertId;
 
-        // Log initial stock if > 0
-        if (stockQty > 0) {
+        // Log initial sale stock if > 0
+        if (saleQty > 0) {
             await connection.query(
                 `INSERT INTO inventory_stock_log 
-                    (accessory_id, change_type, quantity_change, reference_type, notes, performed_by_user_id)
-                 VALUES (?, 'restock', ?, 'manual', 'Initial stock on creation', ?)`,
-                [accessoryId, stockQty, req.user.id]
+                    (accessory_id, change_type, quantity_change, reference_type, notes, pool, performed_by_user_id)
+                 VALUES (?, 'restock', ?, 'manual', 'Initial sale stock on creation', 'sale', ?)`,
+                [accessoryId, saleQty, req.user.id]
+            );
+        }
+
+        // Log initial rental stock if > 0
+        if (rentQty > 0) {
+            await connection.query(
+                `INSERT INTO inventory_stock_log 
+                    (accessory_id, change_type, quantity_change, reference_type, notes, pool, performed_by_user_id)
+                 VALUES (?, 'restock', ?, 'manual', 'Initial rental stock on creation', 'rental', ?)`,
+                [accessoryId, rentQty, req.user.id]
             );
         }
 
@@ -105,12 +124,12 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
         await db.query(
             `UPDATE accessories
              SET name = ?, price = ?, type = ?, rental_pricing_type = ?,
-                 rent_price = ?, reorder_threshold = ?
+                 rent_price = ?, reorder_threshold = ?, rental_reorder_threshold = ?
              WHERE id = ?`,
             [name, price, type,
              rental_pricing_type || 'flat',
              (type === 'for_rental' || type === 'both' ? rent_price : null),
-             reorder_threshold || 5, id]
+             reorder_threshold || 5, req.body.rental_reorder_threshold || 5, id]
         );
         sse.sendEventsToAll({ message: 'inventory_updated' });
         res.json({ success: true });
@@ -182,9 +201,9 @@ router.post('/:id/restock', authenticateToken, isAdmin, async (req, res) => {
         // Log the restock
         await connection.query(
             `INSERT INTO inventory_stock_log 
-                (accessory_id, change_type, quantity_change, reference_type, notes, performed_by_user_id)
-             VALUES (?, 'restock', ?, 'manual', ?, ?)`,
-            [id, qty, notes || 'Manual restock', req.user.id]
+                (accessory_id, change_type, quantity_change, reference_type, notes, pool, performed_by_user_id)
+             VALUES (?, 'restock', ?, 'manual', ?, ?, ?)`,
+            [id, qty, notes || 'Manual restock', pool || 'sale', req.user.id]
         );
 
         await connection.commit();
@@ -254,9 +273,9 @@ router.post('/:id/discard', authenticateToken, isAdmin, async (req, res) => {
 
         await connection.query(
             `INSERT INTO inventory_stock_log 
-                (accessory_id, change_type, quantity_change, reference_type, notes, performed_by_user_id)
-             VALUES (?, 'discarded', ?, 'manual', ?, ?)`,
-            [id, -qty, reason || 'Manual discard', req.user.id]
+                (accessory_id, change_type, quantity_change, reference_type, notes, pool, performed_by_user_id)
+             VALUES (?, 'discarded', ?, 'manual', ?, ?, ?)`,
+            [id, -qty, reason || 'Manual discard', isRentalPool ? 'rental' : 'sale', req.user.id]
         );
 
         await connection.commit();
@@ -296,9 +315,9 @@ router.get('/stock-log', authenticateToken, isAdmin, async (req, res) => {
         const [rows] = await db.query(
             `SELECT sub.* FROM (
                 SELECT l.*, a.name as accessory_name, u.username as performed_by,
-                    a.available_quantity - COALESCE(
+                    (CASE WHEN l.pool = 'rental' THEN COALESCE(a.rental_available_quantity, 0) ELSE COALESCE(a.available_quantity, 0) END) - COALESCE(
                         SUM(l.quantity_change) OVER (
-                            PARTITION BY l.accessory_id 
+                            PARTITION BY l.accessory_id, l.pool 
                             ORDER BY l.created_at DESC 
                             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
                         ), 0

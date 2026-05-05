@@ -280,3 +280,28 @@ ALTER TABLE accessories
 -- was meant for BOTH, you might want to manually distribute them.
 -- By default, all existing quantities stay in the "Sale/Default" pool columns.
 -- =============================================================
+
+-- =============================================================
+-- PART 7: COMPLETE SEPARATION OF STOCK POOLS
+--         (Added to track separate thresholds and pool-specific history)
+-- =============================================================
+
+-- 7a. Add separate reorder threshold for the rental pool
+ALTER TABLE accessories
+  ADD COLUMN rental_reorder_threshold INT NOT NULL DEFAULT 5 COMMENT 'Reorder alert level for rental stock';
+
+-- 7b. Add pool indicator to stock logs to track which bucket was changed
+ALTER TABLE inventory_stock_log
+  ADD COLUMN pool ENUM('sale', 'rental') NOT NULL DEFAULT 'sale' COMMENT 'Which stock pool was affected';
+
+-- 7c. Update existing logs:
+-- Any logs that came from the returns module or standalone rentals should ideally be 'rental'.
+-- (This is an approximation based on notes or change types)
+UPDATE inventory_stock_log 
+  SET pool = 'rental' 
+  WHERE notes LIKE '%Rental%' 
+     OR change_type IN ('rented_out', 'returned')
+     OR reference_type = 'booking'; -- Bookings are almost always rentals
+
+-- =============================================================
+
