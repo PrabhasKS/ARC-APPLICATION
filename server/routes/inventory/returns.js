@@ -142,7 +142,7 @@ router.post('/', authenticateToken, async (req, res) => {
         const returnId = returnResult.insertId;
 
         const [[accInfo]] = await connection.query('SELECT type FROM accessories WHERE id = ? FOR UPDATE', [accessory_id]);
-        const isRentalPool = accInfo && accInfo.type === 'both';
+        const isRentalPool = accInfo && (accInfo.type === 'both' || accInfo.type === 'for_rental');
 
         let changeType;
         if (item_condition === 'good') {
@@ -166,11 +166,12 @@ router.post('/', authenticateToken, async (req, res) => {
         // Stock log
         await connection.query(
             `INSERT INTO inventory_stock_log 
-                (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, pool, performed_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [accessory_id, changeType,
              item_condition === 'good' ? qty : -qty,
-             source_type, source_id, notes || `Return from ${source_type} #${source_id}`, req.user.id]
+             source_type, source_id, notes || `Return from ${source_type} #${source_id}`,
+             isRentalPool ? 'rental' : 'sale', req.user.id]
         );
 
         // Create separate damage charge payment if applicable

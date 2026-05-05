@@ -196,12 +196,13 @@ router.post('/', authenticateToken, async (req, res) => {
 
             // Stock log
             const changeType = item.transaction_type === 'rental' ? 'rented_out' : 'sold';
+            const pool = item.transaction_type === 'rental' ? 'rental' : 'sale';
             await connection.query(
                 `INSERT INTO inventory_stock_log 
-                    (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
-                 VALUES (?, ?, ?, 'standalone_sale', ?, ?, ?)`,
+                    (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, pool, performed_by_user_id)
+                 VALUES (?, ?, ?, 'standalone_sale', ?, ?, ?, ?)`,
                 [item.accessory_id, changeType, -item.quantity,
-                    saleId, `${changeType} via standalone sale #${saleId}`, req.user.id]
+                    saleId, `${changeType} via standalone sale #${saleId}`, pool, req.user.id]
             );
         }
 
