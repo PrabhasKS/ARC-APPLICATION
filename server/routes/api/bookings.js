@@ -727,9 +727,10 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                     // Log
                     await connection.query(
                         `INSERT INTO inventory_stock_log 
-                         (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, performed_by_user_id)
-                         VALUES (?, ?, ?, 'booking', ?, 'Added to court booking', ?)`,
-                        [acc.accessory_id, txType === 'rental' ? 'rented_out' : 'sold', -Math.abs(acc.quantity), bookingId, created_by_user_id]
+                         (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, pool, performed_by_user_id)
+                         VALUES (?, ?, ?, 'booking', ?, 'Added to court booking', ?, ?)`,
+                        [acc.accessory_id, txType === 'rental' ? 'rented_out' : 'sold', -Math.abs(acc.quantity), bookingId,
+                         txType === 'rental' ? 'rental' : 'sale', created_by_user_id]
                     );
                 }
             }
