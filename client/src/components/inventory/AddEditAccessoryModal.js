@@ -21,6 +21,7 @@ export default function AddEditAccessoryModal({
     initial_stock_rental: "",
 
     reorder_threshold: accessory?.reorder_threshold ?? 5,
+    rental_reorder_threshold: accessory?.rental_reorder_threshold ?? 5,
   });
 
   const [saving, setSaving] = useState(false);
@@ -46,79 +47,96 @@ export default function AddEditAccessoryModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!form.name.trim()) {
-        setError('Accessory name is required');
-        return;
+      setError("Accessory name is required");
+      return;
     }
 
     if (isDuplicateName()) {
-        setError('Accessory with this name already exists');
-        return;
+      setError("Accessory with this name already exists");
+      return;
     }
 
     setSaving(true);
 
     try {
-        const payload = {
-    name: form.name.trim(),
-    price: showSalePrice ? (parseFloat(form.price) || 0) : 0,
-    type: form.type,
-    rental_pricing_type: form.rental_pricing_type,
-    rent_price: showRentPrice ? (parseFloat(form.rent_price) || 0) : null,
-    reorder_threshold: parseInt(form.reorder_threshold) || 5,
-};
+      const payload = {
+        name: form.name.trim(),
+        price: showSalePrice ? parseFloat(form.price) || 0 : 0,
+        type: form.type,
+        rental_pricing_type: form.rental_pricing_type,
+        rent_price: showRentPrice ? parseFloat(form.rent_price) || 0 : null,
+      };
 
-// ✅ ADD THIS BLOCK (MISSING IN YOUR CURRENT CODE)
-if (!isEdit) {
-    payload.total_purchased_quantity = 0;
-    payload.available_quantity = 0;
-    payload.rental_total_purchased_quantity = 0;
-    payload.rental_available_quantity = 0;
+      // ✅ THRESHOLD LOGIC
+      if (form.type === "for_sale") {
+        payload.reorder_threshold = parseInt(form.reorder_threshold) || 5;
+        payload.rental_reorder_threshold = 0;
+      }
 
-    if (form.type === 'for_sale') {
-        const stock = parseInt(form.initial_stock_sale) || 0;
-        payload.total_purchased_quantity = stock;
-        payload.available_quantity = stock;
-    }
+      if (form.type === "for_rental") {
+        payload.reorder_threshold = 0;
+        payload.rental_reorder_threshold =
+          parseInt(form.rental_reorder_threshold) || 5;
+      }
 
-    if (form.type === 'for_rental') {
-        const stock = parseInt(form.initial_stock_rental) || 0;
-        payload.rental_total_purchased_quantity = stock;
-        payload.rental_available_quantity = stock;
-    }
+      if (form.type === "both") {
+        payload.reorder_threshold = parseInt(form.reorder_threshold) || 5;
+        payload.rental_reorder_threshold =
+          parseInt(form.rental_reorder_threshold) || 5;
+      }
 
-    if (form.type === 'both') {
-        const saleStock = parseInt(form.initial_stock_sale) || 0;
-        const rentalStock = parseInt(form.initial_stock_rental) || 0;
+      // ✅ ADD THIS BLOCK (MISSING IN YOUR CURRENT CODE)
+      if (!isEdit) {
+        payload.total_purchased_quantity = 0;
+        payload.available_quantity = 0;
+        payload.rental_total_purchased_quantity = 0;
+        payload.rental_available_quantity = 0;
 
-        payload.total_purchased_quantity = saleStock;
-        payload.available_quantity = saleStock;
-
-        payload.rental_total_purchased_quantity = rentalStock;
-        payload.rental_available_quantity = rentalStock;
-    }
-}
-
-        // 👇 ADD THIS
-        console.log("FORM SUBMITTED");
-        console.log("PAYLOAD:", payload);
-
-        if (isEdit) {
-            await updateAccessory(accessory.id, payload);
-        } else {
-            await createAccessory(payload);
+        if (form.type === "for_sale") {
+          const stock = parseInt(form.initial_stock_sale) || 0;
+          payload.total_purchased_quantity = stock;
+          payload.available_quantity = stock;
         }
 
-        onSaved();
-        onClose();
+        if (form.type === "for_rental") {
+          const stock = parseInt(form.initial_stock_rental) || 0;
+          payload.rental_total_purchased_quantity = stock;
+          payload.rental_available_quantity = stock;
+        }
+
+        if (form.type === "both") {
+          const saleStock = parseInt(form.initial_stock_sale) || 0;
+          const rentalStock = parseInt(form.initial_stock_rental) || 0;
+
+          payload.total_purchased_quantity = saleStock;
+          payload.available_quantity = saleStock;
+
+          payload.rental_total_purchased_quantity = rentalStock;
+          payload.rental_available_quantity = rentalStock;
+        }
+      }
+
+      // 👇 ADD THIS
+      console.log("FORM SUBMITTED");
+      console.log("PAYLOAD:", payload);
+
+      if (isEdit) {
+        await updateAccessory(accessory.id, payload);
+      } else {
+        await createAccessory(payload);
+      }
+
+      onSaved();
+      onClose();
     } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Save failed');
+      setError(err.response?.data?.message || err.message || "Save failed");
     }
 
     setSaving(false);
-};
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -305,15 +323,44 @@ if (!isEdit) {
               </>
             )}
 
-            <div className="form-group">
-              <label>Reorder Threshold</label>
-              <input
-                type="number"
-                min="0"
-                value={form.reorder_threshold}
-                onChange={(e) => set("reorder_threshold", e.target.value)}
-              />
-            </div>
+            {/* REORDER THRESHOLD */}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns:
+      form.type === "both" ? "1fr 1fr" : "1fr",
+    gap: 12,
+    marginTop: 12,
+  }}
+>
+  {(form.type === "for_sale" || form.type === "both") && (
+    <div className="form-group">
+      <label>Reorder Threshold (Sale)</label>
+      <input
+        type="number"
+        min="0"
+        value={form.reorder_threshold}
+        onChange={(e) =>
+          set("reorder_threshold", e.target.value)
+        }
+      />
+    </div>
+  )}
+
+  {(form.type === "for_rental" || form.type === "both") && (
+    <div className="form-group">
+      <label>Reorder Threshold (Rental)</label>
+      <input
+        type="number"
+        min="0"
+        value={form.rental_reorder_threshold}
+        onChange={(e) =>
+          set("rental_reorder_threshold", e.target.value)
+        }
+      />
+    </div>
+  )}
+</div>
 
             {isEdit && (
               <div className="summary-card">

@@ -4,7 +4,15 @@ import StandaloneSaleDetailModal from './StandaloneSaleDetailModal';
 import StandaloneReceiptModal from './StandaloneReceiptModal';
 /* ── Accessory card ──────────────────────────────────── */
 function AccCard({ acc, onAdd }) {
-    const isOut = (acc.available_quantity ?? 0) === 0;
+    const saleStock = acc.available_quantity ?? 0;
+const rentalStock = acc.rental_available_quantity ?? 0;
+
+const isOut =
+  acc.type === "for_sale"
+    ? saleStock === 0
+    : acc.type === "for_rental"
+    ? rentalStock === 0
+    : saleStock === 0 && rentalStock === 0;
     const icon = acc.type === 'for_rental' ? '🔄' : acc.type === 'both' ? '✨' : '🏷';
     const priceLabel = acc.type === 'for_rental' 
         ? (acc.rental_pricing_type === 'hourly' ? `₹${acc.rent_price}/hr` : `₹${parseFloat(acc.rent_price || 0).toFixed(2)}`)
@@ -15,7 +23,26 @@ function AccCard({ acc, onAdd }) {
             <div className="pos-acc-icon">{icon}</div>
             <div className="pos-acc-name">{acc.name}</div>
             <div className="pos-acc-price">{priceLabel}</div>
-            <div className="pos-acc-stock">{isOut ? 'Out of stock' : `${acc.available_quantity} available`}</div>
+            <div className="pos-acc-stock">
+  {isOut ? (
+    "Out of stock"
+  ) : acc.type === "for_sale" ? (
+    <span>{saleStock} available</span>
+  ) : acc.type === "for_rental" ? (
+    <span>{rentalStock} available</span>
+  ) : (
+    // <span>
+    //   <span style={{ color: "#22c55e" }}>Available for Sale: {saleStock}</span>
+    //   {" | "}
+    //   <span style={{ color: "#3b82f6" }}>Available for Rent: {rentalStock}</span>
+    // </span>
+    <span>
+      <span style={{ color: "grey" }}>Sale: {saleStock}</span>
+      {" | "}
+      <span style={{ color: "grey" }}>Rent: {rentalStock} Available</span>
+    </span>
+  )}
+</div>
         </div>
     );
 }
@@ -324,7 +351,7 @@ export default function StandalonePos() {
                         <table>
                             <thead>
                                 <tr><th>#</th><th>Date</th><th>Customer</th><th>Contact</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
+                            </thead>    
                             <tbody>
                                 {sales.map(s => (
                                     <tr key={s.id}>

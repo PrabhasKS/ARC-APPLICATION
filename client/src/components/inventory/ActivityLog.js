@@ -106,6 +106,7 @@ export default function ActivityLog() {
                 <th>Action Performed</th>
                 <th>Qty Change</th>
                 <th>Stock After</th>
+                <th>Pool</th>
                 <th>Notes / Reference</th>
                 <th>Performed By</th>
               </tr>
@@ -128,18 +129,34 @@ export default function ActivityLog() {
                     </td>
 
                     <td
-                      className={
-                        log.quantity_change < 0
-                          ? "activity-qty-negative"
-                          : "activity-qty-positive"
-                      }
-                    >
-                      {log.quantity_change}
-                    </td>
+  className={
+    log.quantity_change < 0
+      ? "activity-qty-negative"
+      : "activity-qty-positive"
+  }
+>
+  {log.quantity_change}
+</td>
+<td className="activity-stock-after">
+  {Number(log.stock_after)}
+</td>
 
-                    <td className="activity-stock-after">
-                      {Number(log.stock_after)}
-                    </td>
+{/* ✅ NEW POOL COLUMN */}
+<td>
+  <span
+    style={{
+      fontWeight: 600,
+      color:
+        log.pool === "rental"
+          ? "#3b82f6"
+          : "#22c55e",
+    }}
+  >
+    {log.pool === "rental" ? "Rental" : "Sale"}
+  </span>
+</td>
+
+
 
                     <td>
                       {log.notes

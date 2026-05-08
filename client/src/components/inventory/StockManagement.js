@@ -11,6 +11,41 @@ const toNumber = (val) => {
   return isNaN(num) ? 0 : num;
 };
 
+// ✅ NEW UI COMPONENT
+function DualValue({ sale, rental, type, prefix = "", suffix = "" }) {
+  const saleVal = toNumber(sale);
+  const rentVal = toNumber(rental);
+
+  const saleStyle = { color: "#22c55e", fontWeight: 500 };
+  const rentStyle = { color: "#3b82f6", fontWeight: 500 };
+
+  if (type === "for_sale") {
+    return <span style={saleStyle}>{prefix}{saleVal}{suffix}</span>;
+  }
+
+  if (type === "for_rental") {
+    return <span style={rentStyle}>{prefix}{rentVal}{suffix}</span>;
+  }
+
+  if (type === "both") {
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={saleStyle}>
+        {prefix}{saleVal}{suffix}
+      </span>
+
+      {/* Separator */}
+      <span style={{ color: "#999" }}>|</span>
+
+      <span style={rentStyle}>
+        {prefix}{rentVal}{suffix}
+      </span>
+    </span>
+  );
+}
+
+  return 0;
+}
 function StockBar({ sale, rental, threshold }) {
   const saleQty = toNumber(sale);
   const rentalQty = toNumber(rental);
@@ -185,20 +220,24 @@ export default function StockManagement() {
   const activeItems = accessories.filter((a) => !a.is_deleted);
 
   const lowStock = activeItems.filter((a) => {
-    const qty =
-      toNumber(a.available_quantity ?? a.total_purchased_quantity) +
-      toNumber(
-        a.rental_available_quantity ?? a.rental_total_purchased_quantity,
-      );
-    const threshold = toNumber(a.reorder_threshold ?? 5);
-    return qty > 0 && qty <= threshold;
+    const saleAvail = toNumber(a.available_quantity);
+    const rentAvail = toNumber(a.rental_available_quantity);
+
+    const saleTh = toNumber(a.reorder_threshold ?? 5);
+    const rentTh = toNumber(a.rental_reorder_threshold ?? 5);
+
+    const saleLow = saleAvail > 0 && saleAvail <= saleTh;
+    const rentLow = rentAvail > 0 && rentAvail <= rentTh;
+
+    return saleLow || rentLow;
   }).length;
 
-  const outOfStock = activeItems.filter(
-    (a) =>
-      toNumber(a.available_quantity) + toNumber(a.rental_available_quantity) ===
-      0,
-  ).length;
+  const outOfStock = activeItems.filter((a) => {
+    const saleAvail = toNumber(a.available_quantity);
+    const rentAvail = toNumber(a.rental_available_quantity);
+
+    return saleAvail === 0 && rentAvail === 0;
+  }).length;
 
   const totalValue = activeItems.reduce((s, a) => {
     const price = toNumber(a.price);
@@ -325,13 +364,50 @@ export default function StockManagement() {
           </div>
         </div>
       ) : (
+         <>
+    {/* ✅ LEGEND */}
+    <div
+      style={{
+        display: "flex",
+        gap: 16,
+        alignItems: "center",
+        marginBottom: 10,
+        fontSize: 13,
+      }}
+    >
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span
+  style={{
+    width: 10,
+    height: 10,
+    background: "#22c55e",
+    borderRadius: "50%",
+    display: "inline-block",
+  }}
+/>
+        Sale
+      </span>
+
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span
+  style={{
+    width: 10,
+    height: 10,
+    background: "#3b82f6",
+    borderRadius: "50%",
+    display: "inline-block",
+  }}
+/>
+        Rental
+      </span>
+    </div>
         <div className="table-container">
           <table>
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Type</th>
-                <th>Price / Rate</th>
+                <th>Price</th>
                 <th>Initial Stock</th>
                 <th>Available Stock</th>
                 <th>Discarded</th>
@@ -350,30 +426,22 @@ export default function StockManagement() {
 
                   {/* ✅ Fixed pricing */}
                   <td>
-                    {acc.type === "for_sale" && (
-                      <span>₹{toNumber(acc.price).toFixed(2)}</span>
-                    )}
-
-                    {acc.type === "for_rental" && (
-                      <span>
-                        ₹{toNumber(acc.rent_price)}
-                        {acc.rental_pricing_type === "hourly" ? "/hr" : ""}
-                      </span>
-                    )}
-
-                    {acc.type === "both" && (
-                      <span>
-                        ₹{toNumber(acc.price).toFixed(2)} | ₹
-                        {toNumber(acc.rent_price)}
-                        {acc.rental_pricing_type === "hourly" ? "/hr" : ""}
-                      </span>
-                    )}
-                  </td>
+  <DualValue
+    sale={acc.price}
+    rental={acc.rent_price}
+    type={acc.type}
+    prefix="₹"
+    suffix={acc.rental_pricing_type === "hourly" ? "/hr" : ""}
+  />
+</td>
 
                   <td>
-                    {toNumber(acc.total_purchased_quantity) +
-                      toNumber(acc.rental_total_purchased_quantity)}
-                  </td>
+  <DualValue
+    sale={acc.total_purchased_quantity}
+    rental={acc.rental_total_purchased_quantity}
+    type={acc.type}
+  />
+</td>
                   <td>
                     <StockBar
                       sale={toNumber(acc.available_quantity)}
@@ -392,16 +460,80 @@ export default function StockManagement() {
                     {acc.discarded_quantity}
                   </td>
                   <td style={{ color: "var(--color-text-muted)" }}>
-                    {acc.reorder_threshold}
-                  </td>
+  <DualValue
+    sale={acc.reorder_threshold}
+    rental={acc.rental_reorder_threshold}
+    type={acc.type}
+  />
+</td>
                   <td>
-                    <StockStatusBadge
-                      available={
-                        toNumber(acc.available_quantity) +
-                        toNumber(acc.rental_available_quantity)
+                    {(() => {
+                      const saleAvail = toNumber(acc.available_quantity);
+                      const rentAvail = toNumber(acc.rental_available_quantity);
+
+                      const saleTh = toNumber(acc.reorder_threshold ?? 5);
+                      const rentTh = toNumber(
+                        acc.rental_reorder_threshold ?? 5,
+                      );
+
+                      const getStatus = (avail, th) => {
+                        if (avail === 0) return "out";
+                        if (avail <= th) return "low";
+                        return "ok";
+                      };
+
+                      const saleStatus = getStatus(saleAvail, saleTh);
+                      const rentStatus = getStatus(rentAvail, rentTh);
+
+                      // BOTH
+                      if (saleAvail && rentAvail) {
+                        if (saleStatus === "out" && rentStatus === "out") {
+                          return (
+                            <span className="inv-badge inv-badge-out">
+                              Out of Stock
+                            </span>
+                          );
+                        }
+                        if (saleStatus === "low" || rentStatus === "low") {
+                          return (
+                            <span className="inv-badge inv-badge-low">
+                              Low Stock
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="inv-badge inv-badge-ok">
+                            In Stock
+                          </span>
+                        );
                       }
-                      threshold={toNumber(acc.reorder_threshold ?? 5)}
-                    />
+
+                      // SALE ONLY
+                      if (saleAvail) {
+                        return (
+                          <StockStatusBadge
+                            available={saleAvail}
+                            threshold={saleTh}
+                          />
+                        );
+                      }
+
+                      // RENTAL ONLY
+                      if (rentAvail) {
+                        return (
+                          <StockStatusBadge
+                            available={rentAvail}
+                            threshold={rentTh}
+                          />
+                        );
+                      }
+
+                      return (
+                        <span className="inv-badge inv-badge-out">
+                          Out of Stock
+                        </span>
+                      );
+                    })()}
                   </td>
 
                   <td>
@@ -455,6 +587,7 @@ export default function StockManagement() {
             </tbody>
           </table>
         </div>
+</>
       )}
 
       {deleteConfirm && (
