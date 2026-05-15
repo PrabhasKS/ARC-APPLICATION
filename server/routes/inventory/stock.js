@@ -12,15 +12,16 @@ router.get('/', authenticateToken, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT 
-                id, name, price,
+                id, name,
+                (CASE WHEN is_deleted = 1 THEN 0 ELSE price END) as price,
                 COALESCE(type, 'for_sale') as type,
                 COALESCE(rental_pricing_type, 'flat') as rental_pricing_type,
-                rent_price,
+                (CASE WHEN is_deleted = 1 THEN 0 ELSE rent_price END) as rent_price,
                 COALESCE(total_purchased_quantity, 0) as total_purchased_quantity,
-                COALESCE(available_quantity, 0) as available_quantity,
+                (CASE WHEN is_deleted = 1 THEN 0 ELSE COALESCE(available_quantity, 0) END) as available_quantity,
                 COALESCE(discarded_quantity, 0) as discarded_quantity,
                 COALESCE(rental_total_purchased_quantity, 0) as rental_total_purchased_quantity,
-                COALESCE(rental_available_quantity, 0) as rental_available_quantity,
+                (CASE WHEN is_deleted = 1 THEN 0 ELSE COALESCE(rental_available_quantity, 0) END) as rental_available_quantity,
                 COALESCE(rental_discarded_quantity, 0) as rental_discarded_quantity,
                 COALESCE(reorder_threshold, 5) as reorder_threshold,
                 COALESCE(rental_reorder_threshold, 5) as rental_reorder_threshold,
@@ -51,8 +52,23 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
         return res.status(400).json({ message: 'name, price, and type are required.' });
     }
 
-    const saleQty = parseInt(total_purchased_quantity || 0, 10);
-    const rentQty = parseInt(rental_total_purchased_quantity || 0, 10);
+    // Strict enforcement: Zero out unused pools based on type
+    let saleQty = 0;
+    let rentQty = 0;
+    let finalPrice = price;
+    let finalRentPrice = rent_price;
+
+    if (type === 'for_sale') {
+        saleQty = parseInt(total_purchased_quantity || 0, 10);
+        finalRentPrice = null;
+    } else if (type === 'for_rental') {
+        rentQty = parseInt(rental_total_purchased_quantity || 0, 10);
+        finalPrice = 0;
+    } else if (type === 'both') {
+        saleQty = parseInt(total_purchased_quantity || 0, 10);
+        rentQty = parseInt(rental_total_purchased_quantity || 0, 10);
+    }
+
     const threshold = parseInt(reorder_threshold || 5, 10);
 
     let connection;
@@ -68,9 +84,9 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
                  reorder_threshold, rental_reorder_threshold)
              VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?)`,
             [
-                name, price, type,
+                name, finalPrice, type,
                 rental_pricing_type || 'flat',
-                (type === 'for_rental' || type === 'both' ? rent_price : null),
+                finalRentPrice,
                 saleQty, saleQty, rentQty, rentQty, threshold, 
                 parseInt(req.body.rental_reorder_threshold || threshold)
             ]
@@ -123,13 +139,25 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         await db.query(
             `UPDATE accessories
-             SET name = ?, price = ?, type = ?, rental_pricing_type = ?,
-                 rent_price = ?, reorder_threshold = ?, rental_reorder_threshold = ?
+             SET name = ?, 
+                 price = (CASE WHEN ? = 'for_rental' THEN 0 ELSE ? END),
+                 type = ?, 
+                 rental_pricing_type = ?,
+                 rent_price = (CASE WHEN ? IN ('for_rental', 'both') THEN ? ELSE NULL END),
+                 reorder_threshold = ?, 
+                 rental_reorder_threshold = ?,
+                 available_quantity = (CASE WHEN ? = 'for_rental' THEN 0 ELSE available_quantity END),
+                 total_purchased_quantity = (CASE WHEN ? = 'for_rental' THEN 0 ELSE total_purchased_quantity END),
+                 rental_available_quantity = (CASE WHEN ? = 'for_sale' THEN 0 ELSE rental_available_quantity END),
+                 rental_total_purchased_quantity = (CASE WHEN ? = 'for_sale' THEN 0 ELSE rental_total_purchased_quantity END)
              WHERE id = ?`,
-            [name, price, type,
-             rental_pricing_type || 'flat',
-             (type === 'for_rental' || type === 'both' ? rent_price : null),
-             reorder_threshold || 5, req.body.rental_reorder_threshold || 5, id]
+            [
+                name, type, price, type,
+                rental_pricing_type || 'flat',
+                type, rent_price,
+                reorder_threshold || 5, req.body.rental_reorder_threshold || 5,
+                type, type, type, type, id
+            ]
         );
         sse.sendEventsToAll({ message: 'inventory_updated' });
         res.json({ success: true });
@@ -179,8 +207,11 @@ router.post('/:id/restock', authenticateToken, isAdmin, async (req, res) => {
             return res.status(404).json({ message: 'Accessory not found.' });
         }
 
+        // Determine target pool based on item type and request
+        const isRentalUpdate = (acc.type === 'for_rental') || (acc.type === 'both' && pool === 'rental');
+
         // Update stock quantities
-        if (acc.type === 'both' && pool === 'rental') {
+        if (isRentalUpdate) {
             await connection.query(
                 `UPDATE accessories
                  SET rental_total_purchased_quantity = rental_total_purchased_quantity + ?,
@@ -203,7 +234,7 @@ router.post('/:id/restock', authenticateToken, isAdmin, async (req, res) => {
             `INSERT INTO inventory_stock_log 
                 (accessory_id, change_type, quantity_change, reference_type, notes, pool, performed_by_user_id)
              VALUES (?, 'restock', ?, 'manual', ?, ?, ?)`,
-            [id, qty, notes || 'Manual restock', pool || 'sale', req.user.id]
+            [id, qty, notes || 'Manual restock', isRentalUpdate ? 'rental' : 'sale', req.user.id]
         );
 
         await connection.commit();
@@ -243,7 +274,7 @@ router.post('/:id/discard', authenticateToken, isAdmin, async (req, res) => {
             return res.status(404).json({ message: 'Accessory not found.' });
         }
         
-        const isRentalPool = acc.type === 'both' && pool === 'rental';
+        const isRentalPool = (acc.type === 'for_rental') || (acc.type === 'both' && pool === 'rental');
         const available = isRentalPool ? acc.rental_available_quantity : acc.available_quantity;
 
         if (available < qty) {

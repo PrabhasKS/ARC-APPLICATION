@@ -13,18 +13,26 @@ router.get('/analytics/summary', authenticateToken, isAdmin, async (req, res) =>
         const [[{ total_accessories }]] = await db.query('SELECT COUNT(*) as total_accessories FROM accessories WHERE is_deleted = FALSE');
         const [[stockData]] = await db.query(`
             SELECT 
-                SUM(available_quantity) as total_available,
-                SUM(discarded_quantity) as total_discarded,
-                SUM(stock_quantity) as total_stocked,
+                SUM(available_quantity + rental_available_quantity) as total_available,
+                SUM(discarded_quantity + rental_discarded_quantity) as total_discarded,
+                SUM(total_purchased_quantity + rental_total_purchased_quantity) as total_stocked,
                 SUM(available_quantity * price) as inventory_value
             FROM accessories WHERE is_deleted = FALSE
         `);
         const [[{ low_stock_count }]] = await db.query(`
             SELECT COUNT(*) as low_stock_count FROM accessories
-            WHERE available_quantity <= reorder_threshold AND available_quantity > 0 AND is_deleted = FALSE
+            WHERE (
+                (type IN ('for_sale', 'both') AND available_quantity <= reorder_threshold AND available_quantity > 0) OR
+                (type IN ('for_rental', 'both') AND rental_available_quantity <= rental_reorder_threshold AND rental_available_quantity > 0)
+            ) AND is_deleted = FALSE
         `);
         const [[{ out_of_stock }]] = await db.query(`
-            SELECT COUNT(*) as out_of_stock FROM accessories WHERE available_quantity = 0 AND is_deleted = FALSE
+            SELECT COUNT(*) as out_of_stock FROM accessories 
+            WHERE (
+                (type = 'for_sale' AND available_quantity = 0) OR
+                (type = 'for_rental' AND rental_available_quantity = 0) OR
+                (type = 'both' AND available_quantity = 0 AND rental_available_quantity = 0)
+            ) AND is_deleted = FALSE
         `);
 
         res.json({
@@ -182,9 +190,15 @@ router.get('/analytics/rental-vs-sale', authenticateToken, isAdmin, async (req, 
 router.get('/analytics/stock-alerts', authenticateToken, isAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT id, name, type, available_quantity, reorder_threshold, stock_quantity, discarded_quantity
+            SELECT 
+                id, name, type, 
+                available_quantity, reorder_threshold, (total_purchased_quantity + rental_total_purchased_quantity) as stock_quantity,
+                rental_available_quantity, rental_reorder_threshold
             FROM accessories
-            WHERE available_quantity <= reorder_threshold AND is_deleted = FALSE
+            WHERE (
+                (type IN ('for_sale', 'both') AND available_quantity <= reorder_threshold) OR 
+                (type IN ('for_rental', 'both') AND rental_available_quantity <= rental_reorder_threshold)
+            ) AND is_deleted = FALSE
             ORDER BY available_quantity ASC
         `);
         res.json(rows);
