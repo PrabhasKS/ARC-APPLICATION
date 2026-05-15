@@ -123,7 +123,19 @@ router.post('/', authenticateToken, async (req, res) => {
             }
 
             const qty = parseInt(item.quantity || 1, 10);
-            const isRentalPool = acc.type === 'both' && item.transaction_type === 'rental';
+            
+            // 1. Validate Transaction Type against Item Type
+            if (item.transaction_type === 'sale' && acc.type === 'for_rental') {
+                await connection.rollback();
+                return res.status(400).json({ message: `"${acc.name}" is a rental-only item and cannot be sold.` });
+            }
+            if (item.transaction_type === 'rental' && acc.type === 'for_sale') {
+                await connection.rollback();
+                return res.status(400).json({ message: `"${acc.name}" is a sale-only item and cannot be rented.` });
+            }
+
+            // 2. Determine Pool for Deduction
+            const isRentalPool = (acc.type === 'for_rental') || (acc.type === 'both' && item.transaction_type === 'rental');
             const availableStock = isRentalPool ? acc.rental_available_quantity : acc.available_quantity;
 
             // Stock availability check
@@ -181,7 +193,7 @@ router.post('/', authenticateToken, async (req, res) => {
             );
 
             // Deduct from appropriate quantity pool
-            const isRentalPoolUpdate = item.transaction_type === 'rental' && item.acc_type === 'both';
+            const isRentalPoolUpdate = (item.acc_type === 'for_rental') || (item.acc_type === 'both' && item.transaction_type === 'rental');
             if (isRentalPoolUpdate) {
                 await connection.query(
                     `UPDATE accessories SET rental_available_quantity = rental_available_quantity - ? WHERE id = ?`,
@@ -196,7 +208,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
             // Stock log
             const changeType = item.transaction_type === 'rental' ? 'rented_out' : 'sold';
-            const pool = item.transaction_type === 'rental' ? 'rental' : 'sale';
+            const pool = isRentalPoolUpdate ? 'rental' : 'sale';
             await connection.query(
                 `INSERT INTO inventory_stock_log 
                     (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, pool, performed_by_user_id)

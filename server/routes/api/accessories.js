@@ -6,7 +6,15 @@ const sse = require('../../sse');
 
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM accessories');
+        const [rows] = await db.query(`
+            SELECT 
+                *,
+                (CASE WHEN is_deleted = 1 THEN 0 ELSE price END) as price,
+                (CASE WHEN is_deleted = 1 THEN 0 ELSE COALESCE(available_quantity, 0) END) as available_quantity,
+                COALESCE(is_deleted, 0) as is_deleted
+            FROM accessories
+            WHERE is_deleted = FALSE OR is_deleted IS NULL
+        `);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -700,7 +700,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                 const [[accessoryData]] = await connection.query('SELECT type, price, rent_price, rental_pricing_type, available_quantity, rental_available_quantity FROM accessories WHERE id = ? FOR UPDATE', [acc.accessory_id]);
                 if (accessoryData) {
                     const txType = acc.transaction_type || 'sale';
-                    const isRentalPool = accessoryData.type === 'both' && txType === 'rental';
+                    const isRentalPool = (accessoryData.type === 'for_rental') || (accessoryData.type === 'both' && txType === 'rental');
                     const availableStock = isRentalPool ? accessoryData.rental_available_quantity : accessoryData.available_quantity;
 
                     if (availableStock < acc.quantity) {
@@ -730,7 +730,7 @@ router.post('/bookings', authenticateToken, async (req, res) => {
                          (accessory_id, change_type, quantity_change, reference_type, reference_id, notes, pool, performed_by_user_id)
                          VALUES (?, ?, ?, 'booking', ?, 'Added to court booking', ?, ?)`,
                         [acc.accessory_id, txType === 'rental' ? 'rented_out' : 'sold', -Math.abs(acc.quantity), bookingId,
-                         txType === 'rental' ? 'rental' : 'sale', created_by_user_id]
+                         isRentalPool ? 'rental' : 'sale', created_by_user_id]
                     );
                 }
             }
