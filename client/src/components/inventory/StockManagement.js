@@ -20,29 +20,45 @@ function DualValue({ sale, rental, type, prefix = "", suffix = "" }) {
   const rentStyle = { color: "#3b82f6", fontWeight: 500 };
 
   if (type === "for_sale") {
-    return <span style={saleStyle}>{prefix}{saleVal}{suffix}</span>;
+    return (
+      <span style={saleStyle}>
+        {prefix}
+        {saleVal}
+        {suffix}
+      </span>
+    );
   }
 
   if (type === "for_rental") {
-    return <span style={rentStyle}>{prefix}{rentVal}{suffix}</span>;
+    return (
+      <span style={rentStyle}>
+        {prefix}
+        {rentVal}
+        {suffix}
+      </span>
+    );
   }
 
   if (type === "both") {
-  return (
-    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={saleStyle}>
-        {prefix}{saleVal}{suffix}
-      </span>
+    return (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={saleStyle}>
+          {prefix}
+          {saleVal}
+          {suffix}
+        </span>
 
-      {/* Separator */}
-      <span style={{ color: "#999" }}>|</span>
+        {/* Separator */}
+        <span style={{ color: "#999" }}>|</span>
 
-      <span style={rentStyle}>
-        {prefix}{rentVal}{suffix}
+        <span style={rentStyle}>
+          {prefix}
+          {rentVal}
+          {suffix}
+        </span>
       </span>
-    </span>
-  );
-}
+    );
+  }
 
   return 0;
 }
@@ -164,6 +180,7 @@ export default function StockManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState("active");
+  const [stockFilter, setStockFilter] = useState("all");
   const [addEditModal, setAddEditModal] = useState({
     open: false,
     accessory: null,
@@ -212,9 +229,30 @@ export default function StockManagement() {
 
   const filtered = accessories.filter((a) => {
     const isDel = Boolean(a.is_deleted);
+
+    // Active / Deleted filter
     if (viewMode === "active" && isDel) return false;
     if (viewMode === "deleted" && !isDel) return false;
-    return a.name.toLowerCase().includes(search.toLowerCase());
+
+    // Search filter
+    const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    // Type filter
+    if (stockFilter === "sale") {
+      return a.type === "for_sale";
+    }
+
+    if (stockFilter === "rental") {
+      return a.type === "for_rental";
+    }
+
+    if (stockFilter === "both") {
+      return a.type === "both";
+    }
+
+    return true;
   });
 
   const activeItems = accessories.filter((a) => !a.is_deleted);
@@ -262,7 +300,7 @@ export default function StockManagement() {
           style={{ "--accent-color": "var(--color-primary)" }}
         >
           <div className="inv-stat-label">Total Items</div>
-          <div className="inv-stat-value">{accessories.length}</div>
+          <div className="inv-stat-value">{activeItems.length}</div>
           <div className="inv-stat-sub">Accessory types</div>
         </div>
         <div
@@ -364,230 +402,391 @@ export default function StockManagement() {
           </div>
         </div>
       ) : (
-         <>
-    {/* ✅ LEGEND */}
-    <div
+        <>
+          {/* ✅ LEGEND */}
+
+          <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 18,
+    padding: "12px 16px",
+    background: "#fff",
+    border: "1px solid var(--color-border)",
+    borderRadius: 12,
+    boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+  }}
+>
+  {/* LEFT */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      flexWrap: "wrap",
+    }}
+  >
+    <span
       style={{
-        display: "flex",
-        gap: 16,
-        alignItems: "center",
-        marginBottom: 10,
         fontSize: 13,
+        fontWeight: 600,
+        color: "var(--color-text-secondary)",
+        marginRight: 6,
       }}
     >
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span
-  style={{
-    width: 10,
-    height: 10,
-    background: "#22c55e",
-    borderRadius: "50%",
-    display: "inline-block",
-  }}
-/>
-        Sale
+      Filter By Type
+    </span>
+
+    {/* ALL */}
+    <button
+      onClick={() => setStockFilter("all")}
+      className={`inv-toggle-btn ${
+        stockFilter === "all" ? "active" : ""
+      }`}
+      style={{
+        padding: "7px 14px",
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span>All</span>
+      <span
+        style={{
+          background: "rgba(255,255,255,0.2)",
+          padding: "2px 8px",
+          borderRadius: 999,
+          fontSize: 11,
+        }}
+      >
+        {activeItems.length}
       </span>
+    </button>
 
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span
-  style={{
-    width: 10,
-    height: 10,
-    background: "#3b82f6",
-    borderRadius: "50%",
-    display: "inline-block",
-  }}
-/>
-        Rental
+    {/* SALE */}
+    <button
+      onClick={() => setStockFilter("sale")}
+      className={`inv-toggle-btn ${
+        stockFilter === "sale" ? "active" : ""
+      }`}
+      style={{
+        padding: "7px 14px",
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          background: "#22c55e",
+          borderRadius: "50%",
+          display: "inline-block",
+        }}
+      />
+
+      <span>Sale</span>
+
+      <span
+        style={{
+          background: "rgba(255,255,255,0.2)",
+          padding: "2px 8px",
+          borderRadius: 999,
+          fontSize: 11,
+        }}
+      >
+        {
+          activeItems.filter((a) => a.type === "for_sale").length
+        }
       </span>
-    </div>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Price</th>
-                <th>Initial Stock</th>
-                <th>Available Stock</th>
-                <th>Discarded</th>
-                <th>Threshold</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((acc) => (
-                <tr key={acc.id}>
-                  <td style={{ fontWeight: 600 }}>{acc.name}</td>
-                  <td>
-                    <TypeBadge type={acc.type} />
-                  </td>
+    </button>
 
-                  {/* ✅ Fixed pricing */}
-                  <td>
-  <DualValue
-    sale={acc.price}
-    rental={acc.rent_price}
-    type={acc.type}
-    prefix="₹"
-    suffix={acc.rental_pricing_type === "hourly" ? "/hr" : ""}
-  />
-</td>
+    {/* RENTAL */}
+    <button
+      onClick={() => setStockFilter("rental")}
+      className={`inv-toggle-btn ${
+        stockFilter === "rental" ? "active" : ""
+      }`}
+      style={{
+        padding: "7px 14px",
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          background: "#3b82f6",
+          borderRadius: "50%",
+          display: "inline-block",
+        }}
+      />
 
-                  <td>
-  <DualValue
-    sale={acc.total_purchased_quantity}
-    rental={acc.rental_total_purchased_quantity}
-    type={acc.type}
-  />
-</td>
-                  <td>
-                    <StockBar
-                      sale={toNumber(acc.available_quantity)}
-                      rental={toNumber(acc.rental_available_quantity)}
-                      threshold={toNumber(acc.reorder_threshold ?? 5)}
-                    />
-                  </td>
-                  <td
-                    style={{
-                      color:
-                        acc.discarded_quantity > 0
-                          ? "var(--color-danger-text)"
-                          : "var(--color-text-muted)",
-                    }}
-                  >
-                    {acc.discarded_quantity}
-                  </td>
-                  <td style={{ color: "var(--color-text-muted)" }}>
-  <DualValue
-    sale={acc.reorder_threshold}
-    rental={acc.rental_reorder_threshold}
-    type={acc.type}
-  />
-</td>
-                  <td>
-                    {(() => {
-                      const saleAvail = toNumber(acc.available_quantity);
-                      const rentAvail = toNumber(acc.rental_available_quantity);
+      <span>Rental</span>
 
-                      const saleTh = toNumber(acc.reorder_threshold ?? 5);
-                      const rentTh = toNumber(
-                        acc.rental_reorder_threshold ?? 5,
-                      );
+      <span
+        style={{
+          background: "rgba(255,255,255,0.2)",
+          padding: "2px 8px",
+          borderRadius: 999,
+          fontSize: 11,
+        }}
+      >
+        {
+          activeItems.filter((a) => a.type === "for_rental").length
+        }
+      </span>
+    </button>
 
-                      const getStatus = (avail, th) => {
-                        if (avail === 0) return "out";
-                        if (avail <= th) return "low";
-                        return "ok";
-                      };
+    {/* BOTH */}
+    <button
+      onClick={() => setStockFilter("both")}
+      className={`inv-toggle-btn ${
+        stockFilter === "both" ? "active" : ""
+      }`}
+      style={{
+        padding: "7px 14px",
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          background:
+            "linear-gradient(90deg, #22c55e 50%, #3b82f6 50%)",
+          borderRadius: "50%",
+          display: "inline-block",
+        }}
+      />
 
-                      const saleStatus = getStatus(saleAvail, saleTh);
-                      const rentStatus = getStatus(rentAvail, rentTh);
+      <span>Both</span>
 
-                      // BOTH
-                      if (saleAvail && rentAvail) {
-                        if (saleStatus === "out" && rentStatus === "out") {
+      <span
+        style={{
+          background: "rgba(255,255,255,0.2)",
+          padding: "2px 8px",
+          borderRadius: 999,
+          fontSize: 11,
+        }}
+      >
+        {activeItems.filter((a) => a.type === "both").length}
+      </span>
+    </button>
+  </div>
+
+  {/* RIGHT SIDE */}
+  <div
+    style={{
+      fontSize: 13,
+      color: "var(--color-text-muted)",
+      fontWeight: 500,
+    }}
+  >
+    Showing <strong>{filtered.length}</strong> item(s)
+  </div>
+</div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Price</th>
+                  <th>Initial Stock</th>
+                  <th>Available Stock</th>
+                  <th>Discarded</th>
+                  <th>Threshold</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((acc) => (
+                  <tr key={acc.id}>
+                    <td style={{ fontWeight: 600 }}>{acc.name}</td>
+                    <td>
+                      <TypeBadge type={acc.type} />
+                    </td>
+
+                    {/* ✅ Fixed pricing */}
+                    <td>
+                      <DualValue
+                        sale={acc.price}
+                        rental={acc.rent_price}
+                        type={acc.type}
+                        prefix="₹"
+                        suffix={
+                          acc.rental_pricing_type === "hourly" ? "/hr" : ""
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <DualValue
+                        sale={acc.total_purchased_quantity}
+                        rental={acc.rental_total_purchased_quantity}
+                        type={acc.type}
+                      />
+                    </td>
+                    <td>
+                      <StockBar
+                        sale={toNumber(acc.available_quantity)}
+                        rental={toNumber(acc.rental_available_quantity)}
+                        threshold={toNumber(acc.reorder_threshold ?? 5)}
+                      />
+                    </td>
+                    <td
+                      style={{
+                        color:
+                          acc.discarded_quantity > 0
+                            ? "var(--color-danger-text)"
+                            : "var(--color-text-muted)",
+                      }}
+                    >
+                      {acc.discarded_quantity}
+                    </td>
+                    <td style={{ color: "var(--color-text-muted)" }}>
+                      <DualValue
+                        sale={acc.reorder_threshold}
+                        rental={acc.rental_reorder_threshold}
+                        type={acc.type}
+                      />
+                    </td>
+                    <td>
+                      {(() => {
+                        const saleAvail = toNumber(acc.available_quantity);
+                        const rentAvail = toNumber(
+                          acc.rental_available_quantity,
+                        );
+
+                        const saleTh = toNumber(acc.reorder_threshold ?? 5);
+                        const rentTh = toNumber(
+                          acc.rental_reorder_threshold ?? 5,
+                        );
+
+                        const getStatus = (avail, th) => {
+                          if (avail === 0) return "out";
+                          if (avail <= th) return "low";
+                          return "ok";
+                        };
+
+                        const saleStatus = getStatus(saleAvail, saleTh);
+                        const rentStatus = getStatus(rentAvail, rentTh);
+
+                        // BOTH
+                        if (saleAvail && rentAvail) {
+                          if (saleStatus === "out" && rentStatus === "out") {
+                            return (
+                              <span className="inv-badge inv-badge-out">
+                                Out of Stock
+                              </span>
+                            );
+                          }
+                          if (saleStatus === "low" || rentStatus === "low") {
+                            return (
+                              <span className="inv-badge inv-badge-low">
+                                Low Stock
+                              </span>
+                            );
+                          }
                           return (
-                            <span className="inv-badge inv-badge-out">
-                              Out of Stock
+                            <span className="inv-badge inv-badge-ok">
+                              In Stock
                             </span>
                           );
                         }
-                        if (saleStatus === "low" || rentStatus === "low") {
+
+                        // SALE ONLY
+                        if (saleAvail) {
                           return (
-                            <span className="inv-badge inv-badge-low">
-                              Low Stock
-                            </span>
+                            <StockStatusBadge
+                              available={saleAvail}
+                              threshold={saleTh}
+                            />
                           );
                         }
+
+                        // RENTAL ONLY
+                        if (rentAvail) {
+                          return (
+                            <StockStatusBadge
+                              available={rentAvail}
+                              threshold={rentTh}
+                            />
+                          );
+                        }
+
                         return (
-                          <span className="inv-badge inv-badge-ok">
-                            In Stock
+                          <span className="inv-badge inv-badge-out">
+                            Out of Stock
                           </span>
                         );
-                      }
+                      })()}
+                    </td>
 
-                      // SALE ONLY
-                      if (saleAvail) {
-                        return (
-                          <StockStatusBadge
-                            available={saleAvail}
-                            threshold={saleTh}
-                          />
-                        );
-                      }
-
-                      // RENTAL ONLY
-                      if (rentAvail) {
-                        return (
-                          <StockStatusBadge
-                            available={rentAvail}
-                            threshold={rentTh}
-                          />
-                        );
-                      }
-
-                      return (
-                        <span className="inv-badge inv-badge-out">
-                          Out of Stock
+                    <td>
+                      {viewMode === "active" ? (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() =>
+                              setAddEditModal({ open: true, accessory: acc })
+                            }
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() =>
+                              setRestockModal({ open: true, accessory: acc })
+                            }
+                          >
+                            + Stock
+                          </button>
+                          <button
+                            className="btn btn-warning btn-sm"
+                            onClick={() =>
+                              setDiscardModal({ open: true, accessory: acc })
+                            }
+                          >
+                            Discard
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => setDeleteConfirm(acc)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          style={{
+                            color: "var(--color-danger)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Archived
                         </span>
-                      );
-                    })()}
-                  </td>
-
-                  <td>
-                    {viewMode === "active" ? (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() =>
-                            setAddEditModal({ open: true, accessory: acc })
-                          }
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() =>
-                            setRestockModal({ open: true, accessory: acc })
-                          }
-                        >
-                          + Stock
-                        </button>
-                        <button
-                          className="btn btn-warning btn-sm"
-                          onClick={() =>
-                            setDiscardModal({ open: true, accessory: acc })
-                          }
-                        >
-                          Discard
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => setDeleteConfirm(acc)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <span
-                        style={{
-                          color: "var(--color-danger)",
-                          fontSize: 12,
-                          fontWeight: 600,
-                        }}
-                      >
-                        Archived
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-</>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {deleteConfirm && (

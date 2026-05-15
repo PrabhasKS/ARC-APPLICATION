@@ -358,18 +358,44 @@ const BookingForm = ({ courts, selectedDate, startTime, endTime, initialCourtId,
                                 >
                                     <option value="" disabled>Choose an accessory to add...</option>
                                     {accessories.map(acc => {
-                                        const isOut = acc.available_quantity === 0;
-                                        return (
-                                                <option 
-                                                    key={acc.id} 
-                                                    value={acc.id} 
-                                                    disabled={isOut} 
-                                                    style={{ color: isOut ? 'red' : 'inherit' }}
-                                                >
-                                                    {acc.name} - {acc.type === 'for_rental' ? `Rent ₹${acc.rent_price}` : (acc.type === 'both' ? `Sale ₹${acc.price} | Rent ₹${acc.rent_price}` : `Sale ₹${acc.price}`)} {isOut ? '(Out of Stock)' : `(${acc.available_quantity} available)`}
-                                                </option>
-                                        );
-                                    })}
+    const saleQty = parseInt(acc.available_quantity || 0);
+    const rentalQty = parseInt(acc.rental_available_quantity || 0);
+
+    let isOut = false;
+    let stockText = "";
+
+    if (acc.type === "for_sale") {
+        isOut = saleQty === 0;
+        stockText = `(${saleQty} available)`;
+    }
+
+    else if (acc.type === "for_rental") {
+        isOut = rentalQty === 0;
+        stockText = `(${rentalQty} rental available)`;
+    }
+
+    else if (acc.type === "both") {
+        isOut = saleQty === 0 && rentalQty === 0;
+        stockText = `(Sale: ${saleQty} | Rent: ${rentalQty})`;
+    }
+
+    return (
+        <option
+            key={acc.id}
+            value={acc.id}
+            disabled={isOut}
+            style={{ color: isOut ? 'red' : 'inherit' }}
+        >
+            {acc.name} - {
+                acc.type === 'for_rental'
+                    ? `Rent ₹${acc.rent_price}`
+                    : acc.type === 'both'
+                        ? `Sale ₹${acc.price} | Rent ₹${acc.rent_price}`
+                        : `Sale ₹${acc.price}`
+            } {isOut ? '(Out of Stock)' : stockText}
+        </option>
+    );
+})}
                                 </select>
                             </div>
                             {selectedAccessories.length > 0 && (
